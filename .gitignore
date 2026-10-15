@@ -1,0 +1,22 @@
+# Configuración local y credenciales
+.env
+.env.*
+!.env.example
+auth.json
+
+# Dependencias y archivos generados
+**/vendor/
+**/node_modules/
+*.log
+*.sqlite
+*.sqlite-*
+
+# Archivos personales del sistema y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+AGENTS.md
+CLAUDE.md
