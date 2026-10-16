@@ -1,34 +1,55 @@
 .navbar {
   width: 100%;
-  min-height: 72px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.navbar-container {
+  width: 100%;
+  max-width: 1400px;
+  min-height: 88px;
+  margin: 0 auto;
   padding: 0 48px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
 }
 
 .navbar-brand {
-  color: #1f2937;
-  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #111827;
+  font-size: 28px;
   font-weight: 700;
   text-decoration: none;
 }
 
-.navbar-links {
+.brand-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+}
+
+.navbar-menu {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 58px;
 }
 
 .nav-link {
-  color: #4b5563;
-  font-size: 15px;
+  position: relative;
+  padding: 32px 0;
+
+  color: #475569;
+  font-size: 16px;
   font-weight: 500;
   text-decoration: none;
+
+  transition: color 0.2s ease;
 }
 
 .nav-link:hover {
@@ -37,5 +58,86 @@
 
 .nav-link.active {
   color: #111827;
-  font-weight: 700;
+}
+
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 22px;
+
+  width: 15px;
+  height: 2px;
+  margin: 0 auto;
+
+  background-color: #f59e0b;
+  border-radius: 2px;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-acceso,
+.btn-registro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 42px;
+  padding: 0 26px;
+
+  border-radius: 999px;
+
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn-acceso {
+  color: #334155;
+  background-color: #ffffff;
+  border: 1px solid #dbe3ec;
+}
+
+.btn-acceso:hover {
+  background-color: #f8fafc;
+}
+
+.btn-registro {
+  color: #111827;
+  background-color: #f59e0b;
+  border: 1px solid #f59e0b;
+}
+
+.btn-registro:hover {
+  background-color: #e89005;
+  border-color: #e89005;
+}
+
+@media (max-width: 900px) {
+  .navbar-container {
+    padding: 0 24px;
+  }
+
+  .navbar-menu {
+    gap: 24px;
+  }
+
+  .navbar-brand {
+    font-size: 22px;
+  }
+
+  .btn-acceso,
+  .btn-registro {
+    padding: 0 16px;
+  }
 }
