@@ -7,7 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
@@ -54,16 +54,51 @@ class User extends Authenticatable
     {
         return $this->hasMany(Application::class);
     }
+    public function reviewedApplications(): HasMany
+{
+    return $this->hasMany(
+        Application::class,
+        'reviewed_by'
+    );
+}
 
     public function organizationMemberships(): HasMany
     {
         return $this->hasMany(OrganizationMember::class);
     }
 
+    public function organizations(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Organization::class,
+            'organization_members'
+        )
+            ->withPivot([
+                'role',
+                'status',
+                'joined_at',
+            ])
+            ->withTimestamps();
+    }
+
     public function projectMemberships(): HasMany
     {
         return $this->hasMany(ProjectMember::class);
     }
+    public function memberProjects(): BelongsToMany
+{
+    return $this->belongsToMany(
+        Project::class,
+        'project_members'
+    )
+        ->withPivot([
+            'application_id',
+            'role',
+            'status',
+            'joined_at',
+        ])
+        ->withTimestamps();
+}
 
     public function communityNeeds(): HasMany
     {
@@ -85,3 +120,4 @@ class User extends Authenticatable
         return $this->hasMany(ProjectFile::class, 'uploaded_by');
     }
 }
+

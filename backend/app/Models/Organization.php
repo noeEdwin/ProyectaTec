@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Organization extends Model
 {
@@ -22,9 +23,24 @@ class Organization extends Model
     {
         return $this->hasMany(OrganizationMember::class);
     }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'organization_members'
+        )
+            ->withPivot([
+                'role',
+                'status',
+                'joined_at',
+            ])
+            ->withTimestamps();
+    }
+
     public function members(): HasMany
     {
-    	return $this->hasMany(OrganizationMember::class, 'organization_id');
+        return $this->hasMany(OrganizationMember::class, 'organization_id');
     }
 
     public function projects(): HasMany
