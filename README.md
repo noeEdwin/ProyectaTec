@@ -47,6 +47,43 @@ export LOCAL_UID=$(id -u)
 export LOCAL_GID=$(id -g)
 ```
 
+### Base de datos PostgreSQL de desarrollo
+
+El entorno incluye PostgreSQL 16 y crea automáticamente la base de datos
+`proyectatec_dev` en el primer arranque. Laravel se conecta al servicio Docker
+mediante el host `postgres`, no mediante `localhost`.
+
+```bash
+docker compose build backend
+docker compose up -d postgres backend
+docker compose exec backend php artisan db:show
+docker compose exec backend php artisan migrate:status
+```
+
+La conexión local de desarrollo utiliza:
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=proyectatec_dev
+DB_USERNAME=proyectatec
+DB_PASSWORD=proyectatec_dev_password
+```
+
+El puerto `5433` del equipo se publica únicamente en `127.0.0.1` y se redirige al
+puerto `5432` del contenedor para herramientas locales. Laravel usa internamente
+`postgres:5432`.
+Las credenciales son solo para desarrollo y no deben reutilizarse en producción.
+El volumen `postgres_data` conserva la base entre reinicios. Para eliminarla y
+crear una base limpia se requiere explícitamente:
+
+```bash
+docker compose down -v
+```
+
+Ese comando también elimina los datos locales de PostgreSQL.
+
 ### Uso diario
 
 ```bash
@@ -62,6 +99,7 @@ La ruta **<http://localhost:8000/up>** comprueba que la aplicación arranca.
 | Ver información de Laravel | `docker compose exec backend php artisan about` |
 | Listar rutas | `docker compose exec backend php artisan route:list` |
 | Ejecutar pruebas | `docker compose run --rm backend composer test` |
+| Ver PostgreSQL | `docker compose logs -f postgres` |
 | Detener el entorno | `docker compose down` |
 
 El código se comparte con el contenedor mediante un volumen: los cambios en
@@ -75,6 +113,6 @@ y los archivos Docker. Git excluye `.env`, dependencias (`vendor/`, `node_module
 registros, cachés, sesiones y archivos personales. Cada integrante obtiene sus
 dependencias y su configuración local mediante la instalación inicial.
 
-La configuración utiliza sesiones y caché en archivos, por lo que el arranque
-no requiere PostgreSQL. Consulta [backend/README.md](backend/README.md) para
-entender la estructura y explicar el avance de la actividad 3.8.3.
+La configuración utiliza sesiones y caché en archivos. Consulta
+[backend/README.md](backend/README.md) para entender la estructura y la
+configuración de la base de datos.

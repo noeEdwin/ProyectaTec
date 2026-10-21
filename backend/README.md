@@ -9,7 +9,8 @@ Los comandos se ejecutan desde la raíz del repositorio, donde está `compose.ya
 Consulta la [guía de instalación del equipo](../README.md) para preparar una copia nueva.
 
 ```bash
-docker compose up -d backend
+docker compose build backend
+docker compose up -d postgres backend
 ```
 
 - Bienvenida de Laravel: <http://localhost:8000>
@@ -39,7 +40,40 @@ docker compose exec backend php artisan route:list
 | `.env.example` | Plantilla compartida para configurar cada equipo. |
 | `composer.lock` | Versiones exactas de las dependencias; se comparte en Git. |
 
-## Configuración inicial
+## PostgreSQL de desarrollo
+
+El archivo `compose.yaml` define un servicio PostgreSQL 16 con la base
+`proyectatec_dev`, el usuario `proyectatec` y una contraseña de desarrollo.
+El servicio utiliza un volumen Docker llamado `postgres_data` para conservar
+la información entre reinicios.
+
+Laravel usa el nombre del servicio Docker como host:
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=proyectatec_dev
+DB_USERNAME=proyectatec
+DB_PASSWORD=proyectatec_dev_password
+```
+
+El contenedor de PHP instala la extensión `pdo_pgsql`, que es el controlador
+necesario para que Laravel se conecte a PostgreSQL.
+
+Para verificar el controlador y la conexión:
+
+```bash
+docker compose exec backend php -m | grep -E '^PDO$|pdo_pgsql'
+docker compose exec backend php artisan db:show
+docker compose exec backend php artisan migrate:status
+```
+
+En una instalación nueva, `docker compose up -d postgres backend` crea la base
+automáticamente. Si se necesita reiniciarla desde cero, se puede eliminar el
+volumen con `docker compose down -v`; esto borra todos los datos locales.
+
+## Configuración de Laravel
 
 ```dotenv
 APP_NAME=ProyectaTec
@@ -48,6 +82,11 @@ APP_DEBUG=true
 APP_URL=http://localhost:8000
 APP_LOCALE=es
 DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=proyectatec_dev
+DB_USERNAME=proyectatec
+DB_PASSWORD=proyectatec_dev_password
 SESSION_DRIVER=file
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
@@ -55,12 +94,6 @@ QUEUE_CONNECTION=sync
 
 `APP_KEY` se genera individualmente al preparar cada copia. Las sesiones y la caché
 se guardan en archivos; las tareas de cola se ejecutan de forma síncrona.
-Así, las rutas iniciales funcionan sin consultar una base de datos.
-
-`DB_CONNECTION=pgsql` indica la tecnología prevista. PostgreSQL todavía no está
-conectado: sus credenciales están comentadas en `.env.example`. Al abordar esa
-etapa habrá que añadir el servicio de base de datos, la extensión PHP `pdo_pgsql`
-y las credenciales acordadas por el equipo.
 
 El modelo `User` y las migraciones incluidas son los ejemplos de Laravel; no
 constituyen el diseño de tablas del Sprint 2 y no se han ejecutado.
@@ -73,12 +106,15 @@ la interfaz React del equipo se desarrollará por separado en `frontend/`.
 docker compose run --rm backend composer test
 docker compose run --rm backend composer validate --strict
 docker compose run --rm backend composer check-platform-reqs
+docker compose exec backend php -m | grep -E '^PDO$|pdo_pgsql'
+docker compose exec backend php artisan db:show
+docker compose exec backend php artisan migrate:status
 ```
 
 ## Explicación del avance
 
 > Preparé la estructura inicial del backend con Laravel dentro de `backend/`.
-> Configuré un entorno Docker con PHP y Composer, el archivo `.env` local y la
-> clave de aplicación. Ajusté sesiones y caché para que Laravel pueda arrancar
-> sin base de datos. Configuré las exclusiones de Git y comprobé el arranque
-> mediante las rutas iniciales y las pruebas incluidas en Laravel.
+> Configuré un entorno Docker con PHP, Composer y PostgreSQL. La aplicación usa
+> la base de desarrollo `proyectatec_dev`, habilité el controlador `pdo_pgsql` y
+> comprobé la conexión mediante Artisan. Las credenciales locales se mantienen
+> fuera de Git y el equipo comparte únicamente `.env.example`.
