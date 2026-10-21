@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Project extends Model
 {
@@ -58,6 +59,20 @@ class Project extends Model
     {
         return $this->hasMany(ProjectMember::class);
     }
+    public function users(): BelongsToMany
+{
+    return $this->belongsToMany(
+        User::class,
+        'project_members'
+    )
+        ->withPivot([
+            'application_id',
+            'role',
+            'status',
+            'joined_at',
+        ])
+        ->withTimestamps();
+}
 
     public function updates(): HasMany
     {
