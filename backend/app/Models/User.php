@@ -54,6 +54,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Application::class);
     }
+    public function reviewedApplications(): HasMany
+{
+    return $this->hasMany(
+        Application::class,
+        'reviewed_by'
+    );
+}
 
     public function organizationMemberships(): HasMany
     {
