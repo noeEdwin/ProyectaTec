@@ -28,11 +28,13 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement(
-            'ALTER TABLE project_updates
-             ADD CONSTRAINT project_updates_progress_range
-             CHECK (progress IS NULL OR (progress >= 0 AND progress <= 100))'
-        );
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement(
+                'ALTER TABLE project_updates
+                 ADD CONSTRAINT project_updates_progress_range
+                 CHECK (progress IS NULL OR (progress >= 0 AND progress <= 100))'
+            );
+        }
     }
 
     public function down(): void

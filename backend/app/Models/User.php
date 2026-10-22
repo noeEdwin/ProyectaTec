@@ -45,11 +45,6 @@ class User extends Authenticatable
         return $this->hasMany(Project::class, 'created_by');
     }
 
-    public function projects(): HasMany
-    {
-        return $this->hasMany(Project::class, 'created_by');
-    }
-
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
@@ -120,4 +115,3 @@ class User extends Authenticatable
         return $this->hasMany(ProjectFile::class, 'uploaded_by');
     }
 }
-

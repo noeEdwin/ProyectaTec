@@ -14,7 +14,6 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
 
-            // Campos requeridos por el modelo lógico de ProyectaTec
             $table->string('account_type');
             $table->boolean('is_active')->default(true);
 

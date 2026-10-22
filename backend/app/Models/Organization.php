@@ -38,11 +38,6 @@ class Organization extends Model
             ->withTimestamps();
     }
 
-    public function members(): HasMany
-    {
-        return $this->hasMany(OrganizationMember::class, 'organization_id');
-    }
-
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
