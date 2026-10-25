@@ -12,23 +12,50 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        // 1. Crear las categorías iniciales.
+        // 1. Catálogos base
         $this->call([
             CategorySeeder::class,
         ]);
 
-        // 2. Crear un usuario de prueba (que usaremos en las postulaciones).
+        // 2. Usuarios
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
 
-        // 3. Ejecutar tus nuevos seeders en orden estricto.
+        // 3. Perfil del usuario
+        $this->call([
+            ProfileSeeder::class,
+        ]);
+
+        // 4. Organizaciones y Miembros
         $this->call([
             OrganizationSeeder::class,
+            OrganizationMemberSeeder::class,
+        ]);
+
+        // 5. Proyectos y Necesidades
+        $this->call([
             ProjectSeeder::class,
             NeedSeeder::class,
+        ]);
+
+        // 6. Aplicaciones y Miembros de Proyecto
+        $this->call([
             ApplicationSeeder::class,
+            ProjectMemberSeeder::class,
+        ]);
+
+        // 7. Actualizaciones, Comentarios y Archivos
+        $this->call([
+            ProjectUpdateSeeder::class,
+            ProjectCommentSeeder::class,
+            ProjectFileSeeder::class,
+        ]);
+
+        // 8. Notificaciones
+        $this->call([
+            NotificationSeeder::class,
         ]);
     }
 }
