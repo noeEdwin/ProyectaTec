@@ -10,8 +10,8 @@ use App\Models\Profile;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ModelRelationshipsTest extends TestCase

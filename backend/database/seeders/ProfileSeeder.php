@@ -2,15 +2,17 @@
 
 namespace Database\Seeders;
 
+use App\Models\Profile;
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class ProfileSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('profiles')->insert([
-            'user_id' => 1,
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+
+        Profile::updateOrCreate(['user_id' => $user->id], [
             'display_name' => 'Test User',
             'description' => 'Estudiante de Ingeniería en Sistemas apasionado por el desarrollo web y móvil.',
             'phone' => '9511234567',
@@ -18,8 +20,6 @@ class ProfileSeeder extends Seeder
             'avatar_path' => null,
             'institution' => 'Instituto Tecnológico de Oaxaca',
             'field_of_study' => 'Ingeniería en Sistemas Computacionales',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 }

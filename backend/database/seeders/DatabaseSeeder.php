@@ -18,10 +18,24 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Usuarios
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => 'password',
+                'account_type' => 'student',
+                'is_active' => true,
+            ]
+        );
+        User::firstOrCreate(
+            ['email' => 'reviewer@example.com'],
+            [
+                'name' => 'Project Reviewer',
+                'password' => 'password',
+                'account_type' => 'organization',
+                'is_active' => true,
+            ]
+        );
 
         // 3. Perfil del usuario
         $this->call([

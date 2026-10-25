@@ -2,22 +2,26 @@
 
 namespace Database\Seeders;
 
+use App\Models\Application;
+use App\Models\ProjectMember;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class ProjectMemberSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('project_members')->insert([
-            'project_id' => 2, // Sistema de Gestión de Residuos
-            'user_id' => 1,
-            'application_id' => 2, // Postulación aceptada previa
+        $application = Application::whereHas('project', function ($query) {
+            $query->where('title', 'Sistema de Gestión de Residuos');
+        })
+            ->where('status', 'accepted')
+            ->firstOrFail();
+
+        ProjectMember::updateOrCreate(['application_id' => $application->id], [
+            'project_id' => $application->project_id,
+            'user_id' => $application->user_id,
             'role' => 'UI/UX Designer',
             'status' => 'active',
             'joined_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 }

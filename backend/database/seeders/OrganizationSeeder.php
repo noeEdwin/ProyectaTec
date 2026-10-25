@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Organization;
+use Illuminate\Database\Seeder;
 
 class OrganizationSeeder extends Seeder
 {
@@ -84,8 +84,11 @@ class OrganizationSeeder extends Seeder
             ],
         ];
 
-        foreach ($organizations as$org) {
-            Organization::create($org);
+        foreach ($organizations as $org) {
+            Organization::updateOrCreate(
+                ['name' => $org['name']],
+                $org
+            );
         }
     }
 }
