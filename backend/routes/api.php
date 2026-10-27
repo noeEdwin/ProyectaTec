@@ -1,5 +1,5 @@
 <?php
-
+use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -8,4 +8,14 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', function (Request $request) {
+    return response()->json(
+        $request->user()->only([
+            'id',
+            'name',
+            'email',
+            'account_type'
+        ])
+    );
+});
 });
