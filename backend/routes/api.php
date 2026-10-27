@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Project;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Gate;
-
+use App\Models\Application;
 // Rutas públicas de autenticación
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -42,6 +42,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json($organization);
     });
+    // Revisar solicitudes de participación
+Route::patch('/applications/{application}', function (Request $request, Application $application) {
+
+    Gate::authorize('update', $application);
+
+    $data = $request->validate([
+        'status' => ['required', 'in:accepted,rejected'],
+    ]);
+
+    $application->update([
+        'status' => $data['status'],
+        'reviewed_by' => $request->user()->id,
+        'reviewed_at' => now(),
+    ]);
+
+    return response()->json($application);
+});
 
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);
