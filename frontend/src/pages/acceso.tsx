@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/auth-context';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
 
@@ -39,6 +40,7 @@ export default function Acceso({ onLogin }: AccesoProps) {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,10 +80,10 @@ export default function Acceso({ onLogin }: AccesoProps) {
         await login({ email: correo, password });
       }
 
-      // Redirección al catálogo tras autenticación exitosa
-      navigate('/catalogo');
-    } catch (err: any) {
-      if (err.response?.data?.message) {
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from?.startsWith('/') && !from.startsWith('//') ? from : '/iniciativas', { replace: true });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
         setErrores({ general: err.response.data.message });
       } else {
         setErrores({

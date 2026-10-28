@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth-context';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -117,14 +118,16 @@ export default function Registro({ onRegister }: RegistroProps) {
       }
 
       navigate('/catalogo');
-    } catch (err: any) {
-      if (err.response?.status === 422 && err.response.data.errors) {
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.status === 422 && err.response.data.errors) {
         // Manejar errores de validación provenientes de Laravel
         const apiErrors = err.response.data.errors;
         setErrores({
           name: apiErrors.name ? apiErrors.name[0] : undefined,
           email: apiErrors.email ? apiErrors.email[0] : undefined,
           password: apiErrors.password ? apiErrors.password[0] : undefined,
+          account_type: apiErrors.account_type ? apiErrors.account_type[0] : undefined,
+          password_confirmation: apiErrors.password_confirmation ? apiErrors.password_confirmation[0] : undefined,
         });
       } else {
         setErrores({
