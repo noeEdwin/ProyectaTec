@@ -1,0 +1,23 @@
+meta {
+  name: Revisar solicitud
+  type: http
+  seq: 1
+}
+
+patch {
+  url: {{baseUrl}}/api/applications/{{applicationId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "status": "accepted"
+  }
+}

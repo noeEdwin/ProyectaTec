@@ -1,0 +1,22 @@
+meta {
+  name: Logout
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/logout
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{token}}
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.deleteVar('token');
+  }
+}

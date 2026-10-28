@@ -1,0 +1,23 @@
+meta {
+  name: Actualizar proyecto
+  type: http
+  seq: 1
+}
+
+patch {
+  url: {{baseUrl}}/api/projects/{{projectId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "title": "Plataforma de Manejo de Agua"
+  }
+}
