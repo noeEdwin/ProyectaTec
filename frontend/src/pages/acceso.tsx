@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
 
@@ -36,6 +37,9 @@ export default function Acceso({ onLogin }: AccesoProps) {
 
   const [mensaje, setMensaje] = useState('');
 
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -60,28 +64,30 @@ export default function Acceso({ onLogin }: AccesoProps) {
       return;
     }
 
-    // La conexión con Laravel será integrada posteriormente.
-    if (!onLogin) {
-      setMensaje(
-        'Formulario validado. La conexión con Laravel está pendiente.'
-      );
-      return;
-    }
-
     try {
       setProcesando(true);
 
-      await onLogin({
-        email: correo,
-        password,
-        remember: recordarme,
-      });
+      if (onLogin) {
+        await onLogin({
+          email: correo,
+          password,
+          remember: recordarme,
+        });
+      } else {
+        // Conexión real con la API de Laravel Sanctum
+        await login({ email: correo, password });
+      }
 
-      setMensaje('Solicitud procesada correctamente.');
-    } catch {
-      setErrores({
-        general: 'No fue posible iniciar sesión. Inténtalo nuevamente.',
-      });
+      // Redirección al catálogo tras autenticación exitosa
+      navigate('/catalogo');
+    } catch (err: any) {
+      if (err.response?.data?.message) {
+        setErrores({ general: err.response.data.message });
+      } else {
+        setErrores({
+          general: 'Credenciales incorrectas o problema de conexión con el servidor.',
+        });
+      }
     } finally {
       setProcesando(false);
     }

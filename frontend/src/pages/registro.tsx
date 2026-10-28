@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -44,6 +44,9 @@ export default function Registro({ onRegister }: RegistroProps) {
   const [errores, setErrores] = useState<RegistroErrors>({});
   const [mensaje, setMensaje] = useState('');
   const [procesando, setProcesando] = useState(false);
+
+  const { register } = useAuth();
+  const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,24 +106,32 @@ export default function Registro({ onRegister }: RegistroProps) {
       password_confirmation: confirmacion,
     };
 
-    // Heber conectará este formulario con la API de Laravel.
-    if (!onRegister) {
-      setMensaje(
-        'Formulario validado correctamente. ' +
-        'El registro en Laravel todavía está pendiente.'
-      );
-      return;
-    }
-
     try {
       setProcesando(true);
-      await onRegister(datos);
-      setMensaje('El servidor procesó la solicitud de registro.');
-    } catch {
-      setErrores({
-        general:
-          'No fue posible completar el registro. Inténtalo nuevamente.',
-      });
+
+      if (onRegister) {
+        await onRegister(datos);
+      } else {
+        // Registro real con la API de Laravel
+        await register(datos);
+      }
+
+      navigate('/catalogo');
+    } catch (err: any) {
+      if (err.response?.status === 422 && err.response.data.errors) {
+        // Manejar errores de validación provenientes de Laravel
+        const apiErrors = err.response.data.errors;
+        setErrores({
+          name: apiErrors.name ? apiErrors.name[0] : undefined,
+          email: apiErrors.email ? apiErrors.email[0] : undefined,
+          password: apiErrors.password ? apiErrors.password[0] : undefined,
+        });
+      } else {
+        setErrores({
+          general:
+            'No fue posible completar el registro. Inténtalo nuevamente.',
+        });
+      }
     } finally {
       setProcesando(false);
     }
@@ -128,7 +139,6 @@ export default function Registro({ onRegister }: RegistroProps) {
 
   return (
     <div className="registro-page">
-      {/* Encabezado */}
       <header className="registro-header">
         <div className="registro-header-inner">
           <Link to="/" className="registro-logo">
@@ -143,7 +153,6 @@ export default function Registro({ onRegister }: RegistroProps) {
       </header>
 
       <main className="registro-main">
-        {/* Introducción */}
         <div className="registro-intro">
           <div className="registro-eyebrow">
             PROYECTATEC / REGISTRO
@@ -157,7 +166,6 @@ export default function Registro({ onRegister }: RegistroProps) {
         </div>
 
         <div className="registro-grid">
-          {/* Formulario */}
           <section
             className="registro-card"
             aria-labelledby="registro-card-title"
@@ -316,7 +324,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                   )}
                 </div>
 
-                {/* Confirmación, necesaria para Laravel */}
+                {/* Confirmación */}
                 {(password.length > 0 ||
                   confirmacion.length > 0 ||
                   Boolean(errores.password_confirmation)) && (
@@ -387,7 +395,6 @@ export default function Registro({ onRegister }: RegistroProps) {
             </form>
           </section>
 
-          {/* Panel informativo */}
           <aside className="registro-info-card">
             <h2>Un solo espacio para colaborar</h2>
 
