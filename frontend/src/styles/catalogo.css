@@ -1,0 +1,36 @@
+.catalogo-page {
+  padding: 3rem 5rem;
+}
+
+.catalogo-heading {
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.catalogo-heading h1 {
+  font-size: 2.5rem;
+}
+
+.catalogo-filtros {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .catalogo-page {
+    padding: 32px 20px;
+  }
+
+  .catalogo-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .catalogo-heading h1 {
+    font-size: clamp(28px, 7vw, 40px);
+  }
+
+  .catalogo-page footer {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+}

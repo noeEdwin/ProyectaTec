@@ -141,3 +141,45 @@
     padding: 0 16px;
   }
 }
+
+@media (max-width: 760px) {
+  .navbar-container {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .navbar-menu {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nav-link {
+    padding: 10px 0;
+  }
+
+  .nav-link.active::after {
+    bottom: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-actions {
+    width: 100%;
+  }
+
+  .btn-acceso,
+  .btn-registro {
+    flex: 1;
+    padding: 0 12px;
+  }
+
+  .navbar-menu {
+    gap: 8px;
+  }
+
+  .nav-link {
+    font-size: 12px;
+  }
+}
