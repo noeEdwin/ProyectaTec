@@ -13,10 +13,13 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+        <Route path="/acceso" element={<Acceso />} />
+        
         <Route element={<MainLayout />}>
           <Route path="/" element={<Inicio />} />
           <Route path="/iniciativas" element={<Catalogo />} />
-          <Route path="/acceso" element={<Acceso />} />
+          
           <Route path="/registro" element={<Registro />} />
 
           <Route path="/catalogo" element={<Catalogo />} />
