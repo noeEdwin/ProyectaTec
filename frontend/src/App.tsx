@@ -15,13 +15,13 @@ function App() {
       <Routes>
 
         <Route path="/acceso" element={<Acceso />} />
-        
+        <Route path="/registro" element={<Registro />} />
+
+
         <Route element={<MainLayout />}>
           <Route path="/" element={<Inicio />} />
           <Route path="/iniciativas" element={<Catalogo />} />
           
-          <Route path="/registro" element={<Registro />} />
-
           <Route path="/catalogo" element={<Catalogo />} />
         </Route>
       </Routes>
