@@ -7,6 +7,8 @@ use App\Models\Project;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Application;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\OrganizationController;
 // Rutas públicas de autenticación
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -41,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         return response()->json($organization);
     });
+    
     // Revisar solicitudes de participación
 Route::patch('/applications/{application}', function (Request $request, Application $application) {
 
@@ -61,6 +64,12 @@ Route::patch('/applications/{application}', function (Request $request, Applicat
 
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Nueva ruta para crear o actualizar el perfil
+    Route::post('/profile', [ProfileController::class, 'update']);
+
+    // Crear una nueva organización y vincularla al usuario
+    Route::post('/organizations', [OrganizationController::class, 'store']);
 
     // Consultar información del usuario autenticado
     Route::get('/me', function (Request $request) {
