@@ -9,6 +9,7 @@ import Inicio from './pages/inicio';
 import Registro from './pages/registro';
 import Catalogo from './pages/catalogo';
 import Acceso from './pages/acceso';
+import Perfil from './pages/Perfil';
 
 import './styles/App.css';
 
@@ -30,6 +31,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/iniciativas" element={<Catalogo />} />
               <Route path="/catalogo" element={<Catalogo />} />
+              <Route path="/perfil" element={<Perfil />} />
             </Route>
           </Route>
         </Routes>
