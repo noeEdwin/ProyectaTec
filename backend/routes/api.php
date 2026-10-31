@@ -116,4 +116,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ])
         );
     });
+
+    // Rutas del Módulo de Perfiles
+    Route::get('/me/profile', [ProfileController::class, 'show']);
+    Route::patch('/me/profile', [ProfileController::class, 'update']);
+    Route::post('/profile', [ProfileController::class, 'update']);
 });
