@@ -1,10 +1,49 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import colaboracionImage from '../assets/inicio_sesion.png';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import '../styles/inicio.css';
 
+// Tipos de TypeScript para la respuesta de Laravel
+interface ProyectoDestacado {
+  id: number;
+  titulo: string;
+  subtitulo: string;
+  fase: string;
+  estado: string;
+  dias_restantes: number;
+  imagen_url?: string;
+}
+
+interface Estadisticas {
+  impacto: string;
+  sectores: number;
+}
+
 function PanelVinculacion() {
+  const [proyecto, setProyecto] = useState<ProyectoDestacado | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    // Consulta la iniciativa destacada desde Laravel
+    api.get('/proyectos/destacado')
+      .then((res) => {
+        setProyecto(res.data);
+      })
+      .catch(() => {
+        // Fallback con datos por si Laravel no responde en desarrollo
+        setProyecto({
+          id: 1,
+          titulo: 'AgroTech Oaxaca',
+          subtitulo: 'Café de Especialidad Pluma',
+          fase: 'Fase 01',
+          estado: 'Activo',
+          dias_restantes: 24,
+        });
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <aside className="inicio-panel" aria-label="Vinculación en Oaxaca">
       <span className="inicio-panel-line" aria-hidden="true" />
@@ -15,8 +54,8 @@ function PanelVinculacion() {
 
       <div className="inicio-panel-photo">
         <img
-          src={colaboracionImage}
-          alt="Estudiantes colaborando en un proyecto tecnológico en Oaxaca"
+          src={proyecto?.imagen_url}
+          alt={proyecto ? proyecto.titulo : 'Proyecto destacado'}
         />
         <div className="inicio-panel-caption">
           <strong>DESARROLLO REGIONAL</strong>
@@ -29,58 +68,48 @@ function PanelVinculacion() {
           <span>Vinculación en Tiempo Real</span>
           <strong>3 Sectores en Sincronía</strong>
         </div>
-        <Link to="/iniciativas?q=caf%C3%A9" className="inicio-panel-project">
-          <span className="inicio-panel-project-icon" aria-hidden="true">✦</span>
-          <span className="inicio-panel-project-name">
-            <strong>AgroTech Oaxaca</strong>
-            <span>Café de Especialidad Pluma</span>
-          </span>
-          <span className="inicio-panel-project-status">
-            <span>Fase 01</span>
-            <strong>Activo</strong>
-          </span>
-          <span className="inicio-panel-project-days">24 días</span>
-        </Link>
+
+        {loading ? (
+          <div style={{ padding: '1rem', color: '#888' }}>Cargando proyecto...</div>
+        ) : (
+          <Link
+            to={proyecto ? `/iniciativas/${proyecto.id}` : '/iniciativas'}
+            className="inicio-panel-project"
+          >
+            <span className="inicio-panel-project-icon" aria-hidden="true">✦</span>
+            <span className="inicio-panel-project-name">
+              <strong>{proyecto?.titulo}</strong>
+              <span>{proyecto?.subtitulo}</span>
+            </span>
+            <span className="inicio-panel-project-status">
+              <span>{proyecto?.fase}</span>
+              <strong>{proyecto?.estado}</strong>
+            </span>
+            <span className="inicio-panel-project-days">
+              {proyecto?.dias_restantes} días
+            </span>
+          </Link>
+        )}
       </div>
 
-      <a className="inicio-panel-scroll" href="#buscar-vinculacion">
+      <a className="inicio-panel-scroll" href="#inicio-titulo">
         SCROLL <span aria-hidden="true" />
       </a>
     </aside>
   );
 }
 
-function BuscadorVinculacion() {
-  const [busqueda, setBusqueda] = useState('');
-  const navigate = useNavigate();
-
-  function buscar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const termino = busqueda.trim();
-    navigate(termino ? `/iniciativas?q=${encodeURIComponent(termino)}` : '/iniciativas');
-  }
-
-  return (
-    <form className="inicio-search" id="buscar-vinculacion" onSubmit={buscar} role="search">
-      <label className="inicio-search-field" htmlFor="inicio-busqueda">
-        <svg aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <span className="inicio-sr-only">Buscar proyectos por sector o especialidad</span>
-        <input
-          id="inicio-busqueda"
-          type="search"
-          value={busqueda}
-          onChange={(event) => setBusqueda(event.target.value)}
-          placeholder="Buscar por sector (Agroindustria, IA, Turismo, Textil) o especialidad..."
-        />
-      </label>
-      <button type="submit">Buscar Vinculación</button>
-    </form>
-  );
-}
-
 export default function Inicio() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState<Estadisticas>({ impacto: '100%', sectores: 3 });
+
+  useEffect(() => {
+    // Carga estadísticas globales desde el backend
+    api.get('/estadisticas/inicio')
+      .then(res => setStats(res.data))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="inicio-page">
       <div className="inicio-container">
@@ -95,12 +124,20 @@ export default function Inicio() {
 
             <div className="inicio-actions">
               <div className="inicio-impact">
-                <span>INICIATIVAS 2024</span>
-                <strong>100% <small>IMPACTO</small></strong>
+                <span>INICIATIVAS 2026</span>
+                <strong>{stats.impacto} <small>IMPACTO</small></strong>
               </div>
-              <Link to="/iniciativas" className="inicio-explore">
-                <span aria-hidden="true">+</span> Explorar Proyectos
-              </Link>
+
+              {/* Botón dinámico según sesión */}
+              {user ? (
+                <Link to="/catalogo" className="inicio-explore">
+                  <span aria-hidden="true">✦</span> Ir a Mi Panel
+                </Link>
+              ) : (
+                <Link to="/iniciativas" className="inicio-explore">
+                  <span aria-hidden="true">+</span> Explorar Proyectos
+                </Link>
+              )}
             </div>
 
             <div className="inicio-academic">
@@ -114,8 +151,6 @@ export default function Inicio() {
 
           <PanelVinculacion />
         </div>
-
-        <BuscadorVinculacion />
       </div>
     </div>
   );

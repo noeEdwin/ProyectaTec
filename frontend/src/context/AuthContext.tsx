@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import type { ReactNode } from 'react';
 import api from '../api/axios';
 import { AuthContext } from './auth-context';
@@ -52,4 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+// Hook personalizado para consumir la autenticación en cualquier componente
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe utilizarse dentro de un AuthProvider');
+  }
+  return context;
 }
