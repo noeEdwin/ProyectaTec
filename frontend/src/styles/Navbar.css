@@ -19,7 +19,7 @@
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
 
   color: #111827;
   font-size: 28px;
@@ -30,14 +30,17 @@
 .brand-dot {
   width: 11px;
   height: 11px;
+  flex: none;
+  margin-left: 3px;
   border-radius: 50%;
   background-color: #f59e0b;
+  transform: translateY(3px);
 }
 
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: 58px;
+  gap: clamp(20px, 4vw, 58px);
 }
 
 .nav-link {

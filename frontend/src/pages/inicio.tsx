@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import colaboracionImage from '../assets/inicio_sesion.png';
@@ -51,7 +50,6 @@ function PanelVinculacion() {
 
   return (
     <aside className="inicio-panel" aria-label="Vinculación en Oaxaca">
-      <span className="inicio-panel-line" aria-hidden="true" />
       <div className="inicio-panel-badge">
         <span className="inicio-panel-dot" aria-hidden="true" />
         TecNM Oaxaca
@@ -81,7 +79,13 @@ function PanelVinculacion() {
             to={proyecto ? `/iniciativas/${proyecto.id}` : '/iniciativas'}
             className="inicio-panel-project"
           >
-            <span className="inicio-panel-project-icon" aria-hidden="true">✦</span>
+            <span className="inicio-panel-project-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21v-9" />
+                <path d="M12 15c0-4 2.5-6.5 7-7-0.5 4.5-3 7-7 7Z" />
+                <path d="M12 12c0-3.5-2-5.5-6-6 0.5 4 2.5 6 6 6Z" />
+              </svg>
+            </span>
             <span className="inicio-panel-project-name">
               <strong>{proyecto?.titulo}</strong>
               <span>{proyecto?.subtitulo}</span>
@@ -97,40 +101,10 @@ function PanelVinculacion() {
         )}
       </div>
 
-      <a className="inicio-panel-scroll" href="#buscar-vinculacion">
+      <div className="inicio-panel-scroll" aria-hidden="true">
         SCROLL <span aria-hidden="true" />
-      </a>
+      </div>
     </aside>
-  );
-}
-
-function BuscadorVinculacion() {
-  const [busqueda, setBusqueda] = useState('');
-  const navigate = useNavigate();
-
-  function buscar(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const termino = busqueda.trim();
-    navigate(termino ? `/iniciativas?q=${encodeURIComponent(termino)}` : '/iniciativas');
-  }
-
-  return (
-    <form className="inicio-search" id="buscar-vinculacion" onSubmit={buscar} role="search">
-      <label className="inicio-search-field" htmlFor="inicio-busqueda">
-        <svg aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <span className="inicio-sr-only">Buscar proyectos por sector o especialidad</span>
-        <input
-          id="inicio-busqueda"
-          type="search"
-          value={busqueda}
-          onChange={(event) => setBusqueda(event.target.value)}
-          placeholder="Buscar por sector (Agroindustria, IA, Turismo, Textil) o especialidad..."
-        />
-      </label>
-      <button type="submit">Buscar Vinculación</button>
-    </form>
   );
 }
 
@@ -166,11 +140,23 @@ export default function Inicio() {
               {/* Botón dinámico según el estado de la sesión */}
               {user ? (
                 <Link to="/catalogo" className="inicio-explore">
-                  <span aria-hidden="true">✦</span> Ir a Mi Panel
+                  <span aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 21v-9" />
+                      <path d="M12 15c0-4 2.5-6.5 7-7-0.5 4.5-3 7-7 7Z" />
+                      <path d="M12 12c0-3.5-2-5.5-6-6 0.5 4 2.5 6 6 6Z" />
+                    </svg>
+                  </span> Ir a Mi Panel
                 </Link>
               ) : (
                 <Link to="/iniciativas" className="inicio-explore">
-                  <span aria-hidden="true">+</span> Explorar Proyectos
+                  <span aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 21v-9" />
+                      <path d="M12 15c0-4 2.5-6.5 7-7-0.5 4.5-3 7-7 7Z" />
+                      <path d="M12 12c0-3.5-2-5.5-6-6 0.5 4 2.5 6 6 6Z" />
+                    </svg>
+                  </span> Explorar Proyectos
                 </Link>
               )}
             </div>
@@ -186,8 +172,6 @@ export default function Inicio() {
 
           <PanelVinculacion />
         </div>
-
-        <BuscadorVinculacion />
       </div>
     </div>
   );

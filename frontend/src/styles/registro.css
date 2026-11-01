@@ -40,7 +40,8 @@
 
 .registro-logo {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
+  gap: 0;
   color: var(--registro-dark);
   text-decoration: none;
   font-size: 24px;
@@ -51,9 +52,11 @@
 .registro-logo-dot {
   width: 9px;
   height: 9px;
-  margin-left: 2px;
+  flex: none;
+  margin-left: 3px;
   border-radius: 50%;
   background: var(--registro-orange);
+  transform: translateY(3px);
 }
 
 .registro-volver {

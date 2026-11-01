@@ -24,13 +24,13 @@ export default function Navbar() {
         </Link>
 
         <div className="navbar-menu">
-          <Link to="/#ecosistema" className="nav-link">
-            Ecosistema
-          </Link>
-
-          <Link to="/#como-funciona" className="nav-link">
-            Cómo funciona
-          </Link>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+          >
+            Inicio
+          </NavLink>
 
           <NavLink
             to="/iniciativas"
@@ -40,6 +40,14 @@ export default function Navbar() {
           >
             Iniciativas
           </NavLink>
+
+          <span className="nav-link">
+            Mis proyectos
+          </span>
+
+          <span className="nav-link">
+            Publicaciones
+          </span>
         </div>
 
         <div className="navbar-actions">

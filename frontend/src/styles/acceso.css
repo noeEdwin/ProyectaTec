@@ -32,7 +32,8 @@
 
 .acceso-logo {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
+  gap: 0;
   font-size: 24px;
   font-weight: 700;
   color: var(--acceso-dark);
@@ -42,9 +43,11 @@
 .acceso-logo-dot {
   width: 9px;
   height: 9px;
+  flex: none;
   background: var(--acceso-orange);
   border-radius: 50%;
-  margin-left: 2px;
+  margin-left: 3px;
+  transform: translateY(3px);
 }
 
 .acceso-volver {
@@ -133,44 +136,11 @@
   font-weight: 700;
 }
 
-.acceso-fieldset {
-  border: none;
-  padding: 0;
-  margin: 0 0 26px;
-  min-width: 0;
-}
-
-.acceso-fieldset legend,
 .acceso-field label {
   color: var(--acceso-dark);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 9px;
-}
-
-.acceso-tipos {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.acceso-tipo {
-  min-height: 48px;
-  padding: 10px 8px;
-  background: #fff;
-  border: 1px solid var(--acceso-border);
-  border-radius: 12px;
-  color: var(--acceso-muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.acceso-tipo-active {
-  background: #e7f2f3;
-  color: var(--acceso-teal);
-  border-color: #9fc8d0;
-  font-weight: 700;
 }
 
 .acceso-field {
@@ -411,10 +381,6 @@
 }
 
 @media (max-width: 420px) {
-  .acceso-tipos {
-    grid-template-columns: 1fr;
-  }
-
   .acceso-options {
     flex-direction: column;
     align-items: flex-start;
