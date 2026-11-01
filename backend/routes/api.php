@@ -15,7 +15,8 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Rutas protegidas mediante Laravel Sanctum
 Route::middleware('auth:sanctum')->group(function () {
-
+// Consultar el perfil del usuario autenticado
+Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     // Editar un proyecto
     Route::patch('/projects/{project}', function (Request $request, Project $project) {
 
@@ -67,6 +68,7 @@ Route::patch('/applications/{application}', function (Request $request, Applicat
 
     // Nueva ruta para crear o actualizar el perfil
     Route::post('/profile', [ProfileController::class, 'update']);
+    Route::patch('/me/profile', [ProfileController::class, 'update']);
 
     // Crear una nueva organización y vincularla al usuario
     Route::post('/organizations', [OrganizationController::class, 'store']);

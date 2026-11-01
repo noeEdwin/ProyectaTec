@@ -8,6 +8,16 @@ use App\Http\Resources\ProfileResource;
 
 class ProfileController extends Controller
 {
+    public function showOwn(Request $request)
+{
+    $profile = $request->user()->profile;
+
+    return response()->json([
+        'profile' => $profile
+            ? new ProfileResource($profile)
+            : null,
+    ]);
+}
     public function update(Request $request)
     {
         // Diferenciamos los campos opcionales según los criterios de Figma
