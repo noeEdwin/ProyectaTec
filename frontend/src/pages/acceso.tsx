@@ -16,14 +16,7 @@ type AccesoProps = {
   onLogin?: (datos: LoginPayload) => Promise<void>;
 };
 
-const tiposUsuario = [
-  'Estudiante',
-  'Empresa / MIPYME',
-  'Docente / asesor',
-] as const;
-
 export default function Acceso({ onLogin }: AccesoProps) {
-  const [tipoUsuario, setTipoUsuario] = useState<string>('Estudiante');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mostrarPassword, setMostrarPassword] = useState(false);
@@ -138,28 +131,6 @@ export default function Acceso({ onLogin }: AccesoProps) {
           </nav>
 
           <form onSubmit={handleSubmit} noValidate>
-            <fieldset className="acceso-fieldset">
-              <legend>Tipo de Usuario</legend>
-
-              <div className="acceso-tipos">
-                {tiposUsuario.map((tipo) => (
-                  <button
-                    key={tipo}
-                    type="button"
-                    className={
-                      tipoUsuario === tipo
-                        ? 'acceso-tipo acceso-tipo-active'
-                        : 'acceso-tipo'
-                    }
-                    aria-pressed={tipoUsuario === tipo}
-                    onClick={() => setTipoUsuario(tipo)}
-                  >
-                    {tipo}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
             <div className="acceso-field">
               <label htmlFor="acceso-email">
                 Correo electrónico

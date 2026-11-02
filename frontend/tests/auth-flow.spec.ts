@@ -8,6 +8,7 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
 
   await page.goto('/iniciativas');
   await expect(page).toHaveURL(/\/acceso$/);
+  await expect(page.getByText('Tipo de Usuario')).toHaveCount(0);
 
   await page.getByRole('link', { name: 'Crear cuenta' }).click();
   await page.getByLabel('Nombre o razón social').fill('Usuario E2E');
