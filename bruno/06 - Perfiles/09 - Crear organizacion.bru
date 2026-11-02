@@ -1,0 +1,35 @@
+meta {
+  name: Crear organización
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/organizations
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Organización Bruno de prueba",
+    "organization_type": "empresa",
+    "description": "Organización creada desde Bruno",
+    "sector": "Tecnología",
+    "email": "organizacion-bruno@example.com",
+    "phone": "9511234567",
+    "location": "Oaxaca"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body.organization && res.body.organization.id) {
+    bru.setVar('organizationId', String(res.body.organization.id));
+  }
+}

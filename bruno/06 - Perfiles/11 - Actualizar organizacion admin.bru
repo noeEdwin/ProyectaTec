@@ -1,0 +1,26 @@
+meta {
+  name: Actualizar organización como admin
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/api/organizations/{{organizationId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "name": "Organización Bruno actualizada",
+    "description": "Descripción de la organización actualizada",
+    "location": "Istmo de Tehuantepec",
+    "email": "actualizada-bruno@example.com"
+  }
+}

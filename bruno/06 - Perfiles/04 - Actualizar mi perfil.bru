@@ -1,0 +1,25 @@
+meta {
+  name: Actualizar mi perfil
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/me/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "display_name": "Perfil Bruno actualizado",
+    "description": "Datos modificados desde Bruno",
+    "location": "Istmo de Tehuantepec"
+  }
+}

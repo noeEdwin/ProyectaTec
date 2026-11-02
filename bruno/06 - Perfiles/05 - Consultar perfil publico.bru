@@ -1,0 +1,15 @@
+meta {
+  name: Consultar perfil público
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/profiles/{{profileId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

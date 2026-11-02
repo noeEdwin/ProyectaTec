@@ -1,0 +1,23 @@
+meta {
+  name: Actualizar organización ajena 403
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/api/organizations/{{foreignOrganizationId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{memberToken}}
+}
+
+body:json {
+  {
+    "name": "Este cambio debe ser rechazado"
+  }
+}

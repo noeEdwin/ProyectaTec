@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
-use Illuminate\Support\Facades\Route;
-use App\Models\Project;
-use App\Models\Organization;
-use Illuminate\Support\Facades\Gate;
-use App\Models\Application;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ProfileController;
+use App\Models\Application;
+use App\Models\Project;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
@@ -16,12 +15,18 @@ use App\Http\Controllers\OrganizationController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-
+// Consultar un perfil público por su identificador
+Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
+    ->whereNumber('profile');
+// Consultar información pública de una organización
+Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic'])
+    ->whereNumber('organization');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::latest()->first();
 
-    if (!$project) {
+    // Si la base de datos aún no tiene proyectos creados, responde con la información base
+    if (! $project) {
         return response()->json([
             'id' => 1,
             'titulo' => 'AgroTech Oaxaca',
@@ -39,24 +44,23 @@ Route::get('/proyectos/destacado', function () {
         'fase' => $project->phase ?? 'Fase 01',
         'estado' => $project->status ?? 'Activo',
         'dias_restantes' => $project->days_remaining ?? 24,
-        'imagen_url' => $project->image ? asset('storage/' . $project->image) : null,
+        'imagen_url' => $project->image ? asset('storage/'.$project->image) : null,
     ]);
 });
-
 
 // --------------------------------------------------------------------------
 // Rutas protegidas mediante Laravel Sanctum (Requieren Bearer Token)
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
-
-    // Rutas del Perfil (Consulta GET y Actualización PATCH / POST)
-    Route::get('/me/profile', [ProfileController::class, 'show']);
+    // Consultar el perfil del usuario autenticado
+    Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     Route::patch('/me/profile', [ProfileController::class, 'update']);
+
+    // Rutas del perfil consumidas por el editor React
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
     Route::patch('/profile', [ProfileController::class, 'update']);
-
     // Editar un proyecto
     Route::patch('/projects/{project}', function (Request $request, Project $project) {
         Gate::authorize('update', $project);
@@ -71,17 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Editar una organización
-    Route::patch('/organizations/{organization}', function (Request $request, Organization $organization) {
-        Gate::authorize('update', $organization);
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $organization->update($data);
-
-        return response()->json($organization);
-    });
+    Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->whereNumber('organization');
 
     // Revisar solicitudes de participación
     Route::patch('/applications/{application}', function (Request $request, Application $application) {
@@ -117,9 +112,4 @@ Route::middleware('auth:sanctum')->group(function () {
             ])
         );
     });
-
-    // Rutas del Módulo de Perfiles
-    Route::get('/me/profile', [ProfileController::class, 'show']);
-    Route::patch('/me/profile', [ProfileController::class, 'update']);
-    Route::post('/profile', [ProfileController::class, 'update']);
 });

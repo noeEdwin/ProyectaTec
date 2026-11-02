@@ -1,0 +1,34 @@
+meta {
+  name: Crear o guardar mi perfil
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "display_name": "Perfil Bruno de prueba",
+    "description": "Perfil creado desde la colección Bruno",
+    "phone": "9511234567",
+    "location": "Oaxaca, México",
+    "institution": "Instituto Tecnológico de Oaxaca",
+    "field_of_study": "Ingeniería en Sistemas"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.profile && res.body.profile.id) {
+    bru.setVar('profileId', String(res.body.profile.id));
+  }
+}

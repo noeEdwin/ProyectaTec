@@ -2,66 +2,91 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Profile;
-use Illuminate\Http\Request;
 use App\Http\Resources\ProfileResource;
+use App\Models\Profile;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProfileController extends Controller
 {
-    /**
-     * Obtener el perfil del usuario autenticado.
-     * Si el perfil no existe en la BD, retorna los datos básicos del usuario de la sesión.
-     */
-    public function show(Request $request)
+    public function showPublic(Profile $profile): JsonResponse
     {
-        $user = $request->user();
-        $profile = Profile::where('user_id', $user->id)->first();
+        return response()->json([
+            'profile' => [
+                'id' => $profile->id,
+                'is_organization' => false,
+                'display_name' => $profile->display_name,
+                'description' => $profile->description,
+                'location' => $profile->location,
+                'image' => $profile->avatar_path,
+                'classification' => trim(
+                    ($profile->institution ?? '').' '.
+                    ($profile->field_of_study ?? '')
+                ),
+            ],
+        ]);
+    }
 
-        // Si el usuario no tiene fila en la tabla 'profiles', devolver datos iniciales
-        if (!$profile) {
-            return response()->json([
-                'data' => [
-                    'display_name'   => $user->name,
-                    'description'    => '',
-                    'phone'          => '',
-                    'location'       => '',
-                    'institution'    => '',
-                    'field_of_study' => '',
-                    'email'          => $user->email,
-                    'account_type'   => $user->account_type ?? 'Estudiante / Investigador',
-                ]
-            ]);
-        }
+    public function showOwn(Request $request): JsonResponse
+    {
+        $profile = $request->user()->profile()->with('user')->first();
 
         return response()->json([
-            'data' => new ProfileResource($profile)
+            'profile' => $profile
+                ? new ProfileResource($profile)
+                : null,
         ]);
     }
 
     /**
-     * Crear o actualizar el perfil del usuario autenticado.
+     * Obtener el perfil del usuario autenticado.
+     * Si el perfil no existe en la BD, retorna los datos básicos del usuario de la sesión.
      */
-    public function update(Request $request)
+    public function show(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $profile = Profile::where('user_id', $user->id)->first();
+
+        if (! $profile) {
+            return response()->json([
+                'data' => [
+                    'display_name' => $user->name,
+                    'description' => '',
+                    'phone' => '',
+                    'location' => '',
+                    'institution' => '',
+                    'field_of_study' => '',
+                    'email' => $user->email,
+                    'account_type' => $user->account_type ?? 'Estudiante / Investigador',
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'data' => new ProfileResource($profile->load('user')),
+        ]);
+    }
+
+    public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'display_name'   => 'required|string|max:255',
-            'description'    => 'nullable|string',
-            'phone'          => 'nullable|string|max:20',
-            'location'       => 'nullable|string|max:255',
-            'institution'    => 'nullable|string|max:255',
+            'display_name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
+            'location' => 'nullable|string|max:255',
+            'institution' => 'nullable|string|max:255',
             'field_of_study' => 'nullable|string|max:255',
         ]);
 
-        // Busca por user_id. Si existe lo actualiza, si no, lo inserta en la BD.
         $profile = Profile::updateOrCreate(
-            ['user_id' => $request->user()->id], 
-            $validated 
-        );
+            ['user_id' => $request->user()->id],
+            $validated
+        )->load('user');
 
         return response()->json([
             'message' => 'Perfil guardado exitosamente',
-            'data'    => new ProfileResource($profile),
-            'profile' => new ProfileResource($profile)
+            'data' => new ProfileResource($profile),
+            'profile' => new ProfileResource($profile),
         ]);
     }
 }
