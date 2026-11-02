@@ -52,7 +52,10 @@ Perfil autenticado (`GET /api/me/profile`):
     "is_organization": false,
     "display_name": "Ana López",
     "description": "Estudiante de ingeniería",
+    "phone": "9511234567",
     "location": "Oaxaca",
+    "institution": "ITO",
+    "field_of_study": "Sistemas",
     "image": null,
     "contact": {
       "phone": "9511234567",
@@ -109,11 +112,11 @@ Errores relevantes:
 
 Pruebas automatizadas aprobadas:
 
-- ProfileApiTest: 9 pruebas aprobadas.
+- ProfileApiTest: 10 pruebas aprobadas.
 - OrganizationAuthorizationTest: 3 pruebas aprobadas.
 - OrganizationProfileApiTest: 9 pruebas aprobadas.
 
-Total: 21 pruebas automatizadas entre los flujos de perfiles y organizaciones.
+Total: 22 pruebas automatizadas entre los flujos de perfiles y organizaciones.
 
 ### Ejecutar las pruebas
 

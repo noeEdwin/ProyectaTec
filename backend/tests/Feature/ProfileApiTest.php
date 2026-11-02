@@ -65,6 +65,46 @@ class ProfileApiTest extends TestCase
             ->assertJsonPath('profile.contact.email', $user->email);
     }
 
+    public function test_existing_profile_can_be_read_and_saved_without_losing_editable_fields(): void
+    {
+        $user = User::factory()->create();
+
+        Profile::create([
+            'user_id' => $user->id,
+            'display_name' => 'Mi Perfil',
+            'description' => 'Descripcion original',
+            'phone' => '9511234567',
+            'location' => 'Oaxaca',
+            'institution' => 'ITO',
+            'field_of_study' => 'Sistemas',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/me/profile')
+            ->assertOk()
+            ->assertJsonPath('profile.phone', '9511234567')
+            ->assertJsonPath('profile.institution', 'ITO')
+            ->assertJsonPath('profile.field_of_study', 'Sistemas');
+
+        $profile = $response->json('profile');
+
+        $this->patchJson('/api/me/profile', [
+            'display_name' => $profile['display_name'],
+            'description' => $profile['description'],
+            'phone' => $profile['phone'],
+            'location' => $profile['location'],
+            'institution' => $profile['institution'],
+            'field_of_study' => $profile['field_of_study'],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('profiles', [
+            'user_id' => $user->id,
+            'phone' => '9511234567',
+            'institution' => 'ITO',
+            'field_of_study' => 'Sistemas',
+        ]);
+    }
+
     // 5. Actualizar mi perfil no modifica el de otro usuario.
     public function test_user_can_update_only_own_profile(): void
     {

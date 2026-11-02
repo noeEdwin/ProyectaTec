@@ -15,7 +15,10 @@ class ProfileResource extends JsonResource
             // Reutilización de campos comunes exigida por el ticket
             'display_name' => $this->display_name,
             'description' => $this->description,
+            'phone' => $this->phone,
             'location' => $this->location,
+            'institution' => $this->institution,
+            'field_of_study' => $this->field_of_study,
             'image' => $this->avatar_path,
             'contact' => [
                 'phone' => $this->phone,
