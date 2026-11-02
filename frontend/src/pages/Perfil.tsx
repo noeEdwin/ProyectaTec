@@ -45,7 +45,22 @@ export default function Perfil() {
         email: data.email || user?.email || '',
       });
     } catch (error: any) {
-      handleApiError(error);
+      // Si el perfil no existe en PostgreSQL (404), inicializamos el formulario como perfil nuevo
+      if (error.response && error.response.status === 404) {
+        setProfile({
+          display_name: user?.name || '',
+          description: '',
+          phone: '',
+          location: '',
+          institution: '',
+          field_of_study: '',
+          account_type: user?.account_type || 'Empresa, institución educativa o sector social',
+          email: user?.email || '',
+        });
+        setErrorMessage(null); // No mostramos error porque es un usuario nuevo
+      } else {
+        handleApiError(error);
+      }
     } finally {
       setLoading(false);
     }
