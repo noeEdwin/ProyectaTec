@@ -5,11 +5,229 @@ namespace Tests\Feature;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class OrganizationProfileApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_active_admin_can_upload_logo_and_read_its_path_and_url(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+
+        $response = $this->actingAs($admin, 'sanctum')->post("/api/organizations/{$organization->id}/logo", [
+            'logo' => $this->logoFile(),
+            'logo_path' => 'logos/cliente.png',
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $path = $organization->fresh()->logo_path;
+        $this->assertStringStartsWith('logos/', $path);
+        $this->assertNotSame('logos/cliente.png', $path);
+        Storage::disk('public')->assertExists($path);
+        $this->assertDatabaseHas('organizations', ['id' => $organization->id, 'logo_path' => $path]);
+        $url = Storage::disk('public')->url($path);
+        $response->assertJsonPath('organization.image', $path)->assertJsonPath('organization.image_url', $url);
+        $this->getJson("/api/organizations/{$organization->id}")
+            ->assertJsonPath('organization.image', $path)->assertJsonPath('organization.image_url', $url);
+        $this->getJson('/api/me/organizations')
+            ->assertJsonPath('organizations.0.image', $path)->assertJsonPath('organizations.0.image_url', $url);
+        $this->patchJson("/api/organizations/{$organization->id}", ['name' => 'Actualizada'])
+            ->assertOk()->assertJsonPath('organization.image', $path)->assertJsonPath('organization.image_url', $url);
+    }
+
+    public function test_logo_upload_requires_authentication_and_active_admin_membership(): void
+    {
+        Storage::fake('public');
+        $organization = $this->makeOrganization();
+        $url = "/api/organizations/{$organization->id}/logo";
+        $headers = ['Accept' => 'application/json'];
+        $this->post($url, ['logo' => $this->logoFile()], $headers)->assertUnauthorized();
+
+        $outsider = User::factory()->create();
+        $member = User::factory()->create();
+        $inactive = User::factory()->create();
+        $organization->memberships()->create(['user_id' => $member->id, 'role' => 'member', 'status' => 'active']);
+        $organization->memberships()->create(['user_id' => $inactive->id, 'role' => 'admin', 'status' => 'inactive']);
+
+        foreach ([$outsider, $member, $inactive] as $user) {
+            $this->actingAs($user, 'sanctum')->post($url, ['logo' => $this->logoFile()], $headers)->assertForbidden();
+        }
+
+        $this->assertNull($organization->fresh()->logo_path);
+        $this->assertSame([], Storage::disk('public')->allFiles('logos'));
+    }
+
+    public function test_logo_upload_rejects_unknown_and_invalid_organization_ids(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        foreach (['999999', 'abc'] as $id) {
+            $this->post("/api/organizations/{$id}/logo", ['logo' => $this->logoFile()], [
+                'Accept' => 'application/json',
+            ])->assertNotFound();
+        }
+
+        $this->assertSame([], Storage::disk('public')->allFiles('logos'));
+    }
+
+    public function test_logo_upload_rejects_invalid_files_without_changing_previous_logo(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->update(['logo_path' => 'logos/anterior.png']);
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        Storage::disk('public')->put('logos/anterior.png', 'anterior');
+        $this->actingAs($admin, 'sanctum');
+
+        foreach ([
+            [],
+            ['logo' => 'logos/cliente.png'],
+            ['logo' => UploadedFile::fake()->createWithContent('falso.png', 'no es una imagen')],
+            ['logo' => UploadedFile::fake()->createWithContent('imagen.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>')],
+            ['logo' => $this->logoFile()->size(2049)],
+        ] as $payload) {
+            $this->post("/api/organizations/{$organization->id}/logo", $payload, ['Accept' => 'application/json'])
+                ->assertUnprocessable()->assertJsonValidationErrors('logo');
+        }
+
+        $this->assertSame('logos/anterior.png', $organization->fresh()->logo_path);
+        $this->assertSame(['logos/anterior.png'], Storage::disk('public')->allFiles('logos'));
+    }
+
+    public function test_logo_upload_rejects_valid_png_with_excessive_dimensions(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->update(['logo_path' => 'logos/anterior.png']);
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        Storage::disk('public')->put('logos/anterior.png', 'anterior');
+
+        $chunk = static function (string $type, string $data): string {
+            return pack('N', strlen($data)).$type.$data.pack('N', crc32($type.$data));
+        };
+        $png = "\x89PNG\r\n\x1a\n"
+            .$chunk('IHDR', pack('NNC5', 4097, 1, 8, 2, 0, 0, 0))
+            .$chunk('IDAT', gzcompress("\x00".str_repeat("\x00", 4097 * 3)))
+            .$chunk('IEND', '');
+        $file = UploadedFile::fake()->createWithContent('ancho-excesivo.png', $png);
+        $image = getimagesize($file->getRealPath());
+        $this->assertIsArray($image);
+        $this->assertSame(4097, $image[0]);
+        $this->assertSame(1, $image[1]);
+        $this->assertSame('image/png', $image['mime']);
+
+        $this->actingAs($admin, 'sanctum')->post("/api/organizations/{$organization->id}/logo", [
+            'logo' => $file,
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('logo')
+            ->assertJsonPath('errors.logo.0', trans('validation.dimensions', ['attribute' => 'logo']));
+
+        $this->assertSame('logos/anterior.png', $organization->fresh()->logo_path);
+        $this->assertSame(['logos/anterior.png'], Storage::disk('public')->allFiles('logos'));
+    }
+
+    public function test_logo_replacement_keeps_previous_file(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->update(['logo_path' => 'logos/anterior.png']);
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        Storage::disk('public')->put('logos/anterior.png', 'anterior');
+
+        $this->actingAs($admin, 'sanctum')->post("/api/organizations/{$organization->id}/logo", [
+            'logo' => $this->logoFile(),
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $path = $organization->fresh()->logo_path;
+        $this->assertNotSame('logos/anterior.png', $path);
+        Storage::disk('public')->assertExists(['logos/anterior.png', $path]);
+    }
+
+    public function test_logo_storage_failure_preserves_previous_logo(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->update(['logo_path' => 'logos/anterior.png']);
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        $disk = Storage::disk('public');
+        $disk->put('logos/anterior.png', 'anterior');
+        $failingDisk = \Mockery::mock($disk)->makePartial();
+        $failingDisk->shouldReceive('putFileAs')->once()->andReturn(false);
+        Storage::set('public', $failingDisk);
+
+        $this->actingAs($admin, 'sanctum')->post("/api/organizations/{$organization->id}/logo", [
+            'logo' => $this->logoFile(),
+        ], ['Accept' => 'application/json'])->assertStatus(500);
+
+        $this->assertSame('logos/anterior.png', $organization->fresh()->logo_path);
+        $disk->assertExists('logos/anterior.png');
+        $this->assertSame(['logos/anterior.png'], $disk->allFiles('logos'));
+    }
+
+    public function test_logo_database_failure_removes_only_new_file(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->update(['logo_path' => 'logos/anterior.png']);
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        Storage::disk('public')->put('logos/anterior.png', 'anterior');
+        Organization::updating(function () {
+            throw new \RuntimeException('Error de persistencia simulado');
+        });
+
+        try {
+            $this->actingAs($admin, 'sanctum')->post("/api/organizations/{$organization->id}/logo", [
+                'logo' => $this->logoFile(),
+            ], ['Accept' => 'application/json'])->assertStatus(500);
+        } finally {
+            Organization::flushEventListeners();
+        }
+
+        $this->assertSame('logos/anterior.png', $organization->fresh()->logo_path);
+        $this->assertSame(['logos/anterior.png'], Storage::disk('public')->allFiles('logos'));
+    }
+
+    public function test_organization_responses_handle_missing_and_legacy_logo_paths(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->memberships()->create(['user_id' => $admin->id, 'role' => 'admin', 'status' => 'active']);
+        $this->actingAs($admin, 'sanctum');
+
+        $this->getJson("/api/organizations/{$organization->id}")
+            ->assertJsonPath('organization.image', null)->assertJsonPath('organization.image_url', null);
+        $this->getJson('/api/me/organizations')
+            ->assertJsonPath('organizations.0.image', null)->assertJsonPath('organizations.0.image_url', null);
+        $this->patchJson("/api/organizations/{$organization->id}", ['name' => 'Sin logo'])
+            ->assertJsonPath('organization.image', null)->assertJsonPath('organization.image_url', null);
+
+        foreach (['https://example.com/logo.png', '/storage/logo.png', '../logo.png', 'C:\\logo.png'] as $path) {
+            $organization->update(['logo_path' => $path]);
+            $this->getJson("/api/organizations/{$organization->id}")
+                ->assertJsonPath('organization.image', $path)->assertJsonPath('organization.image_url', null);
+        }
+    }
+
+    private function logoFile(): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent('logo.png', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='
+        ));
+    }
 
     public function test_user_can_list_only_their_active_organizations_with_membership_details(): void
     {
@@ -61,6 +279,7 @@ class OrganizationProfileApiTest extends TestCase
             'description' => 'Descripción',
             'location' => 'Oaxaca',
             'image' => 'logos/primera.png',
+            'image_url' => \App\Http\Resources\OrganizationResource::logoUrl('logos/primera.png'),
             'classification' => 'empresa - tecnología',
             'membership' => [
                 'role' => 'admin',
@@ -127,7 +346,9 @@ class OrganizationProfileApiTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('organization.name', 'Empresa de prueba');
+            ->assertJsonPath('organization.name', 'Empresa de prueba')
+            ->assertJsonPath('organization.image', null)
+            ->assertJsonPath('organization.image_url', null);
 
         $organizationId = $response->json('organization.id');
 

@@ -8,6 +8,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -34,6 +36,7 @@ class OrganizationController extends Controller
                 'description' => $organization->description,
                 'location' => $organization->location,
                 'image' => $organization->logo_path,
+                'image_url' => OrganizationResource::logoUrl($organization->logo_path),
                 'classification' => trim(
                     ($organization->organization_type ?? '').' - '.($organization->sector ?? '')
                 ),
@@ -59,12 +62,48 @@ class OrganizationController extends Controller
                 'description' => $organization->description,
                 'location' => $organization->location,
                 'image' => $organization->logo_path,
+                'image_url' => OrganizationResource::logoUrl($organization->logo_path),
                 'classification' => trim(
                     ($organization->organization_type ?? '').' - '.
                     ($organization->sector ?? '')
                 ),
             ],
         ]);
+    }
+
+    public function uploadLogo(Request $request, Organization $organization): JsonResponse
+    {
+        Gate::authorize('update', $organization);
+
+        $request->validate([
+            'logo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4096,max_height=4096'],
+        ]);
+
+        $path = $request->file('logo')->store('logos', 'public');
+
+        if ($path === false) {
+            return response()->json(['message' => 'No se pudo guardar el logotipo.'], 500);
+        }
+
+        try {
+            DB::transaction(function () use ($organization, $path) {
+                $organization->logo_path = $path;
+
+                if (! $organization->save()) {
+                    throw new \RuntimeException('No se pudo actualizar el logotipo de la organización.');
+                }
+            });
+        } catch (\Throwable $exception) {
+            try {
+                Storage::disk('public')->delete($path);
+            } catch (\Throwable $cleanupException) {
+                report($cleanupException);
+            }
+
+            throw $exception;
+        }
+
+        return response()->json(['organization' => new OrganizationResource($organization)]);
     }
 
     public function store(Request $request): JsonResponse

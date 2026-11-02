@@ -79,6 +79,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Editar una organización
     Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
         ->whereNumber('organization');
+    Route::post('/organizations/{organization}/logo', [OrganizationController::class, 'uploadLogo'])
+        ->whereNumber('organization');
 
     // Revisar solicitudes de participación
     Route::patch('/applications/{application}', function (Request $request, Application $application) {
