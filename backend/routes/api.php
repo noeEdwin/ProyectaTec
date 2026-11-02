@@ -19,10 +19,8 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
-    // Intenta obtener el proyecto más reciente registrado en la base de datos
     $project = Project::latest()->first();
 
-    // Si la base de datos aún no tiene proyectos creados, responde con la información base
     if (!$project) {
         return response()->json([
             'id' => 1,
@@ -34,7 +32,6 @@ Route::get('/proyectos/destacado', function () {
         ]);
     }
 
-    // Devuelve los datos reales del proyecto consultado en PostgreSQL
     return response()->json([
         'id' => $project->id,
         'titulo' => $project->title ?? $project->name ?? 'AgroTech Oaxaca',
@@ -52,6 +49,13 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Rutas del Perfil (Consulta GET y Actualización PATCH / POST)
+    Route::get('/me/profile', [ProfileController::class, 'show']);
+    Route::patch('/me/profile', [ProfileController::class, 'update']);
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile', [ProfileController::class, 'update']);
+    Route::patch('/profile', [ProfileController::class, 'update']);
 
     // Editar un proyecto
     Route::patch('/projects/{project}', function (Request $request, Project $project) {
@@ -99,9 +103,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Crear o actualizar perfil
-    Route::post('/profile', [ProfileController::class, 'update']);
-
     // Crear una nueva organización y vincularla al usuario
     Route::post('/organizations', [OrganizationController::class, 'store']);
 
@@ -116,4 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
             ])
         );
     });
+
+    // Rutas del Módulo de Perfiles
+    Route::get('/me/profile', [ProfileController::class, 'show']);
+    Route::patch('/me/profile', [ProfileController::class, 'update']);
+    Route::post('/profile', [ProfileController::class, 'update']);
 });
