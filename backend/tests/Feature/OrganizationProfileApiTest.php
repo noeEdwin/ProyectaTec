@@ -145,6 +145,104 @@ class OrganizationProfileApiTest extends TestCase
         ]);
     }
 
+    public function test_creation_accepts_each_allowed_organization_type(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        foreach (['empresa', 'institucion_educativa', 'sector_social'] as $type) {
+            $response = $this->postJson('/api/organizations', [
+                'name' => 'Organización '.$type,
+                'organization_type' => $type,
+            ])->assertCreated();
+
+            $this->assertDatabaseHas('organizations', [
+                'id' => $response->json('organization.id'),
+                'organization_type' => $type,
+            ]);
+        }
+    }
+
+    public function test_creation_rejects_invalid_empty_null_and_missing_organization_types(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum');
+
+        foreach (['desconocido', 'Empresa', 'social', '', null] as $type) {
+            $this->postJson('/api/organizations', [
+                'name' => 'No debe crearse',
+                'organization_type' => $type,
+            ])->assertUnprocessable()->assertJsonValidationErrors('organization_type');
+        }
+
+        $this->postJson('/api/organizations', ['name' => 'No debe crearse'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('organization_type');
+
+        $this->assertDatabaseMissing('organizations', ['name' => 'No debe crearse']);
+    }
+
+    public function test_active_admin_can_update_to_each_allowed_organization_type(): void
+    {
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->memberships()->create([
+            'user_id' => $admin->id, 'role' => 'admin', 'status' => 'active',
+        ]);
+        $this->actingAs($admin, 'sanctum');
+
+        foreach (['empresa', 'institucion_educativa', 'sector_social'] as $type) {
+            $this->patchJson("/api/organizations/{$organization->id}", [
+                'organization_type' => $type,
+            ])->assertOk();
+
+            $this->assertDatabaseHas('organizations', [
+                'id' => $organization->id, 'organization_type' => $type,
+            ]);
+        }
+    }
+
+    public function test_update_rejects_invalid_empty_and_null_organization_types(): void
+    {
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->memberships()->create([
+            'user_id' => $admin->id, 'role' => 'admin', 'status' => 'active',
+        ]);
+        $this->actingAs($admin, 'sanctum');
+
+        foreach (['desconocido', 'Empresa', 'social', '', null] as $type) {
+            $this->patchJson("/api/organizations/{$organization->id}", [
+                'organization_type' => $type,
+            ])->assertUnprocessable()->assertJsonValidationErrors('organization_type');
+
+            $this->assertDatabaseHas('organizations', [
+                'id' => $organization->id, 'organization_type' => 'empresa',
+            ]);
+        }
+    }
+
+    public function test_update_can_omit_organization_type_and_preserves_legacy_value(): void
+    {
+        $admin = User::factory()->create();
+        $organization = Organization::create([
+            'name' => 'Organización anterior', 'organization_type' => 'Empresa',
+        ]);
+        $organization->memberships()->create([
+            'user_id' => $admin->id, 'role' => 'admin', 'status' => 'active',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/organizations/{$organization->id}", ['name' => 'Nombre actualizado'])
+            ->assertOk();
+
+        $this->assertDatabaseHas('organizations', [
+            'id' => $organization->id,
+            'name' => 'Nombre actualizado',
+            'organization_type' => 'Empresa',
+        ]);
+    }
+
     public function test_public_organization_response_does_not_expose_contact_details(): void
     {
         $organization = Organization::create([

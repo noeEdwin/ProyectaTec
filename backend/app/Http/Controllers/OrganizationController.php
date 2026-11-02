@@ -8,10 +8,13 @@ use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OrganizationController extends Controller
 {
+    private const ORGANIZATION_TYPES = ['empresa', 'institucion_educativa', 'sector_social'];
+
     public function indexOwn(Request $request): JsonResponse
     {
         $organizations = $request->user()->organizations()
@@ -69,7 +72,7 @@ class OrganizationController extends Controller
         // 1. Validamos los campos requeridos para entidades (Empresa, Institución, Social)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'organization_type' => 'required|string|max:255',
+            'organization_type' => ['required', 'string', 'max:255', Rule::in(self::ORGANIZATION_TYPES)],
             'description' => 'nullable|string',
             'sector' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -100,7 +103,7 @@ class OrganizationController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'organization_type' => ['sometimes', 'required', 'string', 'max:255'],
+            'organization_type' => ['sometimes', 'required', 'string', 'max:255', Rule::in(self::ORGANIZATION_TYPES)],
             'description' => ['sometimes', 'nullable', 'string'],
             'sector' => ['sometimes', 'nullable', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
