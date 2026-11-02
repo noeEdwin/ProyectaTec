@@ -5,11 +5,136 @@ namespace Tests\Feature;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_user_can_upload_an_avatar_and_read_its_path_and_url(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $profile = Profile::create(['user_id' => $user->id, 'display_name' => 'Mi perfil']);
+        $other = Profile::create(['user_id' => $otherUser->id, 'display_name' => 'Otro perfil']);
+
+        $response = $this->actingAs($user, 'sanctum')->post('/api/me/profile/avatar', [
+            'avatar' => $this->avatarFile(),
+            'user_id' => $otherUser->id,
+            'avatar_path' => 'avatars/cliente.png',
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $path = $profile->fresh()->avatar_path;
+        $this->assertStringStartsWith('avatars/', $path);
+        $this->assertNotSame('avatars/cliente.png', $path);
+        Storage::disk('public')->assertExists($path);
+        $this->assertNull($other->fresh()->avatar_path);
+        $this->assertDatabaseHas('profiles', ['id' => $profile->id, 'avatar_path' => $path]);
+        $url = Storage::disk('public')->url($path);
+        $response->assertJsonPath('profile.image', $path)->assertJsonPath('profile.image_url', $url);
+        $this->getJson('/api/me/profile')->assertJsonPath('profile.image', $path)->assertJsonPath('profile.image_url', $url);
+        $this->getJson('/api/profile')->assertJsonPath('data.image', $path)->assertJsonPath('data.image_url', $url);
+        $this->getJson("/api/profiles/{$profile->id}")
+            ->assertJsonPath('profile.image', $path)->assertJsonPath('profile.image_url', $url);
+    }
+
+    public function test_user_can_replace_avatar_without_deleting_the_previous_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        Storage::disk('public')->put('avatars/anterior.png', 'archivo anterior');
+        $profile = Profile::create([
+            'user_id' => $user->id, 'display_name' => 'Mi perfil', 'avatar_path' => 'avatars/anterior.png',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->post('/api/me/profile/avatar', [
+            'avatar' => $this->avatarFile(),
+        ], ['Accept' => 'application/json'])->assertOk();
+
+        $newPath = $profile->fresh()->avatar_path;
+        $this->assertNotSame('avatars/anterior.png', $newPath);
+        Storage::disk('public')->assertExists(['avatars/anterior.png', $newPath]);
+    }
+
+    public function test_guest_cannot_upload_an_avatar(): void
+    {
+        Storage::fake('public');
+        $this->post('/api/me/profile/avatar', ['avatar' => $this->avatarFile()], ['Accept' => 'application/json'])->assertUnauthorized();
+        $this->assertSame([], Storage::disk('public')->allFiles('avatars'));
+    }
+
+    public function test_avatar_upload_requires_an_existing_profile(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->post('/api/me/profile/avatar', [
+            'avatar' => $this->avatarFile(),
+        ], ['Accept' => 'application/json'])->assertStatus(409)->assertJsonPath('message', 'Debes crear tu perfil antes de subir una fotografía.');
+
+        $this->assertDatabaseMissing('profiles', ['user_id' => $user->id]);
+        $this->assertSame([], Storage::disk('public')->allFiles('avatars'));
+    }
+
+    public function test_avatar_upload_rejects_missing_invalid_svg_and_oversized_files(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $profile = Profile::create([
+            'user_id' => $user->id, 'display_name' => 'Mi perfil', 'avatar_path' => 'avatars/anterior.png',
+        ]);
+        Storage::disk('public')->put('avatars/anterior.png', 'archivo anterior');
+        $this->actingAs($user, 'sanctum');
+
+        foreach ([
+            [],
+            ['avatar' => 'avatars/archivo.png'],
+            ['avatar' => UploadedFile::fake()->createWithContent('invalid.png', 'no es una imagen')],
+            ['avatar' => UploadedFile::fake()->createWithContent('imagen.svg', '<svg xmlns="http://www.w3.org/2000/svg"></svg>')],
+            ['avatar' => $this->avatarFile()->size(2049)],
+        ] as $payload) {
+            $this->post('/api/me/profile/avatar', $payload, ['Accept' => 'application/json'])
+                ->assertUnprocessable()->assertJsonValidationErrors('avatar');
+        }
+
+        $this->assertSame('avatars/anterior.png', $profile->fresh()->avatar_path);
+        $this->assertSame(['avatars/anterior.png'], Storage::disk('public')->allFiles('avatars'));
+    }
+
+    public function test_failed_avatar_database_update_removes_only_new_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $profile = Profile::create([
+            'user_id' => $user->id, 'display_name' => 'Mi perfil', 'avatar_path' => 'avatars/anterior.png',
+        ]);
+        Storage::disk('public')->put('avatars/anterior.png', 'archivo anterior');
+
+        Profile::updating(function () {
+            throw new \RuntimeException('Error de persistencia simulado');
+        });
+
+        try {
+            $this->actingAs($user, 'sanctum')->post('/api/me/profile/avatar', [
+                'avatar' => $this->avatarFile(),
+            ], ['Accept' => 'application/json'])->assertStatus(500);
+        } finally {
+            Profile::flushEventListeners();
+        }
+
+        $this->assertSame('avatars/anterior.png', $profile->fresh()->avatar_path);
+        $this->assertSame(['avatars/anterior.png'], Storage::disk('public')->allFiles('avatars'));
+    }
+
+    private function avatarFile(): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent('avatar.png', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII='
+        ));
+    }
 
     // 1. Un visitante no puede consultar su perfil privado.
     public function test_guest_cannot_view_own_profile(): void
@@ -33,6 +158,8 @@ class ProfileApiTest extends TestCase
 
         $this->getJson("/api/profiles/{$profile->id}")
             ->assertStatus(200)
+            ->assertJsonPath('profile.image', null)
+            ->assertJsonPath('profile.image_url', null)
             ->assertJsonPath('profile.display_name', 'Perfil Publico')
             ->assertJsonPath('profile.location', 'Oaxaca')
             ->assertJsonMissingPath('profile.phone')
@@ -69,6 +196,8 @@ class ProfileApiTest extends TestCase
             ->getJson('/api/me/profile')
             ->assertStatus(200)
             ->assertJsonPath('profile.display_name', 'Mi Perfil')
+            ->assertJsonPath('profile.image', null)
+            ->assertJsonPath('profile.image_url', null)
             ->assertJsonPath('profile.contact.email', $user->email);
     }
 
@@ -133,6 +262,7 @@ class ProfileApiTest extends TestCase
             ->assertJsonPath('data.institution', '')
             ->assertJsonPath('data.field_of_study', '')
             ->assertJsonPath('data.image', null)
+            ->assertJsonPath('data.image_url', null)
             ->assertJsonPath('data.contact.phone', '')
             ->assertJsonPath('data.contact.email', $user->email)
             ->assertJsonPath('data.classification', '')
