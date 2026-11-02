@@ -85,6 +85,8 @@ Perfil público (`GET /api/profiles/12`), sin información de contacto:
 
 Errores relevantes:
 
+React debe decidir el flujo por el código HTTP. En particular, las consultas públicas con un identificador inexistente responden `404`; el texto del cuerpo lo genera el model binding de Laravel y no forma parte del contrato estable.
+
 ```json
 {
   "message": "Unauthenticated."
@@ -153,7 +155,7 @@ Usa credenciales locales y no guardes tokens reales en GitHub.
 - Creación de organización: 201 Created.
 - Edición autorizada: 200 OK.
 - Edición sin permisos: 403 Forbidden.
-- Veintiuna pruebas automatizadas de perfiles y organizaciones aprobadas.
+- Veintidós pruebas automatizadas de perfiles y organizaciones aprobadas.
 
 ## Integración con React
 
