@@ -23,7 +23,6 @@ Route::get('/organizations/{organization}', [OrganizationController::class, 'sho
     ->whereNumber('organization');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
-    // Intenta obtener el proyecto más reciente registrado en la base de datos
     $project = Project::latest()->first();
 
     // Si la base de datos aún no tiene proyectos creados, responde con la información base
@@ -38,7 +37,6 @@ Route::get('/proyectos/destacado', function () {
         ]);
     }
 
-    // Devuelve los datos reales del proyecto consultado en PostgreSQL
     return response()->json([
         'id' => $project->id,
         'titulo' => $project->title ?? $project->name ?? 'AgroTech Oaxaca',
@@ -57,6 +55,12 @@ Route::get('/proyectos/destacado', function () {
 Route::middleware('auth:sanctum')->group(function () {
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
+    Route::patch('/me/profile', [ProfileController::class, 'update']);
+
+    // Rutas del perfil consumidas por el editor React
+    Route::get('/profile', [ProfileController::class, 'show']);
+    Route::post('/profile', [ProfileController::class, 'update']);
+    Route::patch('/profile', [ProfileController::class, 'update']);
     // Editar un proyecto
     Route::patch('/projects/{project}', function (Request $request, Project $project) {
         Gate::authorize('update', $project);
@@ -93,10 +97,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Crear o actualizar perfil
-    Route::post('/profile', [ProfileController::class, 'update']);
-    Route::patch('/me/profile', [ProfileController::class, 'update']);
 
     // Crear una nueva organización y vincularla al usuario
     Route::post('/organizations', [OrganizationController::class, 'store']);
