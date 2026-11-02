@@ -8,6 +8,23 @@ use App\Http\Resources\OrganizationResource;
 
 class OrganizationController extends Controller
 {
+    public function showPublic(Organization $organization)
+{
+    return response()->json([
+        'organization' => [
+            'id' => $organization->id,
+            'is_organization' => true,
+            'name' => $organization->name,
+            'description' => $organization->description,
+            'location' => $organization->location,
+            'image' => $organization->logo_path,
+            'classification' => trim(
+                ($organization->organization_type ?? '') . ' - ' .
+                ($organization->sector ?? '')
+            ),
+        ],
+    ]);
+}
     public function store(Request $request)
     {
         // 1. Validamos los campos requeridos para entidades (Empresa, Institución, Social)

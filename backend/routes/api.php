@@ -18,6 +18,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 // Consultar un perfil público por su identificador
 Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic']);
+// Consultar información pública de una organización
+Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic']);
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     // Intenta obtener el proyecto más reciente registrado en la base de datos

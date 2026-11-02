@@ -1,11 +1,5 @@
 $kind: collection
 variables:
-  - key: Access_token
-    value: ""
-    disabled: false
-  - key: ""
-    value: ""
-    disabled: false
-  - key: ""
-    value: ""
-    disabled: false
+  Access_token: ""
+  Sin_permisos_token: ""
+  "": ""
