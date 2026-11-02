@@ -33,9 +33,10 @@ class ProfileApiTest extends TestCase
 
         $this->getJson("/api/profiles/{$profile->id}")
             ->assertStatus(200)
-            ->assertJsonPath('profile.name', 'Perfil Publico')
+            ->assertJsonPath('profile.display_name', 'Perfil Publico')
             ->assertJsonPath('profile.location', 'Oaxaca')
             ->assertJsonMissingPath('profile.phone')
+            ->assertJsonMissingPath('profile.email')
             ->assertJsonMissingPath('profile.contact')
             ->assertJsonMissingPath('profile.user_id');
     }
@@ -60,7 +61,8 @@ class ProfileApiTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/me/profile')
             ->assertStatus(200)
-            ->assertJsonPath('profile.name', 'Mi Perfil');
+            ->assertJsonPath('profile.display_name', 'Mi Perfil')
+            ->assertJsonPath('profile.contact.email', $user->email);
     }
 
     // 5. Actualizar mi perfil no modifica el de otro usuario.
@@ -103,5 +105,62 @@ class ProfileApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['display_name']);
+    }
+
+    public function test_repeated_profile_saves_update_the_same_record(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/profile', [
+                'display_name' => 'Perfil inicial',
+            ])
+            ->assertOk()
+            ->assertJsonPath('profile.display_name', 'Perfil inicial');
+
+        $this->postJson('/api/profile', [
+            'display_name' => 'Perfil modificado',
+        ])
+            ->assertOk()
+            ->assertJsonPath('profile.display_name', 'Perfil modificado');
+
+        $this->assertDatabaseCount('profiles', 1);
+        $this->assertDatabaseHas('profiles', [
+            'user_id' => $user->id,
+            'display_name' => 'Perfil modificado',
+        ]);
+    }
+
+    public function test_guest_cannot_update_own_profile(): void
+    {
+        $this->patchJson('/api/me/profile', [
+            'display_name' => 'No debe guardarse',
+        ])->assertUnauthorized();
+    }
+
+    public function test_profile_update_cannot_change_sensitive_account_fields(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $originalPassword = $user->password;
+
+        $this->actingAs($user, 'sanctum')
+            ->patchJson('/api/me/profile', [
+                'display_name' => 'Perfil seguro',
+                'user_id' => $otherUser->id,
+                'password' => 'nueva-contraseña',
+                'role' => 'admin',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('profiles', [
+            'user_id' => $user->id,
+            'display_name' => 'Perfil seguro',
+        ]);
+        $this->assertDatabaseMissing('profiles', [
+            'user_id' => $otherUser->id,
+            'display_name' => 'Perfil seguro',
+        ]);
+        $this->assertSame($originalPassword, $user->fresh()->password);
     }
 }

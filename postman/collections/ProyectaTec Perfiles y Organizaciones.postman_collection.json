@@ -1,0 +1,231 @@
+{
+  "info": {
+    "_postman_id": "ab717608-69a0-40b1-9493-9cb0a79f9801",
+    "name": "ProyectaTec - Perfiles y Organizaciones",
+    "description": "Endpoints 3.11.2 para perfiles personales y organizaciones. Ejecutar login primero y configurar memberToken/foreignOrganizationId para el caso 403.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "item": [
+    {
+      "name": "00 - Autenticación auxiliar",
+      "item": [
+        {
+          "name": "Login para obtener token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login correcto', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.access_token) pm.environment.set('token', body.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Perfil personal",
+      "item": [
+        {
+          "name": "Consultar mi perfil (200 o perfil null si aún no existe)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/me/profile"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Consulta autenticada responde 200', () => pm.response.to.have.status(200));",
+              "const profile = pm.response.json().profile;",
+              "if (profile && profile.id) pm.environment.set('profileId', String(profile.id));",
+              "if (profile) pm.test('La respuesta usa display_name', () => pm.expect(profile).to.have.property('display_name'));"
+            ] }
+          }]
+        },
+        {
+          "name": "Crear o guardar mi perfil (200)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"display_name\": \"Perfil de prueba\",\n  \"description\": \"Perfil creado desde Postman\",\n  \"phone\": \"9511234567\",\n  \"location\": \"Oaxaca, México\",\n  \"institution\": \"Instituto Tecnológico de Oaxaca\",\n  \"field_of_study\": \"Ingeniería en Sistemas\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/profile"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Perfil guardado', () => pm.response.to.have.status(200));",
+              "const profile = pm.response.json().profile;",
+              "pm.expect(profile.display_name).to.eql('Perfil de prueba');",
+              "pm.environment.set('profileId', String(profile.id));"
+            ] }
+          }]
+        },
+        {
+          "name": "Actualizar mi perfil (200)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"display_name\": \"Perfil actualizado\",\n  \"description\": \"Datos actualizados desde Postman\",\n  \"location\": \"Istmo de Tehuantepec\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/me/profile"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Perfil actualizado', () => pm.response.to.have.status(200));",
+              "pm.expect(pm.response.json().profile.display_name).to.eql('Perfil actualizado');"
+            ] }
+          }]
+        },
+        {
+          "name": "Consultar perfil público (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/profiles/{{profileId}}"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Perfil público responde 200', () => pm.response.to.have.status(200));",
+              "const profile = pm.response.json().profile;",
+              "pm.expect(profile).to.have.property('display_name');",
+              "pm.expect(profile).not.to.have.property('phone');",
+              "pm.expect(profile).not.to.have.property('contact');"
+            ] }
+          }]
+        },
+        {
+          "name": "Perfil público inexistente (404)",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/profiles/999999999" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Perfil inexistente responde 404', () => pm.response.to.have.status(404));"] } }]
+        },
+        {
+          "name": "Consultar mi perfil sin token (401)",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/me/profile" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Ruta privada responde 401 sin token', () => pm.response.to.have.status(401));"] } }]
+        },
+        {
+          "name": "Crear perfil sin display_name (422)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"location\": \"Oaxaca\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/profile"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Validación responde 422', () => pm.response.to.have.status(422));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 - Organizaciones",
+      "item": [
+        {
+          "name": "Crear organización (201)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Organización de prueba\",\n  \"organization_type\": \"empresa\",\n  \"description\": \"Organización creada desde Postman\",\n  \"sector\": \"Tecnología\",\n  \"email\": \"organizacion@example.com\",\n  \"phone\": \"9511234567\",\n  \"location\": \"Oaxaca\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/organizations"
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Organización creada', () => pm.response.to.have.status(201));",
+              "const organization = pm.response.json().organization;",
+              "pm.environment.set('organizationId', String(organization.id));",
+              "pm.expect(organization.name).to.eql('Organización de prueba');"
+            ] }
+          }]
+        },
+        {
+          "name": "Consultar organización pública (200)",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/organizations/{{organizationId}}" },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('Organización pública responde 200', () => pm.response.to.have.status(200));",
+              "const organization = pm.response.json().organization;",
+              "pm.expect(organization).to.have.property('name');",
+              "pm.expect(organization).not.to.have.property('contact');",
+              "pm.expect(organization).not.to.have.property('email');",
+              "pm.expect(organization).not.to.have.property('phone');"
+            ] }
+          }]
+        },
+        {
+          "name": "Actualizar organización como admin (200)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Organización actualizada\",\n  \"description\": \"Descripción actualizada\",\n  \"location\": \"Istmo de Tehuantepec\",\n  \"email\": \"actualizada@example.com\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/organizations/{{organizationId}}"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Admin puede actualizar organización', () => pm.response.to.have.status(200));",
+            "pm.expect(pm.response.json().organization.description).to.eql('Descripción actualizada');"
+          ] } }]
+        },
+        {
+          "name": "Actualizar organización como miembro sin permiso (403)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{memberToken}}", "type": "string" }] },
+            "method": "PATCH",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cambio no autorizado\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/organizations/{{foreignOrganizationId}}"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Miembro sin rol admin recibe 403', () => pm.response.to.have.status(403));"] } }]
+        },
+        {
+          "name": "Crear organización sin token (401)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"No debe crearse\",\n  \"organization_type\": \"empresa\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/organizations"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Crear organización sin token devuelve 401', () => pm.response.to.have.status(401));"] } }]
+        },
+        {
+          "name": "Organización pública inexistente (404)",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/organizations/999999999" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Organización inexistente responde 404', () => pm.response.to.have.status(404));"] } }]
+        }
+      ]
+    }
+  ]
+}

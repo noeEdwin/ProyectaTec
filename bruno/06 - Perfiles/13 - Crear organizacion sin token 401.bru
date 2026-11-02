@@ -1,0 +1,23 @@
+meta {
+  name: Crear organización sin token 401
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/organizations
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "No debe crearse",
+    "organization_type": "empresa"
+  }
+}

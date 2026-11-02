@@ -6,7 +6,7 @@
 - Issue: #49
 - Responsable: EdsaiGarrey
 - Rama: feature/api-perfiles-laravel
-- Tecnologías: Laravel, Sanctum, PostgreSQL y Postman
+- Tecnologías: Laravel, Sanctum, PostgreSQL, Postman y Bruno
 
 ## Endpoints implementados
 
@@ -22,11 +22,11 @@
 
 ## Validación y seguridad
 
-La actualización de perfiles requiere display_name y permite description, phone, location, institution y field_of_study.
+La creación/actualización de perfiles requiere `display_name` y permite `description`, `phone`, `location`, `institution` y `field_of_study`. Las respuestas personales también usan `display_name` para mantener un único contrato con React. El controlador usa una lista cerrada de campos permitidos, por lo que ignora `user_id`, contraseñas y roles enviados en el formulario.
 
 La consulta pública de perfiles y organizaciones no expone teléfonos, correos electrónicos ni credenciales.
 
-La edición de organizaciones está protegida mediante Laravel Sanctum y una política que verifica el rol admin y el estado active en organization_members.
+La edición de organizaciones está protegida mediante Laravel Sanctum y una política que verifica el rol `admin` y el estado `active` en `organization_members`. Un administrador puede actualizar nombre, tipo, descripción, sector, correo, teléfono y ubicación.
 
 Los usuarios solo pueden modificar su propio perfil mediante los endpoints de perfil autenticado.
 
@@ -41,39 +41,103 @@ Los usuarios solo pueden modificar su propio perfil mediante los endpoints de pe
 | 404 | Recurso inexistente |
 | 422 | Datos que no cumplen la validación |
 
-## Pruebas realizadas
+### Ejemplos para React
 
-Se utilizaron peticiones reales de Postman para comprobar los endpoints.
+Perfil autenticado (`GET /api/me/profile`):
+
+```json
+{
+  "profile": {
+    "id": 12,
+    "is_organization": false,
+    "display_name": "Ana López",
+    "description": "Estudiante de ingeniería",
+    "location": "Oaxaca",
+    "image": null,
+    "contact": {
+      "phone": "9511234567",
+      "email": "ana@example.com"
+    },
+    "classification": "ITO Sistemas",
+    "created_at": "2026-10-28T18:00:00.000000Z"
+  }
+}
+```
+
+Perfil público (`GET /api/profiles/12`), sin información de contacto:
+
+```json
+{
+  "profile": {
+    "id": 12,
+    "is_organization": false,
+    "display_name": "Ana López",
+    "description": "Estudiante de ingeniería",
+    "location": "Oaxaca",
+    "image": null,
+    "classification": "ITO Sistemas"
+  }
+}
+```
+
+Errores relevantes:
+
+```json
+{
+  "message": "Unauthenticated."
+}
+```
+
+```json
+{
+  "message": "This action is unauthorized."
+}
+```
+
+```json
+{
+  "message": "The display name field is required.",
+  "errors": {
+    "display_name": [
+      "The display name field is required."
+    ]
+  }
+}
+```
+
+## Pruebas realizadas
 
 Pruebas automatizadas aprobadas:
 
-- ProfileApiTest: 6 pruebas aprobadas.
+- ProfileApiTest: 9 pruebas aprobadas.
 - OrganizationAuthorizationTest: 3 pruebas aprobadas.
+- OrganizationProfileApiTest: 9 pruebas aprobadas.
 
-Total: 9 pruebas automatizadas aprobadas.
+Total: 21 pruebas automatizadas entre los flujos de perfiles y organizaciones.
 
 ### Ejecutar las pruebas
 
 Desde la raíz del proyecto:
 
 ```bash
-docker compose exec backend php artisan test --filter=ProfileApiTest
-docker compose exec backend php artisan test --filter=OrganizationAuthorizationTest
+docker compose run --rm backend php artisan test --filter=ProfileApiTest
+docker compose run --rm backend php artisan test --filter=OrganizationAuthorizationTest
+docker compose run --rm backend php artisan test --filter=OrganizationProfileApiTest
 ```
 
 Las pruebas usan SQLite en memoria según backend/phpunit.xml.
 
-## Colección de Postman
+## Colecciones de API
 
-Ubicación:
+- **Postman:** `postman/collections/ProyectaTec Perfiles y Organizaciones.postman_collection.json`
+- **Entorno Postman:** `postman/environments/ProyectaTec Local.postman_environment.json`
+- **Bruno:** carpeta `bruno/06 - Perfiles/` dentro de la colección raíz `bruno/`
 
-postman/collections/ProyectaTec - API de Perfiles - Edsai
+Ambas colecciones contienen los endpoints `GET /api/me/profile`, `POST /api/profile`, `PATCH /api/me/profile`, `GET /api/profiles/{profile}`, `GET /api/organizations/{organization}`, `POST /api/organizations` y `PATCH /api/organizations/{organization}`. Incluyen casos 401, 403, 404 y 422 además de las peticiones correctas.
 
-La colección permite reproducir consultas públicas, edición de perfiles y pruebas de permisos.
+Ejecuta primero el login auxiliar. Las peticiones de creación guardan los IDs de perfil y organización para reutilizarlos. Para comprobar el `403`, configura el token de un usuario que no sea administrador y el ID de una organización que no administre.
 
-Cada colaborador debe utilizar sus propias credenciales y configurar las variables de autenticación localmente.
-
-No se deben compartir Bearer Tokens reales ni contraseñas en GitHub.
+Usa credenciales locales y no guardes tokens reales en GitHub.
 
 ## Evidencias
 
@@ -86,7 +150,7 @@ No se deben compartir Bearer Tokens reales ni contraseñas en GitHub.
 - Creación de organización: 201 Created.
 - Edición autorizada: 200 OK.
 - Edición sin permisos: 403 Forbidden.
-- Nueve pruebas automatizadas aprobadas.
+- Veintiuna pruebas automatizadas de perfiles y organizaciones aprobadas.
 
 ## Integración con React
 
@@ -96,4 +160,4 @@ Las consultas privadas requieren autenticación mediante Sanctum.
 
 Las rutas públicas pueden consultarse sin iniciar sesión.
 
-La colección de Postman permite a los colaboradores verificar el contrato de los endpoints.
+Las colecciones Postman y Bruno permiten a los colaboradores verificar el contrato de los endpoints.

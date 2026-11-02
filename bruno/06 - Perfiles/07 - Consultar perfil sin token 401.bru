@@ -1,0 +1,15 @@
+meta {
+  name: Consultar perfil sin token 401
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/me/profile
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

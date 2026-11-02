@@ -1,14 +1,13 @@
 <?php
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\AuthController;
-use Illuminate\Support\Facades\Route;
-use App\Models\Project;
-use App\Models\Organization;
-use Illuminate\Support\Facades\Gate;
-use App\Models\Application;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\ProfileController;
+use App\Models\Application;
+use App\Models\Project;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
@@ -26,7 +25,7 @@ Route::get('/proyectos/destacado', function () {
     $project = Project::latest()->first();
 
     // Si la base de datos aún no tiene proyectos creados, responde con la información base
-    if (!$project) {
+    if (! $project) {
         return response()->json([
             'id' => 1,
             'titulo' => 'AgroTech Oaxaca',
@@ -45,18 +44,17 @@ Route::get('/proyectos/destacado', function () {
         'fase' => $project->phase ?? 'Fase 01',
         'estado' => $project->status ?? 'Activo',
         'dias_restantes' => $project->days_remaining ?? 24,
-        'imagen_url' => $project->image ? asset('storage/' . $project->image) : null,
+        'imagen_url' => $project->image ? asset('storage/'.$project->image) : null,
     ]);
 });
-
 
 // --------------------------------------------------------------------------
 // Rutas protegidas mediante Laravel Sanctum (Requieren Bearer Token)
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
-// Consultar el perfil del usuario autenticado
-Route::get('/me/profile', [ProfileController::class, 'showOwn']);
+    // Consultar el perfil del usuario autenticado
+    Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     // Editar un proyecto
     Route::patch('/projects/{project}', function (Request $request, Project $project) {
         Gate::authorize('update', $project);
@@ -71,17 +69,7 @@ Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     });
 
     // Editar una organización
-    Route::patch('/organizations/{organization}', function (Request $request, Organization $organization) {
-        Gate::authorize('update', $organization);
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-        ]);
-
-        $organization->update($data);
-
-        return response()->json($organization);
-    });
+    Route::patch('/organizations/{organization}', [OrganizationController::class, 'update']);
 
     // Revisar solicitudes de participación
     Route::patch('/applications/{application}', function (Request $request, Application $application) {

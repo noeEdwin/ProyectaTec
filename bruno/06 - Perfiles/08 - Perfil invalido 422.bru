@@ -1,0 +1,23 @@
+meta {
+  name: Perfil inválido 422
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "location": "Oaxaca"
+  }
+}

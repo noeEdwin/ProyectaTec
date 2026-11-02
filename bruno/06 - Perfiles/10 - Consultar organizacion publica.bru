@@ -1,0 +1,15 @@
+meta {
+  name: Consultar organización pública
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/organizations/{{organizationId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
