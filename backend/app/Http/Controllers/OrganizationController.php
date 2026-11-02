@@ -7,6 +7,7 @@ use App\Models\Organization;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class OrganizationController extends Controller
 {
@@ -73,9 +74,9 @@ class OrganizationController extends Controller
         ]);
 
         if ($validated === []) {
-            return response()->json([
-                'message' => 'Debes enviar al menos un campo para actualizar.',
-            ], 422);
+            throw ValidationException::withMessages([
+                'organization' => ['Debes enviar al menos un campo para actualizar.'],
+            ]);
         }
 
         $organization->update($validated);

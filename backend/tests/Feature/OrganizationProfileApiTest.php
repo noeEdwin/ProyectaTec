@@ -183,6 +183,22 @@ class OrganizationProfileApiTest extends TestCase
             ->assertJsonValidationErrors('email');
     }
 
+    public function test_organization_update_requires_at_least_one_editable_field(): void
+    {
+        $admin = User::factory()->create();
+        $organization = $this->makeOrganization();
+        $organization->memberships()->create([
+            'user_id' => $admin->id,
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->patchJson("/api/organizations/{$organization->id}")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('organization');
+    }
+
     private function makeOrganization(): Organization
     {
         return Organization::create([

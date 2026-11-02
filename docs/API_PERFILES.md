@@ -116,9 +116,9 @@ Pruebas automatizadas aprobadas:
 
 - ProfileApiTest: 10 pruebas aprobadas.
 - OrganizationAuthorizationTest: 3 pruebas aprobadas.
-- OrganizationProfileApiTest: 9 pruebas aprobadas.
+- OrganizationProfileApiTest: 10 pruebas aprobadas.
 
-Total: 22 pruebas automatizadas entre los flujos de perfiles y organizaciones.
+Total: 23 pruebas automatizadas entre los flujos de perfiles y organizaciones.
 
 ### Ejecutar las pruebas
 
@@ -155,7 +155,7 @@ Usa credenciales locales y no guardes tokens reales en GitHub.
 - Creación de organización: 201 Created.
 - Edición autorizada: 200 OK.
 - Edición sin permisos: 403 Forbidden.
-- Veintidós pruebas automatizadas de perfiles y organizaciones aprobadas.
+- Veintitrés pruebas automatizadas de perfiles y organizaciones aprobadas.
 
 ## Integración con React
 
