@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 // Consultar un perfil público por su identificador
-Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic']);
+Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
+    ->whereNumber('profile');
 // Consultar información pública de una organización
-Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic']);
+Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic'])
+    ->whereNumber('organization');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     // Intenta obtener el proyecto más reciente registrado en la base de datos
@@ -69,7 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Editar una organización
-    Route::patch('/organizations/{organization}', [OrganizationController::class, 'update']);
+    Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->whereNumber('organization');
 
     // Revisar solicitudes de participación
     Route::patch('/applications/{application}', function (Request $request, Application $application) {

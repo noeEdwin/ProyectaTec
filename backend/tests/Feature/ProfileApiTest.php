@@ -48,6 +48,13 @@ class ProfileApiTest extends TestCase
             ->assertStatus(404);
     }
 
+    // 3b. Un identificador no numérico devuelve 404 y no un error del servidor.
+    public function test_malformed_public_profile_identifier_returns_404(): void
+    {
+        $this->getJson('/api/profiles/abc')
+            ->assertStatus(404);
+    }
+
     // 4. El usuario autenticado puede consultar su perfil.
     public function test_user_can_view_own_profile(): void
     {

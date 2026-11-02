@@ -75,6 +75,11 @@ class OrganizationProfileApiTest extends TestCase
         $this->getJson('/api/organizations/999999')->assertNotFound();
     }
 
+    public function test_malformed_public_organization_identifier_returns_404(): void
+    {
+        $this->getJson('/api/organizations/abc')->assertNotFound();
+    }
+
     public function test_guest_cannot_update_an_organization(): void
     {
         $organization = $this->makeOrganization();
