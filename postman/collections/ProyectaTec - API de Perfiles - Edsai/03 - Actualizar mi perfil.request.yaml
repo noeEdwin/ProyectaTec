@@ -1,0 +1,30 @@
+$kind: http-request
+url: http://127.0.0.1:8001/api/me/profile?
+method: PATCH
+headers:
+  Accept: application/json
+  Content-Type: application/json
+queryParams:
+  "": null
+body:
+  type: json
+  content: "{\r
+
+    \  \"display_name\": \"Edsai Actualizado con PATCH\",\r
+
+    \  \"description\": \"Perfil modificado mediante mi API de Laravel desde Postman\",\r
+
+    \  \"phone\": \"9510000000\",\r
+
+    \  \"location\": \"Oaxaca, México\",\r
+
+    \  \"institution\": \"Instituto Tecnológico de Oaxaca\",\r
+
+    \  \"field_of_study\": \"Ingeniería en Sistemas Computacionales\"\r
+
+    }"
+auth:
+  type: bearer
+  credentials:
+    token: access_token
+order: 3000
