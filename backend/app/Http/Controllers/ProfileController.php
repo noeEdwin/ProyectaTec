@@ -7,8 +7,26 @@ use Illuminate\Http\Request;
 use App\Http\Resources\ProfileResource;
 
 class ProfileController extends Controller
+
 {
-    public function showOwn(Request $request)
+   public function showPublic(Profile $profile)
+{
+    return response()->json([
+        'profile' => [
+            'id' => $profile->id,
+            'is_organization' => false,
+            'name' => $profile->display_name,
+            'description' => $profile->description,
+            'location' => $profile->location,
+            'image' => $profile->avatar_path,
+            'classification' => trim(
+                ($profile->institution ?? '') . ' ' .
+                ($profile->field_of_study ?? '')
+            ),
+        ],
+    ]);
+}
+public function showOwn(Request $request)
 {
     $profile = $request->user()->profile;
 

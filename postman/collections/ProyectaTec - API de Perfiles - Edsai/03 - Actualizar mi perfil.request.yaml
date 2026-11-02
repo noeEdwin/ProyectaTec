@@ -12,7 +12,8 @@ body:
 
     \  \"display_name\": \"Edsai Actualizado con PATCH\",\r
 
-    \  \"description\": \"Perfil modificado mediante mi API de Laravel desde Postman\",\r
+    \  \"description\": \"Perfil modificado mediante mi API de Laravel desde
+    Postman\",\r
 
     \  \"phone\": \"9510000000\",\r
 
