@@ -72,6 +72,75 @@ class ProfileApiTest extends TestCase
             ->assertJsonPath('profile.contact.email', $user->email);
     }
 
+    public function test_profile_endpoint_returns_existing_profile_and_account_data(): void
+    {
+        $user = User::factory()->create(['account_type' => 'Investigador']);
+        $profile = Profile::create([
+            'user_id' => $user->id,
+            'display_name' => 'Mi Perfil',
+            'description' => 'Descripción',
+            'phone' => '9511234567',
+            'location' => 'Oaxaca',
+            'institution' => 'ITO',
+            'field_of_study' => 'Sistemas',
+            'avatar_path' => 'avatars/perfil.png',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [
+                'id', 'is_organization', 'display_name', 'description', 'phone',
+                'location', 'institution', 'field_of_study', 'image',
+                'contact' => ['phone', 'email'],
+                'classification', 'created_at', 'email', 'account_type',
+            ]])
+            ->assertJsonPath('data.id', $profile->id)
+            ->assertJsonPath('data.is_organization', false)
+            ->assertJsonPath('data.display_name', 'Mi Perfil')
+            ->assertJsonPath('data.description', 'Descripción')
+            ->assertJsonPath('data.phone', '9511234567')
+            ->assertJsonPath('data.location', 'Oaxaca')
+            ->assertJsonPath('data.institution', 'ITO')
+            ->assertJsonPath('data.field_of_study', 'Sistemas')
+            ->assertJsonPath('data.image', 'avatars/perfil.png')
+            ->assertJsonPath('data.contact.phone', '9511234567')
+            ->assertJsonPath('data.contact.email', $user->email)
+            ->assertJsonPath('data.classification', 'ITO Sistemas')
+            ->assertJsonPath('data.email', $user->email)
+            ->assertJsonPath('data.account_type', 'Investigador');
+    }
+
+    public function test_profile_endpoint_returns_account_data_when_profile_does_not_exist(): void
+    {
+        $user = User::factory()->create(['account_type' => 'Investigador']);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [
+                'id', 'is_organization', 'display_name', 'description', 'phone',
+                'location', 'institution', 'field_of_study', 'image',
+                'contact' => ['phone', 'email'],
+                'classification', 'created_at', 'email', 'account_type',
+            ]])
+            ->assertJsonPath('data.id', null)
+            ->assertJsonPath('data.is_organization', false)
+            ->assertJsonPath('data.display_name', $user->name)
+            ->assertJsonPath('data.description', '')
+            ->assertJsonPath('data.phone', '')
+            ->assertJsonPath('data.location', '')
+            ->assertJsonPath('data.institution', '')
+            ->assertJsonPath('data.field_of_study', '')
+            ->assertJsonPath('data.image', null)
+            ->assertJsonPath('data.contact.phone', '')
+            ->assertJsonPath('data.contact.email', $user->email)
+            ->assertJsonPath('data.classification', '')
+            ->assertJsonPath('data.created_at', null)
+            ->assertJsonPath('data.email', $user->email)
+            ->assertJsonPath('data.account_type', 'Investigador');
+    }
+
     public function test_existing_profile_can_be_read_and_saved_without_losing_editable_fields(): void
     {
         $user = User::factory()->create();

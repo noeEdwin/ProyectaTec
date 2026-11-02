@@ -50,12 +50,21 @@ class ProfileController extends Controller
         if (! $profile) {
             return response()->json([
                 'data' => [
+                    'id' => null,
+                    'is_organization' => false,
                     'display_name' => $user->name,
                     'description' => '',
                     'phone' => '',
                     'location' => '',
                     'institution' => '',
                     'field_of_study' => '',
+                    'image' => null,
+                    'contact' => [
+                        'phone' => '',
+                        'email' => $user->email,
+                    ],
+                    'classification' => '',
+                    'created_at' => null,
                     'email' => $user->email,
                     'account_type' => $user->account_type ?? 'Estudiante / Investigador',
                 ],
@@ -63,7 +72,13 @@ class ProfileController extends Controller
         }
 
         return response()->json([
-            'data' => new ProfileResource($profile->load('user')),
+            'data' => array_merge(
+                (new ProfileResource($profile->load('user')))->resolve($request),
+                [
+                    'email' => $user->email,
+                    'account_type' => $user->account_type ?? 'Estudiante / Investigador',
+                ]
+            ),
         ]);
     }
 
