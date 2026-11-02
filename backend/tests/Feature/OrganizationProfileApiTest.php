@@ -11,6 +11,101 @@ class OrganizationProfileApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_user_can_list_only_their_active_organizations_with_membership_details(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $first = Organization::create([
+            'name' => 'Primera',
+            'organization_type' => 'empresa',
+            'sector' => 'tecnología',
+            'description' => 'Descripción',
+            'location' => 'Oaxaca',
+            'logo_path' => 'logos/primera.png',
+            'email' => 'privado@example.com',
+            'phone' => '9511234567',
+        ]);
+        $second = Organization::create([
+            'name' => 'Segunda',
+            'organization_type' => 'social',
+            'sector' => 'educación',
+        ]);
+        $inactive = Organization::create(['name' => 'Inactiva', 'organization_type' => 'empresa']);
+        $other = Organization::create(['name' => 'Ajena', 'organization_type' => 'empresa']);
+
+        $user->organizations()->attach($first->id, [
+            'role' => 'admin', 'status' => 'active', 'joined_at' => '2026-10-21 12:00:00',
+        ]);
+        $user->organizations()->attach($second->id, [
+            'role' => 'member', 'status' => 'active', 'joined_at' => null,
+        ]);
+        $user->organizations()->attach($inactive->id, [
+            'role' => 'admin', 'status' => 'inactive',
+        ]);
+        $otherUser->organizations()->attach($first->id, [
+            'role' => 'member', 'status' => 'active',
+        ]);
+        $otherUser->organizations()->attach($other->id, [
+            'role' => 'admin', 'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')->getJson('/api/me/organizations')
+            ->assertOk()
+            ->assertJsonCount(2, 'organizations');
+
+        $organizations = collect($response->json('organizations'))->keyBy('id');
+        $this->assertEqualsCanonicalizing([$first->id, $second->id], $organizations->keys()->all());
+        $this->assertSame([
+            'id' => $first->id,
+            'name' => 'Primera',
+            'description' => 'Descripción',
+            'location' => 'Oaxaca',
+            'image' => 'logos/primera.png',
+            'classification' => 'empresa - tecnología',
+            'membership' => [
+                'role' => 'admin',
+                'status' => 'active',
+                'joined_at' => '2026-10-21T12:00:00.000000Z',
+            ],
+        ], $organizations[$first->id]);
+        $this->assertSame([
+            'role' => 'member',
+            'status' => 'active',
+            'joined_at' => null,
+        ], $organizations[$second->id]['membership']);
+    }
+
+    public function test_user_without_organizations_receives_an_empty_list(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/me/organizations')
+            ->assertOk()
+            ->assertExactJson(['organizations' => []]);
+    }
+
+    public function test_guest_cannot_list_own_organizations(): void
+    {
+        $this->getJson('/api/me/organizations')->assertUnauthorized();
+    }
+
+    public function test_created_organization_appears_in_own_organizations(): void
+    {
+        $user = User::factory()->create();
+
+        $created = $this->actingAs($user, 'sanctum')->postJson('/api/organizations', [
+            'name' => 'Nueva organización',
+            'organization_type' => 'empresa',
+        ])->assertCreated();
+
+        $this->getJson('/api/me/organizations')
+            ->assertOk()
+            ->assertJsonCount(1, 'organizations')
+            ->assertJsonPath('organizations.0.id', $created->json('organization.id'))
+            ->assertJsonPath('organizations.0.membership.role', 'admin')
+            ->assertJsonPath('organizations.0.membership.status', 'active');
+    }
+
     public function test_guest_cannot_create_an_organization(): void
     {
         $this->postJson('/api/organizations', [

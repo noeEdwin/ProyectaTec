@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     Route::patch('/me/profile', [ProfileController::class, 'update']);
+    Route::get('/me/organizations', [OrganizationController::class, 'indexOwn']);
 
     // Rutas del perfil consumidas por el editor React
     Route::get('/profile', [ProfileController::class, 'show']);

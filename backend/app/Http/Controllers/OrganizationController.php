@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -11,6 +12,40 @@ use Illuminate\Validation\ValidationException;
 
 class OrganizationController extends Controller
 {
+    public function indexOwn(Request $request): JsonResponse
+    {
+        $organizations = $request->user()->organizations()
+            ->wherePivot('status', 'active')
+            ->get([
+                'organizations.id',
+                'organizations.name',
+                'organizations.description',
+                'organizations.location',
+                'organizations.logo_path',
+                'organizations.organization_type',
+                'organizations.sector',
+            ])
+            ->map(fn (Organization $organization) => [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'description' => $organization->description,
+                'location' => $organization->location,
+                'image' => $organization->logo_path,
+                'classification' => trim(
+                    ($organization->organization_type ?? '').' - '.($organization->sector ?? '')
+                ),
+                'membership' => [
+                    'role' => $organization->pivot->role,
+                    'status' => $organization->pivot->status,
+                    'joined_at' => $organization->pivot->joined_at === null
+                        ? null
+                        : Carbon::parse($organization->pivot->joined_at)->utc()->toISOString(),
+                ],
+            ]);
+
+        return response()->json(['organizations' => $organizations]);
+    }
+
     public function showPublic(Organization $organization): JsonResponse
     {
         return response()->json([
