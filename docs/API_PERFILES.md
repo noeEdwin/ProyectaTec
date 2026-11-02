@@ -114,11 +114,11 @@ React debe decidir el flujo por el código HTTP. En particular, las consultas p�
 
 Pruebas automatizadas aprobadas:
 
-- ProfileApiTest: 10 pruebas aprobadas.
+- ProfileApiTest: 11 pruebas aprobadas.
 - OrganizationAuthorizationTest: 3 pruebas aprobadas.
-- OrganizationProfileApiTest: 10 pruebas aprobadas.
+- OrganizationProfileApiTest: 11 pruebas aprobadas.
 
-Total: 23 pruebas automatizadas entre los flujos de perfiles y organizaciones.
+Total: 25 pruebas automatizadas entre los flujos de perfiles y organizaciones.
 
 ### Ejecutar las pruebas
 
@@ -155,7 +155,7 @@ Usa credenciales locales y no guardes tokens reales en GitHub.
 - Creación de organización: 201 Created.
 - Edición autorizada: 200 OK.
 - Edición sin permisos: 403 Forbidden.
-- Veintitrés pruebas automatizadas de perfiles y organizaciones aprobadas.
+- Veinticinco pruebas automatizadas de perfiles y organizaciones aprobadas.
 
 ## Integración con React
 
