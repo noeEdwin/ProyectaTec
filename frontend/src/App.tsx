@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -14,7 +14,6 @@ import Acceso from './pages/acceso';
 import Perfil from './pages/Perfil';
 
 import MiPerfil from './pages/MiPerfil';
-import EditarPerfil from './pages/EditarPerfil';
 import PerfilPublico from './pages/perfilPublico';
 
 import './styles/App.css';
@@ -42,10 +41,7 @@ function App() {
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
-                <Route
-                  path="/editar-perfil"
-                  element={<EditarPerfil />}
-                />
+                <Route path="/editar-perfil" element={<Navigate to="/perfil" replace />} />
               </Route>
             </Route>
           </Routes>

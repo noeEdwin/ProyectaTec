@@ -13,6 +13,18 @@ export interface UserProfile {
   email?: string;
 }
 
+export type OrganizationAccess = {
+  id: number;
+  name: string;
+  organization_type: string;
+  description?: string | null;
+  sector?: string | null;
+  location?: string | null;
+  role: string;
+  status: string;
+  can_update: boolean;
+};
+
 // Obtener perfil del usuario autenticado (GET /api/me/profile)
 export const getMyProfile = async (): Promise<UserProfile> => {
   const response = await api.get('/me/profile');
@@ -29,4 +41,9 @@ export const getPublicProfile = async (id: number | string): Promise<UserProfile
 export const updateMyProfile = async (data: Partial<UserProfile>): Promise<UserProfile> => {
   const response = await api.patch('/me/profile', data);
   return response.data.data || response.data.profile || response.data;
+};
+
+export const getMyOrganizations = async (): Promise<OrganizationAccess[]> => {
+  const response = await api.get<{ organizations: OrganizationAccess[] }>('/me/organizations');
+  return response.data.organizations;
 };

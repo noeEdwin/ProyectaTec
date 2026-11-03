@@ -15,6 +15,7 @@
 .pd-boton-oscuro { display:inline-flex; align-items:center; justify-content:center; min-height:43px; padding:10px 30px; border:0; border-radius:999px; color:#fff; background:var(--pd-dark); font:inherit; font-size:14px; font-weight:700; text-align:center; text-decoration:none; cursor:pointer; }
 .pd-boton-oscuro:hover { background:var(--pd-teal); }
 .pd-boton-oscuro:disabled { opacity:.6; cursor:wait; }
+.pd-boton-deshabilitado { display:inline-flex; align-items:center; justify-content:center; min-height:43px; padding:10px 20px; border-radius:999px; color:#64748b; background:#f1f5f9; font-size:12px; font-weight:700; text-align:center; }
 .pd-boton-claro { padding:11px 24px; border:0; border-radius:999px; color:var(--pd-teal); background:#eaf3f4; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
 .pd-boton-claro:disabled { opacity:.6; cursor:wait; }
 .pd-mi-resumen { display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:25px; align-items:center; margin-bottom:22px; min-height:166px; }
