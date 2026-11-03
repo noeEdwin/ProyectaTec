@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -41,6 +41,7 @@ function App() {
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
+                <Route path="/editar-perfil" element={<Navigate to="/perfil" replace />} />
               </Route>
             </Route>
           </Routes>
