@@ -283,6 +283,25 @@ export default function Perfil() {
               />
             </div>
 
+            {/* Ubicación */}
+            <div>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
+                Ubicación
+              </label>
+              <input
+                type="text"
+                value={profile.location || ''}
+                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
+                placeholder="Oaxaca, México"
+                maxLength={255}
+                style={{
+                  width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
+                  border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
             {/* Botones */}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
               <button
