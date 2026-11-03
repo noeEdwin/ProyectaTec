@@ -281,6 +281,9 @@ class OrganizationProfileApiTest extends TestCase
             'image' => 'logos/primera.png',
             'image_url' => \App\Http\Resources\OrganizationResource::logoUrl('logos/primera.png'),
             'classification' => 'empresa - tecnología',
+            'role' => 'admin',
+            'status' => 'active',
+            'can_update' => true,
             'membership' => [
                 'role' => 'admin',
                 'status' => 'active',
