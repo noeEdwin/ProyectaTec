@@ -31,6 +31,7 @@ function App() {
 
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
+              <Route path="/perfil-publico" element={<PerfilPublico />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/iniciativas" element={<Catalogo />} />
@@ -41,10 +42,6 @@ function App() {
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
-                <Route
-                  path="/perfil-publico"
-                  element={<PerfilPublico />}
-                />
                 <Route
                   path="/editar-perfil"
                   element={<EditarPerfil />}

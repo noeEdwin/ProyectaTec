@@ -6,6 +6,9 @@
 .pd-eyebrow { display:inline-block; color:#9C721D; border-bottom:3px solid var(--pd-orange); padding-bottom:8px; font-size:11px; font-weight:700; }
 .pd-encabezado h1 { margin:15px 0 5px; font-size:36px; line-height:1.2; font-weight:700; letter-spacing:-.035em; }
 .pd-encabezado p { font-size:14px; color:var(--pd-muted); line-height:1.7; }
+.pd-demo-selector { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.pd-demo-selector a { padding:7px 14px; border:1px solid var(--pd-border); border-radius:999px; color:var(--pd-teal); background:#fff; font-size:12px; font-weight:700; text-decoration:none; }
+.pd-demo-selector a[aria-current="page"] { color:#fff; border-color:var(--pd-dark); background:var(--pd-dark); }
 .pd-nota-prototipo { margin:-16px 0 18px; color:#8893a3; font-size:11px; }
 .pd-tarjeta { background:#fff; border:1px solid var(--pd-border); border-radius:18px; padding:24px; }
 .pd-tarjeta h2 { font-size:19px; font-weight:700; letter-spacing:-.02em; }

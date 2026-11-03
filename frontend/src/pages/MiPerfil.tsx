@@ -20,6 +20,10 @@ export default function MiPerfil() {
             <span className="pd-eyebrow">MI ESPACIO</span>
             <h1>Mi perfil</h1>
             <p>Un espacio para gestionar tu información y colaboraciones.</p>
+            <nav className="pd-demo-selector" aria-label="Elegir tipo de perfil de demostración">
+              <Link aria-current={tipo === 'persona' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'persona')}>Persona</Link>
+              <Link aria-current={tipo === 'organizacion' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'organizacion')}>Organización</Link>
+            </nav>
           </div>
           <Link className="pd-boton-oscuro" to={rutaPerfil('/editar-perfil', tipo)}>Editar perfil →</Link>
         </header>

@@ -1,8 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { getMyProfile, updateMyProfile, type UserProfile } from '../api/profileService';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth-context';
+
+type ApiErrorResponse = {
+  message?: string;
+  errors?: Record<string, string[]>;
+};
 
 export default function Perfil() {
   const navigate = useNavigate();
@@ -25,11 +31,35 @@ export default function Perfil() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
 
-  useEffect(() => {
-    fetchProfileData();
-  }, []);
+  const handleApiError = useCallback((error: unknown) => {
+    if (!axios.isAxiosError<ApiErrorResponse>(error)) {
+      setErrorMessage('Error de conexión con el servidor. Verifica tu red.');
+      return;
+    }
 
-  const fetchProfileData = async () => {
+    const status = error.response?.status;
+    const data = error.response?.data;
+
+    switch (status) {
+      case 401:
+        navigate('/acceso');
+        break;
+      case 403:
+        setErrorMessage('No tienes permisos para modificar este perfil.');
+        break;
+      case 404:
+        setErrorMessage('El perfil solicitado no fue encontrado.');
+        break;
+      case 422:
+        setValidationErrors(data?.errors || {});
+        setErrorMessage('Por favor corrige los campos indicados.');
+        break;
+      default:
+        setErrorMessage(data?.message || 'Ocurrió un error inesperado.');
+    }
+  }, [navigate]);
+
+  const fetchProfileData = useCallback(async () => {
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -44,9 +74,9 @@ export default function Perfil() {
         account_type: data.account_type || user?.account_type || 'Empresa, institución educativa o sector social',
         email: data.email || user?.email || '',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Si el perfil no existe en PostgreSQL (404), inicializamos el formulario como perfil nuevo
-      if (error.response && error.response.status === 404) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
         setProfile({
           display_name: user?.name || '',
           description: '',
@@ -55,7 +85,7 @@ export default function Perfil() {
           institution: '',
           field_of_study: '',
           account_type: user?.account_type || 'Empresa, institución educativa o sector social',
-          email: user?.email || '',
+         email: user?.email || '',
         });
         setErrorMessage(null); // No mostramos error porque es un usuario nuevo
       } else {
@@ -64,7 +94,15 @@ export default function Perfil() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [handleApiError, user]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchProfileData();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchProfileData]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -85,38 +123,10 @@ export default function Perfil() {
       if (res) {
         setSuccessMessage('¡Perfil guardado exitosamente!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleApiError(error);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleApiError = (error: any) => {
-    if (!error.response) {
-      setErrorMessage('Error de conexión con el servidor. Verifica tu red.');
-      return;
-    }
-
-    const status = error.response.status;
-    const data = error.response.data;
-
-    switch (status) {
-      case 401:
-        navigate('/acceso');
-        break;
-      case 403:
-        setErrorMessage('No tienes permisos para modificar este perfil.');
-        break;
-      case 404:
-        setErrorMessage('El perfil solicitado no fue encontrado.');
-        break;
-      case 422:
-        setValidationErrors(data.errors || {});
-        setErrorMessage('Por favor corrige los campos indicados.');
-        break;
-      default:
-        setErrorMessage(data.message || 'Ocurrió un error inesperado.');
     }
   };
 
