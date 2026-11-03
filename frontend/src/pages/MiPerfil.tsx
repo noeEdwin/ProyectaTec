@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getMyOrganizations } from '../api/profileService';
+import { getMyOrganizations, getMyProfile } from '../api/profileService';
 import { obtenerTipoPerfil, rutaPerfil, usePerfil } from '../context/perfil-context';
+import type { TipoPerfil } from '../context/perfil-context';
 import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
 
@@ -9,11 +10,50 @@ export default function MiPerfil() {
   const [busqueda] = useSearchParams();
   const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
   const { perfiles } = usePerfil();
-  const perfil = perfiles[tipo];
+  const [perfilCargado, setPerfilCargado] = useState<{
+    tipo: TipoPerfil;
+    perfil: typeof perfiles.persona;
+  } | null>(null);
   const [canEditOrganization, setCanEditOrganization] = useState(false);
+  const perfil = perfilCargado?.tipo === tipo ? perfilCargado.perfil : perfiles[tipo];
   const actividades = tipo === 'organizacion'
     ? ['Actualización de una iniciativa', 'Nueva solicitud de colaboración']
     : ['Participación en una iniciativa', 'Nueva actividad de colaboración'];
+
+  useEffect(() => {
+    if (tipo !== 'persona') return;
+
+    let activo = true;
+    void getMyProfile()
+      .then((data) => {
+        if (!activo) return;
+
+        setPerfilCargado({
+          tipo,
+          perfil: {
+            ...perfiles.persona,
+            name: data.display_name || perfiles.persona.name,
+            description: data.description || '',
+            location: data.location || '',
+            classification: [data.institution, data.field_of_study]
+              .filter(Boolean)
+              .join(' ') || perfiles.persona.classification,
+            contact: {
+              ...perfiles.persona.contact,
+              email: data.email || perfiles.persona.contact.email,
+              phone: data.phone,
+            },
+          },
+        });
+      })
+      .catch(() => {
+        // La vista conserva los datos de ejemplo si la API no está disponible.
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [perfiles.persona, tipo]);
 
   useEffect(() => {
     if (tipo !== 'organizacion') return;
