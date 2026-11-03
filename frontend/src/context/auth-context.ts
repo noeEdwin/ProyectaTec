@@ -21,6 +21,7 @@ export type RegistrationData = LoginCredentials & {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
+  isLoggingOut: boolean; // <-- Nuevo estado para bloquear la UI
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegistrationData) => Promise<void>;
   logout: () => Promise<void>;
