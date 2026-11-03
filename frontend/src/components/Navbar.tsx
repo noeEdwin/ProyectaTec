@@ -57,6 +57,10 @@ export default function Navbar() {
                 Hola, {user.name}
               </span>
 
+              <NavLink to="/mi-perfil" className="btn-acceso">
+                Mi perfil
+              </NavLink>
+
               <button
                 type="button"
                 onClick={handleLogout}

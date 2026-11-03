@@ -9,7 +9,8 @@ export interface UserProfile {
   location?: string;
   institution?: string;
   field_of_study?: string;
-  [key: string]: any;
+  account_type?: string;
+  email?: string;
 }
 
 // Obtener perfil del usuario autenticado (GET /api/me/profile)

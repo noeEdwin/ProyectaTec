@@ -1,0 +1,35 @@
+/* Solo la página de perfil público. Compatible con la vista de Figma. */
+.perfil-page { --perfil-oscuro:#111827; --perfil-petroleo:#0F4C5C; --perfil-naranja:#F59E0B; --perfil-ocre:#9C721D; --perfil-gris:#64748B; --perfil-borde:#E2E8F0; min-height:calc(100vh - 88px); background:#f9fafb; color:var(--perfil-oscuro); font-family:'Plus Jakarta Sans',sans-serif; }
+.perfil-contenedor { width:calc(100% - 96px); max-width:1100px; min-height:calc(100vh - 88px); margin:auto; display:flex; flex-direction:column; }
+.perfil-main { flex:1; padding:45px 0 60px; }
+.perfil-encabezado { margin-bottom:38px; }
+.perfil-etiqueta { display:inline-block; padding-bottom:7px; border-bottom:3px solid var(--perfil-naranja); color:var(--perfil-ocre); font-size:11px; font-weight:700; }
+.perfil-encabezado h1 { margin:16px 0 3px; font-size:36px; font-weight:700; letter-spacing:-.035em; line-height:1.25; }
+.perfil-encabezado p { color:var(--perfil-gris); font-size:14px; line-height:1.7; }
+.perfil-resumen { display:flex; align-items:center; justify-content:space-between; gap:24px; min-height:168px; padding:25px 24px; margin-bottom:22px; background:#fff; border:1px solid var(--perfil-borde); border-radius:18px; }
+.perfil-resumen-principal { display:flex; align-items:center; gap:30px; min-width:0; }
+.perfil-avatar { width:100px; height:100px; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:22px; background:#eaf3f4; color:var(--perfil-petroleo); font-size:30px; font-weight:700; }
+.perfil-avatar img { width:100%; height:100%; object-fit:cover; }
+.perfil-resumen-info { min-width:0; }
+.perfil-resumen-info h2 { font-size:25px; font-weight:700; line-height:1.3; letter-spacing:-.025em; }
+.perfil-ubicacion { margin-top:7px; color:var(--perfil-gris); font-size:13px; }
+.perfil-descripcion { margin-top:24px; color:var(--perfil-gris); font-size:14px; line-height:1.6; }
+.perfil-contacto-container { flex-shrink:0; width:170px; text-align:center; }
+.perfil-contactar { width:166px; min-height:43px; padding:10px 20px; border:0; border-radius:999px; background:var(--perfil-oscuro); color:#fff; font:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+.perfil-contactar:hover { background:var(--perfil-petroleo); }
+.perfil-contacto-detalles { margin-top:10px; font-size:11px; color:var(--perfil-petroleo); overflow-wrap:anywhere; }
+.perfil-contacto-detalles span { display:block; margin-top:4px; }
+.perfil-iniciativas { padding:24px; background:#fff; border:1px solid var(--perfil-borde); border-radius:18px; }
+.perfil-iniciativas > h2 { margin-bottom:8px; font-size:23px; font-weight:700; letter-spacing:-.025em; }
+.perfil-lista-iniciativas { margin:0; padding:0; list-style:none; }
+.perfil-iniciativa { display:grid; grid-template-columns:minmax(0,1fr) 90px 120px; gap:12px; align-items:center; min-height:83px; padding:16px 2px; }
+.perfil-iniciativa + .perfil-iniciativa { border-top:1px solid #e8edf2; }
+.perfil-iniciativa-info h3 { margin-bottom:7px; font-size:13px; font-weight:700; }
+.perfil-iniciativa-info p { color:var(--perfil-gris); font-size:11px; }
+.perfil-estado { color:var(--perfil-petroleo); font-size:12px; }
+.perfil-ver-proyecto { color:var(--perfil-petroleo); font-size:12px; font-weight:700; text-decoration:none; }
+.perfil-ver-proyecto:hover { text-decoration:underline; }
+.perfil-sin-iniciativas { padding:25px 0; color:var(--perfil-gris); font-size:14px; }
+.perfil-footer { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-top:1px solid var(--perfil-borde); color:#94a3b8; font-size:10px; }
+@media(max-width:760px) { .perfil-contenedor{width:calc(100% - 40px)} .perfil-main{padding-top:30px} .perfil-encabezado h1{font-size:30px} .perfil-resumen{align-items:flex-start; flex-direction:column} .perfil-resumen-principal{gap:18px} .perfil-avatar{width:76px;height:76px;font-size:24px} .perfil-resumen-info h2{font-size:20px} .perfil-contacto-container{width:100%;text-align:left} .perfil-iniciativa{grid-template-columns:1fr;gap:8px} .perfil-iniciativas>h2{font-size:21px} }
+@media(max-width:420px) { .perfil-resumen-principal{flex-direction:column;align-items:flex-start} .perfil-resumen,.perfil-iniciativas{padding:18px} .perfil-footer{flex-direction:column;gap:5px} }

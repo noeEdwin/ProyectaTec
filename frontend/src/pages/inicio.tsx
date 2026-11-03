@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth-context';
 import colaboracionImage from '../assets/inicio_sesion.png';
 import '../styles/inicio.css';
 
