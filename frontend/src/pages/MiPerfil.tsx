@@ -32,7 +32,7 @@ export default function MiPerfil() {
     };
   }, [tipo]);
 
-  const canEdit = !perfil.is_organization || canEditOrganization;
+  const canEdit = !perfil.is_organization;
 
   return (
     <div className="pd-pagina">
@@ -50,7 +50,9 @@ export default function MiPerfil() {
           {canEdit ? (
             <Link className="pd-boton-oscuro" to="/perfil">Editar perfil →</Link>
           ) : (
-            <span className="pd-boton-deshabilitado" role="status">Solo administradores activos pueden editar</span>
+            <span className="pd-boton-deshabilitado" role="status">
+              {canEditOrganization ? 'Administrador activo: edición de organización disponible' : 'Sin permisos para editar esta organización'}
+            </span>
           )}
         </header>
         <p className="pd-nota-prototipo">Vista de demostración: los datos son simulados.</p>
