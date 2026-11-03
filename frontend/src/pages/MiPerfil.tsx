@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { getMyOrganizations } from '../api/profileService';
 import { obtenerTipoPerfil, rutaPerfil, usePerfil } from '../context/perfil-context';
 import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
@@ -8,9 +10,29 @@ export default function MiPerfil() {
   const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
   const { perfiles } = usePerfil();
   const perfil = perfiles[tipo];
+  const [canEditOrganization, setCanEditOrganization] = useState(false);
   const actividades = tipo === 'organizacion'
     ? ['Actualización de una iniciativa', 'Nueva solicitud de colaboración']
     : ['Participación en una iniciativa', 'Nueva actividad de colaboración'];
+
+  useEffect(() => {
+    if (tipo !== 'organizacion') return;
+
+    let activo = true;
+    void getMyOrganizations()
+      .then((organizations) => {
+        if (activo) setCanEditOrganization(organizations.some((organization) => organization.can_update));
+      })
+      .catch(() => {
+        if (activo) setCanEditOrganization(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, [tipo]);
+
+  const canEdit = !perfil.is_organization || canEditOrganization;
 
   return (
     <div className="pd-pagina">
@@ -25,7 +47,11 @@ export default function MiPerfil() {
               <Link aria-current={tipo === 'organizacion' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'organizacion')}>Organización</Link>
             </nav>
           </div>
-          <Link className="pd-boton-oscuro" to={rutaPerfil('/editar-perfil', tipo)}>Editar perfil →</Link>
+          {canEdit ? (
+            <Link className="pd-boton-oscuro" to="/perfil">Editar perfil →</Link>
+          ) : (
+            <span className="pd-boton-deshabilitado" role="status">Solo administradores activos pueden editar</span>
+          )}
         </header>
         <p className="pd-nota-prototipo">Vista de demostración: los datos son simulados.</p>
         <section className="pd-tarjeta pd-mi-resumen" aria-label="Datos de mi perfil">

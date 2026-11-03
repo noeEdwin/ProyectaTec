@@ -80,6 +80,32 @@ class OrganizationProfileApiTest extends TestCase
         $this->getJson('/api/organizations/abc')->assertNotFound();
     }
 
+    public function test_authenticated_user_can_see_organization_edit_permissions(): void
+    {
+        $user = User::factory()->create();
+        $adminOrganization = $this->makeOrganization('Organización administrada');
+        $memberOrganization = $this->makeOrganization('Organización miembro');
+
+        $adminOrganization->memberships()->create([
+            'user_id' => $user->id,
+            'role' => 'admin',
+            'status' => 'active',
+        ]);
+        $memberOrganization->memberships()->create([
+            'user_id' => $user->id,
+            'role' => 'member',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/me/organizations')
+            ->assertOk()
+            ->assertJsonPath('organizations.0.can_update', true)
+            ->assertJsonPath('organizations.0.role', 'admin')
+            ->assertJsonPath('organizations.1.can_update', false)
+            ->assertJsonPath('organizations.1.role', 'member');
+    }
+
     public function test_guest_cannot_update_an_organization(): void
     {
         $organization = $this->makeOrganization();
@@ -204,10 +230,10 @@ class OrganizationProfileApiTest extends TestCase
             ->assertJsonValidationErrors('organization');
     }
 
-    private function makeOrganization(): Organization
+    private function makeOrganization(string $name = 'Organización original'): Organization
     {
         return Organization::create([
-            'name' => 'Organización original',
+            'name' => $name,
             'organization_type' => 'empresa',
         ]);
     }

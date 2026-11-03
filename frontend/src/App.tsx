@@ -14,7 +14,6 @@ import Acceso from './pages/acceso';
 import Perfil from './pages/Perfil';
 
 import MiPerfil from './pages/MiPerfil';
-import EditarPerfil from './pages/EditarPerfil';
 import PerfilPublico from './pages/perfilPublico';
 
 import './styles/App.css';
@@ -42,10 +41,6 @@ function App() {
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
-                <Route
-                  path="/editar-perfil"
-                  element={<EditarPerfil />}
-                />
               </Route>
             </Route>
           </Routes>
