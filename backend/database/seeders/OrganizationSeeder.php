@@ -12,7 +12,7 @@ class OrganizationSeeder extends Seeder
         $organizations = [
             [
                 'name' => 'Instituto Tecnológico de Oaxaca',
-                'organization_type' => 'Universidad',
+                'organization_type' => 'institucion_educativa',
                 'description' => 'Institución educativa superior enfocada en ingeniería y tecnología.',
                 'sector' => 'Educación',
                 'email' => 'vinculacion@itoaxaca.edu.mx',
@@ -21,7 +21,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'EcoOaxaca A.C.',
-                'organization_type' => 'ONG',
+                'organization_type' => 'sector_social',
                 'description' => 'Organización sin fines de lucro dedicada a la preservación del medio ambiente y manejo de residuos.',
                 'sector' => 'Medio Ambiente',
                 'email' => 'contacto@ecooaxaca.org',
@@ -30,7 +30,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'TechSolutions del Sur',
-                'organization_type' => 'Empresa',
+                'organization_type' => 'empresa',
                 'description' => 'Empresa de desarrollo de software y consultoría tecnológica.',
                 'sector' => 'Tecnología',
                 'email' => 'proyectos@techsolutions.com.mx',
@@ -39,7 +39,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'CIIDIR Unidad Oaxaca - IPN',
-                'organization_type' => 'Centro de Investigación',
+                'organization_type' => 'institucion_educativa',
                 'description' => 'Centro de investigación enfocado en el desarrollo regional y sustentabilidad.',
                 'sector' => 'Ciencia y Tecnología',
                 'email' => 'ciidir_oaxaca@ipn.mx',
@@ -48,7 +48,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'Clúster Tecnológico de Oaxaca',
-                'organization_type' => 'Asociación Civil',
+                'organization_type' => 'sector_social',
                 'description' => 'Red de empresas e instituciones dedicadas al impulso de la industria de software local.',
                 'sector' => 'Tecnología',
                 'email' => 'contacto@clustertech.oaxaca.gob.mx',
@@ -57,7 +57,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'Fundación Cultural Zaachila',
-                'organization_type' => 'ONG',
+                'organization_type' => 'sector_social',
                 'description' => 'Promoción de la historia, lenguas originarias y patrimonio cultural del valle central.',
                 'sector' => 'Cultura y Sociedad',
                 'email' => 'info@culturazaachila.org',
@@ -66,7 +66,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'AgroInnovación de los Valles',
-                'organization_type' => 'Empresa',
+                'organization_type' => 'empresa',
                 'description' => 'Startup agrotech enfocada en optimización de cultivos y automatización de riego.',
                 'sector' => 'Agricultura',
                 'email' => 'soporte@agrovalles.com',
@@ -75,7 +75,7 @@ class OrganizationSeeder extends Seeder
             ],
             [
                 'name' => 'Salud Comunitarias Oaxaca A.C.',
-                'organization_type' => 'ONG',
+                'organization_type' => 'sector_social',
                 'description' => 'Brigadas y brigadistas médicos para la atención primaria en comunidades de difícil acceso.',
                 'sector' => 'Salud Pública',
                 'email' => 'contacto@saludcomunitaria.org.mx',

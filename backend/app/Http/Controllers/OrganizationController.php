@@ -4,13 +4,58 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OrganizationController extends Controller
 {
+    private const ORGANIZATION_TYPES = ['empresa', 'institucion_educativa', 'sector_social'];
+
+    public function indexOwn(Request $request): JsonResponse
+    {
+        $organizations = $request->user()->organizations()
+            ->wherePivot('status', 'active')
+            ->get([
+                'organizations.id',
+                'organizations.name',
+                'organizations.description',
+                'organizations.location',
+                'organizations.logo_path',
+                'organizations.organization_type',
+                'organizations.sector',
+            ])
+            ->map(fn (Organization $organization) => [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'description' => $organization->description,
+                'location' => $organization->location,
+                'image' => $organization->logo_path,
+                'image_url' => OrganizationResource::logoUrl($organization->logo_path),
+                'classification' => trim(
+                    ($organization->organization_type ?? '').' - '.($organization->sector ?? '')
+                ),
+                'role' => $organization->pivot->role,
+                'status' => $organization->pivot->status,
+                'can_update' => $organization->pivot->role === 'admin'
+                    && $organization->pivot->status === 'active',
+                'membership' => [
+                    'role' => $organization->pivot->role,
+                    'status' => $organization->pivot->status,
+                    'joined_at' => $organization->pivot->joined_at === null
+                        ? null
+                        : Carbon::parse($organization->pivot->joined_at)->utc()->toISOString(),
+                ],
+            ]);
+
+        return response()->json(['organizations' => $organizations]);
+    }
+
     public function showPublic(Organization $organization): JsonResponse
     {
         return response()->json([
@@ -21,6 +66,7 @@ class OrganizationController extends Controller
                 'description' => $organization->description,
                 'location' => $organization->location,
                 'image' => $organization->logo_path,
+                'image_url' => OrganizationResource::logoUrl($organization->logo_path),
                 'classification' => trim(
                     ($organization->organization_type ?? '').' - '.
                     ($organization->sector ?? '')
@@ -29,12 +75,47 @@ class OrganizationController extends Controller
         ]);
     }
 
+    public function uploadLogo(Request $request, Organization $organization): JsonResponse
+    {
+        Gate::authorize('update', $organization);
+
+        $request->validate([
+            'logo' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:max_width=4096,max_height=4096'],
+        ]);
+
+        $path = $request->file('logo')->store('logos', 'public');
+
+        if ($path === false) {
+            return response()->json(['message' => 'No se pudo guardar el logotipo.'], 500);
+        }
+
+        try {
+            DB::transaction(function () use ($organization, $path) {
+                $organization->logo_path = $path;
+
+                if (! $organization->save()) {
+                    throw new \RuntimeException('No se pudo actualizar el logotipo de la organización.');
+                }
+            });
+        } catch (\Throwable $exception) {
+            try {
+                Storage::disk('public')->delete($path);
+            } catch (\Throwable $cleanupException) {
+                report($cleanupException);
+            }
+
+            throw $exception;
+        }
+
+        return response()->json(['organization' => new OrganizationResource($organization)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         // 1. Validamos los campos requeridos para entidades (Empresa, Institución, Social)
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'organization_type' => 'required|string|max:255',
+            'organization_type' => ['required', 'string', 'max:255', Rule::in(self::ORGANIZATION_TYPES)],
             'description' => 'nullable|string',
             'sector' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -65,7 +146,7 @@ class OrganizationController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'organization_type' => ['sometimes', 'required', 'string', 'max:255'],
+            'organization_type' => ['sometimes', 'required', 'string', 'max:255', Rule::in(self::ORGANIZATION_TYPES)],
             'description' => ['sometimes', 'nullable', 'string'],
             'sector' => ['sometimes', 'nullable', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],

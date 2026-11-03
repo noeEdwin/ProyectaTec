@@ -56,24 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     Route::patch('/me/profile', [ProfileController::class, 'update']);
-    Route::get('/me/organizations', function (Request $request) {
-        $organizations = $request->user()->organizations()->get()->map(
-            fn ($organization) => [
-                'id' => $organization->id,
-                'name' => $organization->name,
-                'organization_type' => $organization->organization_type,
-                'description' => $organization->description,
-                'sector' => $organization->sector,
-                'location' => $organization->location,
-                'role' => $organization->pivot->role,
-                'status' => $organization->pivot->status,
-                'can_update' => $organization->pivot->role === 'admin'
-                    && $organization->pivot->status === 'active',
-            ]
-        );
-
-        return response()->json(['organizations' => $organizations]);
-    });
+    Route::post('/me/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::get('/me/organizations', [OrganizationController::class, 'indexOwn']);
 
     // Rutas del perfil consumidas por el editor React
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -94,6 +78,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Editar una organización
     Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->whereNumber('organization');
+    Route::post('/organizations/{organization}/logo', [OrganizationController::class, 'uploadLogo'])
         ->whereNumber('organization');
 
     // Revisar solicitudes de participación

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileResource extends JsonResource
 {
@@ -20,6 +21,7 @@ class ProfileResource extends JsonResource
             'institution' => $this->institution,
             'field_of_study' => $this->field_of_study,
             'image' => $this->avatar_path,
+            'image_url' => $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null,
             'contact' => [
                 'phone' => $this->phone,
                 // Podemos extraer el email de la relación con User si está cargada
