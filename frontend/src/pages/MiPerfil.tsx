@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyOrganizations, getMyProfile } from '../api/profileService';
-import { obtenerTipoPerfil, rutaPerfil, usePerfil } from '../context/perfil-context';
+import { obtenerTipoPerfil, usePerfil } from '../context/perfil-context';
 import type { TipoPerfil } from '../context/perfil-context';
 import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
@@ -47,7 +47,7 @@ export default function MiPerfil() {
         });
       })
       .catch(() => {
-        // La vista conserva los datos de ejemplo si la API no está disponible.
+        // Conserva datos de ejemplo si la API no está disponible.
       });
 
     return () => {
@@ -81,11 +81,7 @@ export default function MiPerfil() {
           <div>
             <span className="pd-eyebrow">MI ESPACIO</span>
             <h1>Mi perfil</h1>
-            <p>Un espacio para gestionar tu información y colaboraciones.</p>
-            <nav className="pd-demo-selector" aria-label="Elegir tipo de perfil de demostración">
-              <Link aria-current={tipo === 'persona' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'persona')}>Persona</Link>
-              <Link aria-current={tipo === 'organizacion' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'organizacion')}>Organización</Link>
-            </nav>
+            <p>Gestiona tu información de acceso y colaboraciones en el sistema.</p>
           </div>
           {canEdit ? (
             <Link className="pd-boton-oscuro" to="/perfil">Editar perfil →</Link>
@@ -95,10 +91,12 @@ export default function MiPerfil() {
             </span>
           )}
         </header>
-        <p className="pd-nota-prototipo">Vista de demostración: los datos son simulados.</p>
+
         <section className="pd-tarjeta pd-mi-resumen" aria-label="Datos de mi perfil">
           <div className="pd-mi-identidad">
-            <div className="pd-avatar" aria-hidden="true">{perfil.image ? <img src={perfil.image} alt="" /> : inicialesPerfil(perfil.name)}</div>
+            <div className="pd-avatar" aria-hidden="true">
+              {perfil.image ? <img src={perfil.image} alt="" /> : inicialesPerfil(perfil.name)}
+            </div>
             <div className="pd-identidad-info">
               <h2>{perfil.name || 'Sin nombre registrado'}</h2>
               <p>{perfil.location || 'Ubicación no indicada'}</p>
@@ -111,7 +109,7 @@ export default function MiPerfil() {
           <div className="pd-mi-contacto">
             <span className="pd-mini-label">CONTACTO</span>
             <p>{perfil.contact.email || 'Sin correo de contacto'}</p>
-            <Link to={rutaPerfil('/perfil-publico', tipo)}>Ver perfil público ↗</Link>
+            <Link to="/perfil-publico">Ver perfil público ↗</Link>
           </div>
         </section>
 
@@ -119,13 +117,10 @@ export default function MiPerfil() {
           <div className="pd-columna-izquierda">
             <section className="pd-tarjeta pd-info">
               <h2>Acerca del perfil</h2>
-              <p>Espacio para presentar quién eres, qué haces y en qué iniciativas te interesa colaborar.</p>
-              <div className="pd-info-detalle"><span>{perfil.is_organization ? 'Sector o actividad' : 'Área de interés'}</span><strong>{perfil.classification || 'No indicado'}</strong></div>
-            </section>
-            <section className="pd-tarjeta pd-info">
-              <h2>Áreas de interés</h2>
-              <div className="pd-intereses">
-                {(perfil.is_organization ? ['Tecnología', 'Innovación', 'Colaboración'] : ['Ingeniería', 'Tecnología', 'Colaboración']).map((area) => <span key={area}>{area}</span>)}
+              <p>Información sincronizada directamente desde tu sesión activa.</p>
+              <div className="pd-info-detalle">
+                <span>{perfil.is_organization ? 'Sector o actividad' : 'Área de interés'}</span>
+                <strong>{perfil.classification || 'No indicado'}</strong>
               </div>
             </section>
           </div>
@@ -140,11 +135,12 @@ export default function MiPerfil() {
               )}
             </section>
             <section className="pd-tarjeta pd-actividad">
-              <div className="pd-fila-titulo"><h2>Actividad reciente</h2><span className="pd-enlace-falso">Datos de ejemplo</span></div>
+              <div className="pd-fila-titulo"><h2>Actividad reciente</h2><span className="pd-enlace-falso">Sesión activa</span></div>
               <div className="pd-actividad-items">{actividades.map((actividad, i) => <p key={actividad}><span className={i === 0 ? 'pd-punto-azul' : 'pd-punto-naranja'}>●</span>{actividad}</p>)}</div>
             </section>
           </div>
         </div>
+
         <footer className="pd-footer"><span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span><span>Privacidad · Ayuda</span></footer>
       </div>
     </div>

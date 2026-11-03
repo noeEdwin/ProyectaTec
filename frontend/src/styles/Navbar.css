@@ -186,3 +186,97 @@
     font-size: 12px;
   }
 }
+
+/* =========================================
+   Menú Desplegable del Usuario (Cuenta)
+   ========================================= */
+.user-dropdown-container {
+  position: relative;
+}
+
+.user-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.user-dropdown-btn:hover {
+  opacity: 0.8;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #EFF6F7; 
+  color: #0B4A54; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.user-dropdown-text {
+  font-size: 18px;
+  font-weight: 500;
+  color: #1A202C;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropdown-icon {
+  font-size: 12px;
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: 120%;
+  right: 0;
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  width: 180px;
+  padding: 8px 0;
+  z-index: 50;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-item {
+  padding: 10px 16px;
+  text-decoration: none;
+  color: #334155;
+  font-size: 15px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #F8FAFC;
+}
+
+.dropdown-divider {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid #F1F5F9;
+}
+
+.dropdown-item.danger {
+  color: #E53E3E;
+}
+
+.dropdown-item:disabled {
+  color: #94A3B8;
+  cursor: wait;
+}
