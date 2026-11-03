@@ -1,14 +1,23 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import PerfilResumen from '../components/perfiles/PerfilResumen';
-import { obtenerTipoPerfil } from '../context/perfil-context';
-import { usePerfil } from '../context/perfil-context';
+import { useState } from 'react';
+import { useAuth } from '../context/auth-context';
 import '../styles/perfil.css';
 
 export default function PerfilPublico() {
-  const [busqueda] = useSearchParams();
-  const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
-  const { perfiles } = usePerfil();
-  const perfil = perfiles[tipo];
+  const { user } = useAuth();
+  const [mostrarContacto, setMostrarContacto] = useState(false);
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'US';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const nombreReal = user?.name || 'Usuario ProyectaTec';
+  const correoReal = user?.email || 'Sin correo registrado';
+  const tipoCuentaReal = user?.account_type === 'organizacion' ? 'Organización' : 'Persona / Estudiante';
 
   return (
     <div className="perfil-page">
@@ -17,29 +26,91 @@ export default function PerfilPublico() {
           <div className="perfil-encabezado">
             <span className="perfil-etiqueta">PROYECTATEC / PERFIL PÚBLICO</span>
             <h1>Perfil público</h1>
-            <p>Así se presenta tu cuenta a otras personas del ecosistema.</p>
+            <p>Así se presenta tu cuenta real al resto del ecosistema.</p>
           </div>
-          <PerfilResumen key={perfil.id} perfil={perfil} />
+
+          {/* Tarjeta resumen del perfil */}
+          <section className="perfil-resumen-card" style={{ padding: '2rem', background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600 }}>
+                {getInitials(nombreReal)}
+              </div>
+              <div>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', marginBottom: '4px' }}>{nombreReal}</h2>
+                <p style={{ color: '#4A5568', fontSize: '15px', marginBottom: '8px' }}>Oaxaca, México</p>
+                <span style={{ display: 'inline-block', padding: '4px 12px', background: '#EDF2F7', color: '#2D3748', borderRadius: '999px', fontSize: '13px', fontWeight: 500 }}>
+                  {tipoCuentaReal}
+                </span>
+              </div>
+            </div>
+
+            {/* BOTÓN DE CONTACTAR CON INFORMACIÓN FLOTANTE */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarContacto(!mostrarContacto)}
+                style={{
+                  background: '#0B4A54',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s ease',
+                }}
+              >
+                {mostrarContacto ? 'Ocultar contacto' : 'Contactar'}
+              </button>
+
+              {/* Ventana flotante (Popover) */}
+              {mostrarContacto && (
+                <div style={{
+                  position: 'absolute',
+                  top: '120%',
+                  right: 0,
+                  width: '260px',
+                  background: '#ffffff',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid #E2E8F0',
+                  padding: '16px',
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CORREO DE CONTACTO</span>
+                  <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoReal}</p>
+                  <a
+                    href={`mailto:${correoReal}`}
+                    style={{
+                      display: 'block',
+                      marginTop: '6px',
+                      textAlign: 'center',
+                      background: '#F1F5F9',
+                      color: '#0B4A54',
+                      padding: '8px',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Enviar correo ↗
+                  </a>
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="perfil-iniciativas">
             <h2>Iniciativas públicas</h2>
-            {perfil.initiatives.length === 0 ? (
-              <p className="perfil-sin-iniciativas">Todavía no hay iniciativas públicas disponibles.</p>
-            ) : (
-              <ul className="perfil-lista-iniciativas">
-                {perfil.initiatives.map((item) => (
-                  <li key={item.id} className="perfil-iniciativa">
-                    <div className="perfil-iniciativa-info">
-                      <h3>{item.titulo}</h3>
-                      <p>{item.categoria} · {item.sector}</p>
-                    </div>
-                    <span className="perfil-estado">{item.estado}</span>
-                    <Link className="perfil-ver-proyecto" to={`/iniciativas?q=${encodeURIComponent(item.titulo)}`}>Ver proyecto →</Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p className="perfil-sin-iniciativas">Tu cuenta está lista para colaborar en proyectos del Tecnológico de Oaxaca.</p>
           </section>
         </div>
+
         <footer className="perfil-footer">
           <span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span>
           <span>Ayuda y privacidad</span>

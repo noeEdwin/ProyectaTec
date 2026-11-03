@@ -1,16 +1,29 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { obtenerTipoPerfil, rutaPerfil, usePerfil } from '../context/perfil-context';
-import { inicialesPerfil } from '../utils/perfil';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/auth-context';
 import '../styles/perfilEspacio.css';
 
 export default function MiPerfil() {
-  const [busqueda] = useSearchParams();
-  const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
-  const { perfiles } = usePerfil();
-  const perfil = perfiles[tipo];
-  const actividades = tipo === 'organizacion'
-    ? ['Actualización de una iniciativa', 'Nueva solicitud de colaboración']
-    : ['Participación en una iniciativa', 'Nueva actividad de colaboración'];
+  const { user } = useAuth();
+  
+  const getInitials = (name?: string) => {
+    if (!name) return 'US';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Datos reales del usuario o valores por defecto si está cargando
+  const nombreReal = user?.name || 'Usuario ProyectaTec';
+  const correoReal = user?.email || 'correo@itoaxaca.edu.mx';
+  // Mapeamos el account_type del backend a un texto legible para la UI
+  const tipoCuentaReal = user?.account_type === 'organizacion' ? 'Organización' : 'Persona / Estudiante';
+
+  const actividades = [
+    'Inicio de sesión registrado correctamente',
+    'Sincronización con el ecosistema ProyectaTec'
+  ];
 
   return (
     <div className="pd-pagina">
@@ -19,31 +32,31 @@ export default function MiPerfil() {
           <div>
             <span className="pd-eyebrow">MI ESPACIO</span>
             <h1>Mi perfil</h1>
-            <p>Un espacio para gestionar tu información y colaboraciones.</p>
-            <nav className="pd-demo-selector" aria-label="Elegir tipo de perfil de demostración">
-              <Link aria-current={tipo === 'persona' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'persona')}>Persona</Link>
-              <Link aria-current={tipo === 'organizacion' ? 'page' : undefined} to={rutaPerfil('/mi-perfil', 'organizacion')}>Organización</Link>
-            </nav>
+            <p>Gestiona tu información de acceso y colaboraciones en el sistema.</p>
           </div>
-          <Link className="pd-boton-oscuro" to={rutaPerfil('/editar-perfil', tipo)}>Editar perfil →</Link>
+          <Link className="pd-boton-oscuro" to="/editar-perfil">Editar perfil →</Link>
         </header>
-        <p className="pd-nota-prototipo">Vista de demostración: los datos son simulados.</p>
+
         <section className="pd-tarjeta pd-mi-resumen" aria-label="Datos de mi perfil">
           <div className="pd-mi-identidad">
-            <div className="pd-avatar" aria-hidden="true">{perfil.image ? <img src={perfil.image} alt="" /> : inicialesPerfil(perfil.name)}</div>
+            <div className="pd-avatar" aria-hidden="true">
+              {getInitials(nombreReal)}
+            </div>
             <div className="pd-identidad-info">
-              <h2>{perfil.name || 'Sin nombre registrado'}</h2>
-              <p>{perfil.location || 'Ubicación no indicada'}</p>
+              <h2>{nombreReal}</h2>
+              <p>Oaxaca, México</p>
               <div className="pd-identidad-meta">
-                <span className="pd-chip">{perfil.is_organization ? 'Organización' : 'Persona'}</span>
-                <span className="pd-identidad-descripcion">{perfil.description || 'Sin descripción registrada.'}</span>
+                <span className="pd-chip">{tipoCuentaReal}</span>
+                <span className="pd-identidad-descripcion">
+                  Cuenta verificada mediante autenticación segura de Laravel Sanctum.
+                </span>
               </div>
             </div>
           </div>
           <div className="pd-mi-contacto">
-            <span className="pd-mini-label">CONTACTO</span>
-            <p>{perfil.contact.email || 'Sin correo de contacto'}</p>
-            <Link to={rutaPerfil('/perfil-publico', tipo)}>Ver perfil público ↗</Link>
+            <span className="pd-mini-label">CORREO DE ACCESO</span>
+            <p>{correoReal}</p>
+            <Link to="/perfil-publico">Ver perfil público ↗</Link>
           </div>
         </section>
 
@@ -51,33 +64,35 @@ export default function MiPerfil() {
           <div className="pd-columna-izquierda">
             <section className="pd-tarjeta pd-info">
               <h2>Acerca del perfil</h2>
-              <p>Espacio para presentar quién eres, qué haces y en qué iniciativas te interesa colaborar.</p>
-              <div className="pd-info-detalle"><span>{perfil.is_organization ? 'Sector o actividad' : 'Área de interés'}</span><strong>{perfil.classification || 'No indicado'}</strong></div>
-            </section>
-            <section className="pd-tarjeta pd-info">
-              <h2>Áreas de interés</h2>
-              <div className="pd-intereses">
-                {(perfil.is_organization ? ['Tecnología', 'Innovación', 'Colaboración'] : ['Ingeniería', 'Tecnología', 'Colaboración']).map((area) => <span key={area}>{area}</span>)}
+              <p>Información sincronizada directamente desde tu sesión activa en el servidor.</p>
+              <div className="pd-info-detalle">
+                <span>Tipo en Base de Datos</span>
+                <strong>{user?.account_type || 'No especificado'}</strong>
               </div>
             </section>
           </div>
           <div className="pd-columna-derecha">
-            <section className="pd-tarjeta pd-iniciativas">
-              <div className="pd-fila-titulo"><h2>Mis iniciativas</h2><Link to="/iniciativas">Explorar iniciativas →</Link></div>
-              {perfil.initiatives.length === 0 ? <p className="pd-vacio">Aún no hay iniciativas vinculadas a este perfil.</p> : (
-                <ul>{perfil.initiatives.map((item) => <li key={item.id}>
-                  <div><h3>{item.titulo}</h3><p>{item.categoria} · {item.sector}</p></div>
-                  <span>{item.estado === 'En curso' ? '● ' : '• '}{item.estado}</span>
-                </li>)}</ul>
-              )}
-            </section>
             <section className="pd-tarjeta pd-actividad">
-              <div className="pd-fila-titulo"><h2>Actividad reciente</h2><span className="pd-enlace-falso">Datos de ejemplo</span></div>
-              <div className="pd-actividad-items">{actividades.map((actividad, i) => <p key={actividad}><span className={i === 0 ? 'pd-punto-azul' : 'pd-punto-naranja'}>●</span>{actividad}</p>)}</div>
+              <div className="pd-fila-titulo">
+                <h2>Actividad reciente</h2>
+                <span className="pd-enlace-falso">Sesión activa</span>
+              </div>
+              <div className="pd-actividad-items">
+                {actividades.map((actividad, i) => (
+                  <p key={actividad}>
+                    <span className={i === 0 ? 'pd-punto-azul' : 'pd-punto-naranja'}>●</span>
+                    {actividad}
+                  </p>
+                ))}
+              </div>
             </section>
           </div>
         </div>
-        <footer className="pd-footer"><span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span><span>Privacidad · Ayuda</span></footer>
+
+        <footer className="pd-footer">
+          <span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span>
+          <span>Privacidad · Ayuda</span>
+        </footer>
       </div>
     </div>
   );

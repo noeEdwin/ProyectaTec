@@ -7,6 +7,7 @@ import type { AuthUser, LoginCredentials, RegistrationData } from './auth-contex
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('token')));
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Estado de bloqueo
 
   useEffect(() => {
     if (!localStorage.getItem('token')) return;
@@ -39,16 +40,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    setIsLoggingOut(true); // Bloquea interacciones inmediatamente
     try {
       await api.post('/logout');
+    } catch (error) {
+      console.error('Error al notificar al backend del cierre', error);
     } finally {
       localStorage.removeItem('token');
       setUser(null);
+      setIsLoggingOut(false); // Libera el bloqueo
+      window.location.href = '/acceso'; // Redirección fuerte para limpiar estado
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login: (data) => authenticate('/login', data), register: (data) => authenticate('/register', data), logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      isLoggingOut, 
+      login: (data) => authenticate('/login', data), 
+      register: (data) => authenticate('/register', data), 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );
