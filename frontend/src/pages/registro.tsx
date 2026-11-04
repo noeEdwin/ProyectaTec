@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
+import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -71,12 +72,10 @@ export default function Registro({ onRegister }: RegistroProps) {
 
     if (!correoLimpio) {
       nuevosErrores.email = 'Ingresa tu correo electrónico.';
-    } else if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoLimpio)
-    ) {
-      nuevosErrores.email = 'Ingresa un correo electrónico válido.';
     } else if (correoLimpio.length > 255) {
       nuevosErrores.email = 'El correo es demasiado largo.';
+    } else if (!correoValido(correoLimpio)) {
+      nuevosErrores.email = 'Ingresa un correo electrónico válido.';
     }
 
     if (!password) {
@@ -124,7 +123,7 @@ export default function Registro({ onRegister }: RegistroProps) {
         const apiErrors = err.response.data.errors;
         setErrores({
           name: apiErrors.name ? apiErrors.name[0] : undefined,
-          email: apiErrors.email ? apiErrors.email[0] : undefined,
+          email: traducirErrorCorreo(apiErrors.email?.[0]),
           password: apiErrors.password ? apiErrors.password[0] : undefined,
           account_type: apiErrors.account_type ? apiErrors.account_type[0] : undefined,
           password_confirmation: apiErrors.password_confirmation ? apiErrors.password_confirmation[0] : undefined,

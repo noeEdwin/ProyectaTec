@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -127,41 +128,62 @@ class ProfileController extends Controller
         return response()->json(['profile' => new ProfileResource($profile->load('user'))]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request): JsonResponse
     {
         $user = $request->user(); // Usuario autenticado
 
         // 1. Validar los datos entrantes
         $validated = $request->validate([
-            'display_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'description' => 'nullable|string|max:1000',
-            'location' => 'nullable|string|max:255',
-            'account_type' => 'nullable|string|max:255',
-            // otros campos según corresponda...
+            'display_name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+            ],
+            'account_type' => [
+                'required',
+                'string',
+                Rule::in([
+                    'empresa',
+                    'institucion_educativa',
+                    'sector_social',
+                    'estudiante',
+                    'docente',
+                ]),
+            ],
+            'description' => ['nullable', 'string', 'max:500'],
+            'phone' => ['nullable', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'institution' => ['nullable', 'string', 'max:255'],
+            'field_of_study' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // 2. Actualizar los datos de la tabla USERS (correo, nombre, etc.)
-        $user->update([
-            'name' => $validated['display_name'], // o el campo de nombre que usen en users
-            'email' => $validated['email'],
-        ]);
+        DB::transaction(function () use ($user, $validated) {
+            // 2. Actualizar la tabla USERS (nombre, correo y tipo de cuenta).
+            //    Se asignan directo para no depender del $fillable de User.
+            $user->name = $validated['display_name'];
+            $user->email = $validated['email'];
+            $user->account_type = $validated['account_type'];
+            $user->save();
 
-        // 3. Actualizar o crear los datos en la tabla PROFILES
-        $user->profile()->updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'display_name' => $validated['display_name'],
-                'description' => $validated['description'] ?? null,
-                'location' => $validated['location'] ?? null,
-                'account_type' => $validated['account_type'] ?? null,
-                // Agrega aquí los demás campos específicos de profiles
-            ]
-        );
+            // 3. Actualizar o crear los datos en la tabla PROFILES
+            $user->profile()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'display_name' => $validated['display_name'],
+                    'description' => $validated['description'] ?? null,
+                    'phone' => $validated['phone'] ?? null,
+                    'location' => $validated['location'] ?? null,
+                    'institution' => $validated['institution'] ?? null,
+                    'field_of_study' => $validated['field_of_study'] ?? null,
+                ]
+            );
+        });
 
         return response()->json([
             'message' => 'Perfil y datos de usuario actualizados correctamente',
-            'user' => $user->load('profile')
+            'user' => $user->load('profile'),
         ]);
     }
 }
