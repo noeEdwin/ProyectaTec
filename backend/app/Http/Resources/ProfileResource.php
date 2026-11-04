@@ -22,6 +22,9 @@ class ProfileResource extends JsonResource
             'field_of_study' => $this->field_of_study,
             'image' => $this->avatar_path,
             'image_url' => $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null,
+            // Datos que viven en la tabla users (si la relación está cargada)
+            'email' => $this->whenLoaded('user', fn () => $this->user->email),
+            'account_type' => $this->whenLoaded('user', fn () => $this->user->account_type),
             'contact' => [
                 'phone' => $this->phone,
                 // Podemos extraer el email de la relación con User si está cargada

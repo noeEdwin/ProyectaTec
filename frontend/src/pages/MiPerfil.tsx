@@ -6,6 +6,25 @@ import { obtenerTipoPerfil } from '../context/perfil-context';
 import { useAuth } from '../context/auth-context';
 import '../styles/perfilEspacio.css';
 
+// Etiquetas legibles para cada tipo de cuenta (incluye el valor antiguo 'empresa/MIPYME')
+const ETIQUETAS_TIPO_CUENTA: Record<string, string> = {
+  empresa: 'Empresa / MIPYME',
+  'empresa/MIPYME': 'Empresa / MIPYME',
+  institucion_educativa: 'Institución educativa',
+  sector_social: 'Comunidad / sector social',
+  estudiante: 'Estudiante',
+  docente: 'Docente / asesor',
+};
+
+// Las áreas de interés se guardan en field_of_study separadas por coma
+function separarAreas(valor?: string | null): string[] {
+  if (!valor) return [];
+  return valor
+    .split(',')
+    .map((area) => area.trim())
+    .filter(Boolean);
+}
+
 export default function MiPerfil() {
   const [busqueda] = useSearchParams();
   const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
@@ -75,6 +94,12 @@ export default function MiPerfil() {
 
   const canEdit = tipo !== 'organizacion';
 
+  // Se conserva el ?tipo= al ir a Editar perfil para poder regresar a la misma vista
+  const tipoParam = busqueda.get('tipo');
+  const rutaEditar = tipoParam
+    ? `/perfil?tipo=${encodeURIComponent(tipoParam)}`
+    : '/perfil';
+
   // Si está cargando
   if (cargando) {
     return (
@@ -101,11 +126,17 @@ export default function MiPerfil() {
   const nombreUsuario = perfilReal?.display_name || user?.name || 'Sin nombre registrado';
   const ubicacionUsuario = perfilReal?.location || 'Ubicación no indicada';
   const descripcionUsuario = perfilReal?.description || 'Sin descripción registrada.';
-  const correoUsuario = perfilReal?.email || user?.email || 'Sin correo de contacto';
-  const tipoCuentaBD = perfilReal?.account_type || user?.account_type || 'No especificado';
-  const clasificacionUsuario = [perfilReal?.institution, perfilReal?.field_of_study]
-    .filter(Boolean)
-    .join(' · ') || 'No indicado';
+
+  // Se prioriza el correo que viene del perfil (el que se guarda al editar).
+  // Solo si el perfil no lo trae se usa el de la sesión, que puede estar desactualizado.
+  const correoReal = (perfilReal?.email || user?.email || '').trim();
+  const correoUsuario = correoReal || 'Sin correo de contacto';
+
+  const tipoCuentaBD = perfilReal?.account_type || user?.account_type || '';
+  const tipoCuentaEtiqueta = ETIQUETAS_TIPO_CUENTA[tipoCuentaBD] || tipoCuentaBD || 'No especificado';
+
+  const institucionUsuario = perfilReal?.institution?.trim() || '';
+  const areasInteres = separarAreas(perfilReal?.field_of_study);
 
   return (
     <div className="pd-pagina">
@@ -117,7 +148,7 @@ export default function MiPerfil() {
             <p>Un espacio para gestionar tu información y colaboraciones.</p>
           </div>
           {canEdit ? (
-            <Link className="pd-boton-oscuro" to="/perfil">Editar perfil →</Link>
+            <Link className="pd-boton-oscuro" to={rutaEditar}>Editar perfil →</Link>
           ) : (
             <span className="pd-boton-deshabilitado" role="status">
               {canEditOrganization ? 'Administrador activo: edición de organización disponible' : 'Sin permisos para editar esta organización'}
@@ -134,14 +165,22 @@ export default function MiPerfil() {
               <h2>{nombreUsuario}</h2>
               <p>{ubicacionUsuario}</p>
               <div className="pd-identidad-meta">
-                <span className="pd-chip" style={{ textTransform: 'capitalize' }}>{tipoCuentaBD.replace('_', ' ')}</span>
+                <span className="pd-chip">{tipoCuentaEtiqueta}</span>
                 <span className="pd-identidad-descripcion">{descripcionUsuario}</span>
               </div>
             </div>
           </div>
           <div className="pd-mi-contacto">
             <span className="pd-mini-label">CONTACTO</span>
-            <p>{correoUsuario}</p>
+            {correoReal ? (
+              <p>
+                <a href={`mailto:${correoReal}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                  {correoUsuario}
+                </a>
+              </p>
+            ) : (
+              <p>{correoUsuario}</p>
+            )}
             <Link to="/perfil-publico">Ver perfil público ↗</Link>
           </div>
         </section>
@@ -151,17 +190,23 @@ export default function MiPerfil() {
             <section className="pd-tarjeta pd-info">
               <h2>Acerca del perfil</h2>
               <p>{descripcionUsuario}</p>
-              <div className="pd-info-detalle">
-                <span>{tipo === 'organizacion' ? 'Sector o actividad' : 'Área de interés'}</span>
-                <strong>{clasificacionUsuario}</strong>
-              </div>
+              {institucionUsuario && (
+                <div className="pd-info-detalle">
+                  <span>Institución</span>
+                  <strong>{institucionUsuario}</strong>
+                </div>
+              )}
             </section>
-            
+
             <section className="pd-tarjeta pd-info">
               <h2>Áreas de interés</h2>
               <div className="pd-intereses">
-                {clasificacionUsuario !== 'No indicado' ? (
-                  <span>{clasificacionUsuario}</span>
+                {areasInteres.length > 0 ? (
+                  areasInteres.map((area) => (
+                    <span key={area} style={{ background: '#EDF5F6', color: '#0f172a' }}>
+                      {area}
+                    </span>
+                  ))
                 ) : (
                   <span style={{ color: '#64748b', fontStyle: 'italic' }}>No indicado</span>
                 )}
