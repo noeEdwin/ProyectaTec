@@ -71,11 +71,10 @@ export default function Perfil() {
         location: data.location || '',
         institution: data.institution || '',
         field_of_study: data.field_of_study || '',
-        account_type: data.account_type || user?.account_type || 'Empresa, institución educativa o sector social',
+        account_type: data.account_type || user?.account_type || '',
         email: data.email || user?.email || '',
       });
     } catch (error: unknown) {
-      // Si el perfil no existe en PostgreSQL (404), inicializamos el formulario como perfil nuevo
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setProfile({
           display_name: user?.name || '',
@@ -84,10 +83,10 @@ export default function Perfil() {
           location: '',
           institution: '',
           field_of_study: '',
-          account_type: user?.account_type || 'Empresa, institución educativa o sector social',
-         email: user?.email || '',
+          account_type: user?.account_type || '',
+          email: user?.email || '',
         });
-        setErrorMessage(null); // No mostramos error porque es un usuario nuevo
+        setErrorMessage(null);
       } else {
         handleApiError(error);
       }
@@ -119,9 +118,11 @@ export default function Perfil() {
         location: profile.location,
         institution: profile.institution,
         field_of_study: profile.field_of_study,
+        account_type: profile.account_type,
+        email: profile.email,
       });
       if (res) {
-        setSuccessMessage('¡Perfil guardado exitosamente!');
+        setSuccessMessage('¡Perfil y datos de usuario guardados exitosamente en la base de datos!');
       }
     } catch (error: unknown) {
       handleApiError(error);
@@ -141,11 +142,11 @@ export default function Perfil() {
   return (
     <div style={{ maxWidth: '1140px', margin: '2.5rem auto', padding: '0 1.5rem', fontFamily: 'system-ui, sans-serif' }}>
       
-      {/* Encabezado e Identidad ProyectaTec */}
+      {/* Encabezado con el tono naranja institucional exacto */}
       <div style={{ marginBottom: '2.5rem' }}>
         <div style={{
           display: 'inline-block',
-          borderBottom: '3px solid #f59e0b',
+          borderBottom: '3px solid #d97706',
           paddingBottom: '2px',
           marginBottom: '0.75rem'
         }}>
@@ -188,7 +189,7 @@ export default function Perfil() {
         </div>
       )}
 
-      {/* Grid de 2 Columnas (Figma Layout) */}
+      {/* Grid de 2 Columnas */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', alignItems: 'start' }}>
         
         {/* Tarjeta Izquierda: Formulario */}
@@ -214,7 +215,7 @@ export default function Perfil() {
                 type="text"
                 value={profile.display_name}
                 onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
-                placeholder="Centro de Innovación Oaxaca"
+                placeholder="Ingresa tu nombre o razón social"
                 required
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
@@ -229,22 +230,33 @@ export default function Perfil() {
               )}
             </div>
 
-            {/* Tipo de cuenta */}
+            {/* Tipo de cuenta (Select desplegable interactivo) */}
             <div>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
                 Tipo de cuenta
               </label>
-              <input
-                type="text"
+              <select
                 value={profile.account_type || ''}
                 onChange={(e) => setProfile({ ...profile, account_type: e.target.value })}
-                placeholder="Empresa, institución educativa o sector social"
+                required
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
                   border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none',
-                  boxSizing: 'border-box'
+                  backgroundColor: '#ffffff', boxSizing: 'border-box', cursor: 'pointer'
                 }}
-              />
+              >
+                <option value="" disabled>Selecciona un tipo de cuenta</option>
+                <option value="docente">Docente</option>
+                <option value="estudiante">Estudiante</option>
+                <option value="institucion_educativa">Institución educativa</option>
+                <option value="empresa_pyme">Empresa/PyME</option>
+                <option value="sector_social">Sector social</option>
+              </select>
+              {validationErrors.account_type && (
+                <span style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  {validationErrors.account_type[0]}
+                </span>
+              )}
             </div>
 
             {/* Correo de contacto */}
@@ -257,12 +269,18 @@ export default function Perfil() {
                 value={profile.email || ''}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                 placeholder="contacto@ejemplo.com"
+                required
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
                   border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none',
                   boxSizing: 'border-box'
                 }}
               />
+              {validationErrors.email && (
+                <span style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  {validationErrors.email[0]}
+                </span>
+              )}
             </div>
 
             {/* Descripción breve */}
@@ -292,7 +310,7 @@ export default function Perfil() {
                 type="text"
                 value={profile.location || ''}
                 onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                placeholder="Oaxaca, México"
+                placeholder="Agrega una ubicación"
                 maxLength={255}
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
@@ -302,7 +320,7 @@ export default function Perfil() {
               />
             </div>
 
-            {/* Botones */}
+            {/* Botones de acción */}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
               <button
                 type="submit"
@@ -330,7 +348,7 @@ export default function Perfil() {
                   borderRadius: '999px',
                   background: '#f1f5f9',
                   color: '#475569',
-                  fontWeight: 600,
+                  fontWeight: '600',
                   fontSize: '14px',
                   border: 'none',
                   cursor: 'pointer'
@@ -343,7 +361,7 @@ export default function Perfil() {
           </form>
         </div>
 
-        {/* Tarjeta Derecha: Vista pública */}
+        {/* Tarjeta Derecha: Vista pública corregida a /perfil-publico */}
         <div style={{
           background: '#ffffff',
           borderRadius: '16px',
@@ -360,7 +378,7 @@ export default function Perfil() {
 
           <button
             type="button"
-            onClick={() => navigate('/catalogo')}
+            onClick={() => navigate('/perfil-publico')}
             style={{
               width: '100%',
               padding: '0.75rem 1.5rem',

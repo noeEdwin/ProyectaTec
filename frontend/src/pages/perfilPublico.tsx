@@ -1,23 +1,74 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getMyProfile, type UserProfile } from '../api/profileService';
 import { useAuth } from '../context/auth-context';
 import '../styles/perfil.css';
 
 export default function PerfilPublico() {
   const { user } = useAuth();
+  const [perfilReal, setPerfilReal] = useState<UserProfile | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [mostrarContacto, setMostrarContacto] = useState(false);
+
+  // Cargar datos reales desde la base de datos mediante /api/me/profile
+  useEffect(() => {
+    let activo = true;
+    setCargando(true);
+    setErrorCarga(false);
+
+    void getMyProfile()
+      .then((data) => {
+        if (!activo) return;
+        setPerfilReal(data);
+      })
+      .catch(() => {
+        if (!activo) return;
+        setErrorCarga(true);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const getInitials = (name?: string) => {
     if (!name) return 'US';
-    const words = name.trim().split(' ');
+    const words = name.trim().split(/\s+/);
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
   };
 
-  const nombreReal = user?.name || 'Usuario ProyectaTec';
-  const correoReal = user?.email || 'Sin correo registrado';
-  const tipoCuentaReal = user?.account_type === 'organizacion' ? 'Organización' : 'Persona / Estudiante';
+  // Si está cargando
+  if (cargando) {
+    return (
+      <div className="perfil-page">
+        <div className="perfil-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <p style={{ color: '#6b7280', fontSize: '15px' }}>Cargando información del perfil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si ocurre un error al conectar con la API
+  if (errorCarga) {
+    return (
+      <div className="perfil-page">
+        <div className="perfil-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
+          <p style={{ color: '#b91c1c', fontSize: '15px' }} role="alert">No se pudo conectar con el servidor para obtener el perfil.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const nombreReal = perfilReal?.display_name || user?.name || 'Usuario ProyectaTec';
+  const correoReal = perfilReal?.email || user?.email || 'Sin correo registrado';
+  const ubicacionReal = perfilReal?.location || 'Ubicación no indicada';
+  const descripcionReal = perfilReal?.description || '';
 
   return (
     <div className="perfil-page">
@@ -29,18 +80,20 @@ export default function PerfilPublico() {
             <p>Así se presenta tu cuenta real al resto del ecosistema.</p>
           </div>
 
-          {/* Tarjeta resumen del perfil */}
+          {/* Tarjeta resumen del perfil con nombre, ubicación y descripción */}
           <section className="perfil-resumen-card" style={{ padding: '2rem', background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600 }}>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600, flexShrink: 0 }}>
                 {getInitials(nombreReal)}
               </div>
-              <div>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', marginBottom: '4px' }}>{nombreReal}</h2>
-                <p style={{ color: '#4A5568', fontSize: '15px', marginBottom: '8px' }}>Oaxaca, México</p>
-                <span style={{ display: 'inline-block', padding: '4px 12px', background: '#EDF2F7', color: '#2D3748', borderRadius: '999px', fontSize: '13px', fontWeight: 500 }}>
-                  {tipoCuentaReal}
-                </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', margin: 0 }}>{nombreReal}</h2>
+                <p style={{ color: '#4A5568', fontSize: '15px', margin: 0 }}>{ubicacionReal}</p>
+                {descripcionReal && (
+                  <p style={{ color: '#4A5568', fontSize: '14px', margin: '4px 0 0 0', lineHeight: '1.4' }}>
+                    {descripcionReal}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -53,8 +106,8 @@ export default function PerfilPublico() {
                   background: '#0B4A54',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  borderRadius: '999px',
                   fontSize: '14px',
                   fontWeight: 600,
                   cursor: 'pointer',
