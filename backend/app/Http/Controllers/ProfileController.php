@@ -127,26 +127,41 @@ class ProfileController extends Controller
         return response()->json(['profile' => new ProfileResource($profile->load('user'))]);
     }
 
-    public function update(Request $request): JsonResponse
+    public function update(Request $request)
     {
+        $user = $request->user(); // Usuario autenticado
+
+        // 1. Validar los datos entrantes
         $validated = $request->validate([
             'display_name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'phone' => 'nullable|string|max:20',
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'description' => 'nullable|string|max:1000',
             'location' => 'nullable|string|max:255',
-            'institution' => 'nullable|string|max:255',
-            'field_of_study' => 'nullable|string|max:255',
+            'account_type' => 'nullable|string|max:255',
+            // otros campos según corresponda...
         ]);
 
-        $profile = Profile::updateOrCreate(
-            ['user_id' => $request->user()->id],
-            $validated
-        )->load('user');
+        // 2. Actualizar los datos de la tabla USERS (correo, nombre, etc.)
+        $user->update([
+            'name' => $validated['display_name'], // o el campo de nombre que usen en users
+            'email' => $validated['email'],
+        ]);
+
+        // 3. Actualizar o crear los datos en la tabla PROFILES
+        $user->profile()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'display_name' => $validated['display_name'],
+                'description' => $validated['description'] ?? null,
+                'location' => $validated['location'] ?? null,
+                'account_type' => $validated['account_type'] ?? null,
+                // Agrega aquí los demás campos específicos de profiles
+            ]
+        );
 
         return response()->json([
-            'message' => 'Perfil guardado exitosamente',
-            'data' => new ProfileResource($profile),
-            'profile' => new ProfileResource($profile),
+            'message' => 'Perfil y datos de usuario actualizados correctamente',
+            'user' => $user->load('profile')
         ]);
     }
 }
