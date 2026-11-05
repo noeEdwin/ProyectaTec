@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProjectController;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -21,6 +22,8 @@ Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
 // Consultar información pública de una organización
 Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic'])
     ->whereNumber('organization');
+Route::get('/projects', [ProjectController::class, 'index']);
+Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumber('project');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::latest()->first();
@@ -53,6 +56,7 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/projects', [ProjectController::class, 'store']);
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     Route::patch('/me/profile', [ProfileController::class, 'update']);
