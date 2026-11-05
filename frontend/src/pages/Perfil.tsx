@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { getMyProfile, getOrganizationCatalog, updateMyProfile, type OrganizationCatalogItem, type UserProfile } from '../api/profileService';
 import { useAuth } from '../context/auth-context';
+import { traducirErrorCorreo } from '../utils/Correo';
 
 type ApiErrorResponse = {
   message?: string;
@@ -84,7 +85,10 @@ export default function Perfil() {
         setErrorMessage('El perfil solicitado no fue encontrado.');
         break;
       case 422:
-        setValidationErrors(data?.errors || {});
+        setValidationErrors({
+          ...data?.errors,
+          ...(data?.errors?.email ? { email: [traducirErrorCorreo(data.errors.email[0]) || data.errors.email[0]] } : {}),
+        });
         setErrorMessage('Por favor corrige los campos indicados.');
         break;
       default:
@@ -166,6 +170,7 @@ export default function Perfil() {
     try {
       const res = await updateMyProfile({
         display_name: profile.display_name,
+        email: profile.email,
         account_type: profile.account_type,
         description: profile.description,
         phone: profile.phone,
@@ -350,6 +355,12 @@ export default function Perfil() {
               </p>
             )}
 
+            {profile.affiliation_status === 'rejected' && (
+              <p role="status" style={{ background: '#fef2f2', color: '#991b1b', padding: '0.875rem 1rem', borderRadius: '10px' }}>
+                Solicitud rechazada: {profile.affiliation_rejection_reason || 'Consulta a ProyectaTec el motivo'}. Puedes corregir los datos y volver a solicitar revisión.
+              </p>
+            )}
+
             <fieldset style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
               <legend style={{ fontWeight: 600, padding: '0 0.4rem' }}>Privacidad</legend>
               <p style={{ color: '#64748b', fontSize: '13px' }}>Elige qué datos quieres mostrar. La matrícula siempre es privada; el correo y el teléfono solo se publican si los marcas.</p>
@@ -387,7 +398,10 @@ export default function Perfil() {
                 id="profile-email"
                 type="email"
                 value={profile.email || ''}
-                readOnly
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                required
+                maxLength={255}
+                aria-invalid={Boolean(validationErrors.email)}
                 placeholder="contacto@ejemplo.com"
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
@@ -395,6 +409,7 @@ export default function Perfil() {
                   boxSizing: 'border-box'
                 }}
               />
+              {validationErrors.email && <span style={{ color: '#b91c1c', fontSize: '12px' }}>{validationErrors.email[0]}</span>}
             </div>
 
             <div>

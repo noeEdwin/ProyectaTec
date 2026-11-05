@@ -378,6 +378,31 @@ class ProfileApiTest extends TestCase
         ]);
     }
 
+    public function test_profile_editor_can_update_account_name_and_email_without_changing_its_role(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['admin@example.com']]);
+        $user = User::factory()->create(['account_type' => 'estudiante']);
+        $other = User::factory()->create(['email' => 'ocupado@example.com']);
+
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', [
+            'display_name' => 'Nombre nuevo', 'email' => $other->email,
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
+
+        $this->patchJson('/api/me/profile', [
+            'display_name' => 'Nombre nuevo', 'email' => 'admin@example.com',
+        ])->assertUnprocessable()->assertJsonValidationErrors('email');
+
+        $this->patchJson('/api/me/profile', [
+            'display_name' => 'Nombre nuevo', 'email' => 'nuevo@example.com',
+            'role' => 'admin',
+        ])->assertOk()->assertJsonPath('data.contact.email', 'nuevo@example.com');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id, 'name' => 'Nombre nuevo',
+            'email' => 'nuevo@example.com', 'account_type' => 'estudiante',
+        ]);
+    }
+
     public function test_guest_cannot_update_own_profile(): void
     {
         $this->patchJson('/api/me/profile', [

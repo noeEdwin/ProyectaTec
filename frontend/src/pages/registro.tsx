@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/profileService';
+import { traducirErrorCorreo } from '../utils/Correo';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -182,11 +183,11 @@ export default function Registro({ onRegister }: RegistroProps) {
         ) as RegistroErrors;
         setErrores({
           name: apiErrors.name ? apiErrors.name[0] : undefined,
-          email: apiErrors.email ? apiErrors.email[0] : undefined,
           password: apiErrors.password ? apiErrors.password[0] : undefined,
           account_type: apiErrors.account_type ? apiErrors.account_type[0] : undefined,
           password_confirmation: apiErrors.password_confirmation ? apiErrors.password_confirmation[0] : undefined,
           ...fieldErrors,
+          email: traducirErrorCorreo(apiErrors.email?.[0]),
         });
       } else {
         setErrores({

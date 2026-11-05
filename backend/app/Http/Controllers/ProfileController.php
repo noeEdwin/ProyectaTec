@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
@@ -161,12 +162,14 @@ class ProfileController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        $user = $request->user();
         $validated = $request->validate([
             'account_type' => ['sometimes', Rule::in([
                 'estudiante', 'academico', 'empleado_organizacion', 'residente_oaxaca',
                 'student', 'docente', 'Investigador',
             ])],
             'display_name' => 'required|string|max:255',
+            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
             'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
@@ -195,13 +198,25 @@ class ProfileController extends Controller
             ])],
         ]);
 
+        if (isset($validated['email']) && strcasecmp($validated['email'], $user->email) !== 0
+            && in_array(strtolower($validated['email']), array_map('strtolower', config('services.proyectatec.admin_emails', [])), true)) {
+            throw ValidationException::withMessages(['email' => ['Este correo está reservado para una cuenta administradora existente.']]);
+        }
+
         if (isset($validated['municipality'], $validated['locality']) && $request->input('account_type') === 'residente_oaxaca') {
             $validated['location'] = collect([$validated['locality'], $validated['municipality']])
                 ->filter()->implode(', ');
         }
 
-        $user = $request->user();
         $profile = DB::transaction(function () use ($user, $validated) {
+            $email = $validated['email'] ?? null;
+            unset($validated['email']);
+            $user->name = $validated['display_name'];
+            if ($email !== null) {
+                $user->email = $email;
+            }
+            $user->save();
+
             $currentProfile = $user->profile()->first();
             if (! $currentProfile) {
                 $accountType = $validated['account_type'] ?? null;
