@@ -213,7 +213,7 @@ export default function Perfil() {
 
   return (
     <div style={{ maxWidth: '1140px', margin: '2.5rem auto', padding: '0 1.5rem', fontFamily: 'system-ui, sans-serif' }}>
-      
+
       {/* Encabezado e Identidad ProyectaTec */}
       <div style={{ marginBottom: '2.5rem' }}>
         <div style={{
@@ -263,7 +263,7 @@ export default function Perfil() {
 
       {/* Grid de 2 Columnas (Figma Layout) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', alignItems: 'start' }}>
-        
+
         {/* Tarjeta Izquierda: Formulario */}
         <div style={{
           background: '#ffffff',
@@ -277,7 +277,7 @@ export default function Perfil() {
           </h2>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            
+
             {/* Nombre o razón social */}
             <div>
               <label htmlFor="profile-display-name" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
