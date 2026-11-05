@@ -1,10 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/auth-context';
+import { getMyProfile, type UserProfile } from '../api/profileService';
 import '../styles/perfil.css';
 
 export default function PerfilPublico() {
   const { user } = useAuth();
   const [mostrarContacto, setMostrarContacto] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    void getMyProfile().then((data) => { if (active) setProfile(data); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [user]);
 
   const getInitials = (name?: string) => {
     if (!name) return 'US';
@@ -15,9 +24,25 @@ export default function PerfilPublico() {
     return name.substring(0, 2).toUpperCase();
   };
 
-  const nombreReal = user?.name || 'Usuario ProyectaTec';
-  const correoReal = user?.email || 'Sin correo registrado';
-  const tipoCuentaReal = user?.account_type === 'organizacion' ? 'Organización' : 'Persona / Estudiante';
+  const nombreReal = profile?.display_name || user?.name || 'Usuario ProyectaTec';
+  const correoPublico = profile?.public_fields?.includes('email') ? profile.email : null;
+  const telefonoPublico = profile?.public_fields?.includes('phone') ? profile.phone : null;
+  const ubicacionPublica = profile?.public_fields?.includes('location')
+    ? profile.location || 'Ubicación no indicada'
+    : 'Ubicación reservada';
+  const clasificacionPublica = [
+    ...(profile?.public_fields?.includes('institution') ? [profile.institution] : []),
+    ...(profile?.public_fields?.includes('field_of_study') ? [profile.field_of_study] : []),
+    ...(profile?.public_fields?.includes('academic_role') ? [profile.academic_role] : []),
+    ...(profile?.public_fields?.includes('organization_name') ? [profile.organization_name] : []),
+    ...(profile?.public_fields?.includes('organization_area') ? [profile.organization_area] : []),
+    ...(profile?.public_fields?.includes('organization_position') ? [profile.organization_position] : []),
+  ].filter(Boolean).join(' · ');
+  const tipoCuentaReal = profile?.account_type === 'organizacion' || user?.account_type === 'organizacion'
+    ? 'Organización'
+    : profile?.account_type === 'academico' ? 'Personal académico'
+      : profile?.account_type === 'empleado_organizacion' ? 'Empleado de organización'
+        : profile?.account_type === 'residente_oaxaca' ? 'Persona de Oaxaca' : 'Estudiante';
 
   return (
     <div className="perfil-page">
@@ -37,15 +62,16 @@ export default function PerfilPublico() {
               </div>
               <div>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', marginBottom: '4px' }}>{nombreReal}</h2>
-                <p style={{ color: '#4A5568', fontSize: '15px', marginBottom: '8px' }}>Oaxaca, México</p>
+                <p style={{ color: '#4A5568', fontSize: '15px', marginBottom: '8px' }}>{ubicacionPublica}</p>
                 <span style={{ display: 'inline-block', padding: '4px 12px', background: '#EDF2F7', color: '#2D3748', borderRadius: '999px', fontSize: '13px', fontWeight: 500 }}>
                   {tipoCuentaReal}
                 </span>
               </div>
             </div>
 
-            {/* BOTÓN DE CONTACTAR CON INFORMACIÓN FLOTANTE */}
-            <div style={{ position: 'relative' }}>
+            {clasificacionPublica && <p>{clasificacionPublica}</p>}
+
+            {(correoPublico || telefonoPublico) && <div style={{ position: 'relative' }}>
               <button
                 type="button"
                 onClick={() => setMostrarContacto(!mostrarContacto)}
@@ -81,10 +107,11 @@ export default function PerfilPublico() {
                   flexDirection: 'column',
                   gap: '8px',
                 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CORREO DE CONTACTO</span>
-                  <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoReal}</p>
-                  <a
-                    href={`mailto:${correoReal}`}
+                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CONTACTO PÚBLICO</span>
+                  {correoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoPublico}</p>}
+                  {telefonoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0 }}>{telefonoPublico}</p>}
+                  {correoPublico && <a
+                    href={`mailto:${correoPublico}`}
                     style={{
                       display: 'block',
                       marginTop: '6px',
@@ -99,10 +126,10 @@ export default function PerfilPublico() {
                     }}
                   >
                     Enviar correo ↗
-                  </a>
+                  </a>}
                 </div>
               )}
-            </div>
+            </div>}
           </section>
 
           <section className="perfil-iniciativas">

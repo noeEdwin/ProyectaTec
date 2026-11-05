@@ -209,6 +209,47 @@
   color: var(--registro-dark);
 }
 
+.registro-field fieldset {
+  border: 0;
+}
+
+.registro-field legend,
+.registro-checkbox {
+  color: var(--registro-dark);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.registro-checkbox {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 10px 0 !important;
+  line-height: 1.5;
+}
+
+.registro-checkbox input {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--registro-teal);
+}
+
+.registro-fieldset {
+  margin: 12px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--registro-border);
+  border-radius: 12px;
+}
+
+.registro-fieldset p {
+  margin: 6px 0 10px;
+  color: var(--registro-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .registro-field input:focus,
 .registro-field select:focus {
   border-color: var(--registro-teal);

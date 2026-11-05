@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Organization;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -408,5 +409,125 @@ class ProfileApiTest extends TestCase
             'display_name' => 'Perfil seguro',
         ]);
         $this->assertSame($originalPassword, $user->fresh()->password);
+    }
+
+    public function test_affiliation_changes_are_queued_until_a_platform_admin_approves_them(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['admin@example.com']]);
+        $user = User::factory()->create(['account_type' => 'estudiante']);
+        $profile = Profile::create([
+            'user_id' => $user->id,
+            'display_name' => 'Estudiante',
+            'institution' => 'Instituto anterior',
+            'campus' => 'Oaxaca',
+            'field_of_study' => 'Sistemas',
+            'semester' => '5',
+            'student_number' => 'ITO-111',
+            'expected_graduation' => '2028-06',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', [
+            'account_type' => 'estudiante',
+            'display_name' => 'Estudiante',
+            'institution' => 'Instituto nuevo',
+            'campus' => 'Oaxaca',
+            'field_of_study' => 'Sistemas',
+            'semester' => '6',
+            'student_number' => 'ITO-111',
+            'expected_graduation' => '2028-06',
+        ])->assertOk()->assertJsonPath('data.affiliation_status', 'pending');
+
+        $this->assertDatabaseHas('profiles', [
+            'id' => $profile->id,
+            'institution' => 'Instituto anterior',
+            'affiliation_status' => 'pending',
+        ]);
+        $this->assertSame('Instituto nuevo', $profile->fresh()->pending_affiliation['institution']);
+
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/admin/profiles/affiliations/pending')
+            ->assertOk()
+            ->assertJsonCount(1, 'profiles')
+            ->assertJsonPath('profiles.0.pending_affiliation.institution', 'Instituto nuevo');
+
+        $this->patchJson("/api/admin/profiles/{$profile->id}/affiliation", ['decision' => 'approved'])
+            ->assertOk()->assertJsonPath('decision', 'approved');
+        $this->assertDatabaseHas('profiles', [
+            'id' => $profile->id,
+            'institution' => 'Instituto nuevo',
+            'affiliation_status' => 'current',
+            'pending_affiliation' => null,
+        ]);
+        $this->assertSame('Instituto anterior', $profile->fresh()->affiliation_history[0]['before']['institution']);
+    }
+
+    public function test_rejected_affiliation_can_be_requested_again_with_a_reason_and_keeps_old_school(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['admin@example.com']]);
+        $user = User::factory()->create(['account_type' => 'estudiante']);
+        $profile = Profile::create([
+            'user_id' => $user->id, 'display_name' => 'Ana', 'institution' => 'Escuela original',
+            'campus' => 'Oaxaca', 'field_of_study' => 'Sistemas', 'semester' => '3',
+            'student_number' => '123', 'expected_graduation' => '2028-06',
+        ]);
+        $request = [
+            'account_type' => 'estudiante', 'display_name' => 'Ana',
+            'institution' => 'Escuela nueva', 'campus' => 'Oaxaca',
+            'field_of_study' => 'Sistemas', 'semester' => '3',
+            'student_number' => '123', 'expected_graduation' => '2028-06',
+        ];
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', $request)
+            ->assertOk()->assertJsonPath('data.affiliation_status', 'pending');
+        $this->patchJson("/api/admin/profiles/{$profile->id}/affiliation", ['decision' => 'approved'])
+            ->assertForbidden();
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/admin/profiles/{$profile->id}/affiliation", [
+            'decision' => 'rejected',
+        ])->assertUnprocessable()->assertJsonValidationErrors('reason');
+        $this->patchJson("/api/admin/profiles/{$profile->id}/affiliation", [
+            'decision' => 'rejected', 'reason' => 'Falta confirmar la institución',
+        ])->assertOk()->assertJsonPath('profile.affiliation_rejection_reason', 'Falta confirmar la institución');
+        $this->assertSame('Escuela original', $profile->fresh()->institution);
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', $request)
+            ->assertOk()->assertJsonPath('data.affiliation_status', 'pending');
+        $this->assertCount(1, $profile->fresh()->affiliation_history);
+        $this->assertSame('Escuela nueva', $profile->fresh()->pending_affiliation['institution']);
+    }
+
+    public function test_changing_an_employee_organization_waits_for_review_before_linking_membership(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['admin@example.com']]);
+        $user = User::factory()->create(['account_type' => 'empleado_organizacion']);
+        $organization = Organization::create([
+            'name' => 'Nueva empresa', 'organization_type' => 'empresa', 'approval_status' => 'approved',
+        ]);
+        $profile = Profile::create([
+            'user_id' => $user->id, 'display_name' => 'Empleado', 'organization_name' => 'Empresa anterior',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', [
+            'account_type' => 'empleado_organizacion', 'display_name' => 'Empleado',
+            'organization_name' => $organization->name, 'organization_id' => $organization->id,
+            'organization_area' => 'Tecnología', 'organization_position' => 'Analista',
+        ])->assertOk()->assertJsonPath('data.affiliation_status', 'pending');
+        $this->assertSame('Empresa anterior', $profile->fresh()->organization_name);
+        $this->assertNull($profile->fresh()->organization_id);
+        $this->assertDatabaseMissing('organization_members', [
+            'organization_id' => $organization->id, 'user_id' => $user->id,
+        ]);
+
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/admin/profiles/{$profile->id}/affiliation", [
+            'decision' => 'approved',
+        ])->assertOk();
+        $this->assertDatabaseHas('profiles', [
+            'id' => $profile->id, 'organization_name' => $organization->name,
+            'organization_id' => $organization->id, 'affiliation_status' => 'current',
+        ]);
+        $this->assertDatabaseHas('organization_members', [
+            'organization_id' => $organization->id, 'user_id' => $user->id,
+            'role' => 'member', 'status' => 'active',
+        ]);
     }
 }

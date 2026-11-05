@@ -1,24 +1,46 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyOrganizations, getMyProfile } from '../api/profileService';
-import { obtenerTipoPerfil, usePerfil } from '../context/perfil-context';
+import type { OrganizationAccess } from '../api/profileService';
+import { obtenerTipoPerfil } from '../context/perfil-context';
 import type { TipoPerfil } from '../context/perfil-context';
+import { useAuth } from '../context/auth-context';
+import type { PerfilPublicoData } from '../types/perfil';
 import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
 
 export default function MiPerfil() {
   const [busqueda] = useSearchParams();
   const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
-  const { perfiles } = usePerfil();
+  const { user } = useAuth();
   const [perfilCargado, setPerfilCargado] = useState<{
     tipo: TipoPerfil;
-    perfil: typeof perfiles.persona;
+    perfil: PerfilPublicoData;
   } | null>(null);
-  const [canEditOrganization, setCanEditOrganization] = useState(false);
-  const perfil = perfilCargado?.tipo === tipo ? perfilCargado.perfil : perfiles[tipo];
-  const actividades = tipo === 'organizacion'
-    ? ['Actualización de una iniciativa', 'Nueva solicitud de colaboración']
-    : ['Participación en una iniciativa', 'Nueva actividad de colaboración'];
+  const [personLoading, setPersonLoading] = useState(true);
+  const [personError, setPersonError] = useState('');
+  const [organizations, setOrganizations] = useState<OrganizationAccess[]>([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(true);
+  const [organizationError, setOrganizationError] = useState('');
+  const selectedOrganizationId = Number(busqueda.get('id'));
+  const organization = organizations.find((item) => item.id === selectedOrganizationId) ?? organizations[0];
+  const perfil: PerfilPublicoData = tipo === 'organizacion' && organization
+    ? {
+        id: String(organization.id),
+        is_organization: true,
+        name: organization.name,
+        description: organization.description ?? '',
+        location: organization.location ?? '',
+        image: organization.image_url ?? null,
+        classification: organization.classification ?? '',
+        contact: {},
+        initiatives: [],
+      }
+    : perfilCargado?.tipo === tipo ? perfilCargado.perfil : {
+        id: 'personal', is_organization: false, name: user?.name ?? '',
+        description: '', location: '', image: null, classification: '',
+        contact: { email: user?.email }, initiatives: [],
+      };
 
   useEffect(() => {
     if (tipo !== 'persona') return;
@@ -31,29 +53,30 @@ export default function MiPerfil() {
         setPerfilCargado({
           tipo,
           perfil: {
-            ...perfiles.persona,
-            name: data.display_name || perfiles.persona.name,
+            id: String(data.id ?? 'personal'),
+            is_organization: false,
+            image: null,
+            initiatives: [],
+            name: data.display_name || user?.name || '',
             description: data.description || '',
             location: data.location || '',
-            classification: [data.institution, data.field_of_study]
-              .filter(Boolean)
-              .join(' ') || perfiles.persona.classification,
+            classification: [data.institution, data.field_of_study].filter(Boolean).join(' '),
             contact: {
-              ...perfiles.persona.contact,
-              email: data.email || perfiles.persona.contact.email,
+              email: data.email || user?.email || '',
               phone: data.phone,
             },
           },
         });
       })
       .catch(() => {
-        // Conserva datos de ejemplo si la API no está disponible.
-      });
+        if (activo) setPersonError('No se pudo cargar tu perfil. Intenta recargar la página.');
+      })
+      .finally(() => { if (activo) setPersonLoading(false); });
 
     return () => {
       activo = false;
     };
-  }, [perfiles.persona, tipo]);
+  }, [tipo, user?.email, user?.name]);
 
   useEffect(() => {
     if (tipo !== 'organizacion') return;
@@ -61,10 +84,15 @@ export default function MiPerfil() {
     let activo = true;
     void getMyOrganizations()
       .then((organizations) => {
-        if (activo) setCanEditOrganization(organizations.some((organization) => organization.can_update));
+        if (!activo) return;
+        setOrganizations(organizations);
+        setOrganizationError('');
       })
       .catch(() => {
-        if (activo) setCanEditOrganization(false);
+        if (activo) setOrganizationError('No se pudieron cargar tus organizaciones. Intenta recargar la página.');
+      })
+      .finally(() => {
+        if (activo) setOrganizationsLoading(false);
       });
 
     return () => {
@@ -72,7 +100,41 @@ export default function MiPerfil() {
     };
   }, [tipo]);
 
-  const canEdit = !perfil.is_organization;
+  const canEdit = tipo === 'persona' || Boolean(organization?.can_update);
+  const editOrganizationLink = organization
+    ? `/editar-perfil-organizacion?id=${organization.id}`
+    : '#';
+
+  if (tipo === 'organizacion' && organizationError) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-error" role="alert">{organizationError}</p></main></div>;
+  }
+
+  if (tipo === 'persona' && personError) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-error" role="alert">{personError}</p></main></div>;
+  }
+
+  if (tipo === 'persona' && personLoading) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-vacio" aria-live="polite">Cargando tu perfil…</p></main></div>;
+  }
+
+  if (tipo === 'organizacion' && organizationsLoading) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-vacio" aria-live="polite">Cargando tus organizaciones…</p></main></div>;
+  }
+
+  if (tipo === 'organizacion' && !organization && organizations.length === 0) {
+    return (
+      <div className="pd-pagina">
+        <main className="pd-contenedor">
+          <header className="pd-encabezado"><span className="pd-eyebrow">MI ESPACIO</span><h1>Mi perfil</h1></header>
+          <section className="pd-tarjeta" aria-live="polite">
+            <h2>No tienes organizaciones vinculadas</h2>
+            <p className="pd-vacio">Cuando formes parte de una organización activa, podrás consultar aquí su perfil.</p>
+            <Link className="pd-boton-oscuro" to="/mi-perfil?tipo=persona">Ver perfil personal</Link>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="pd-pagina">
@@ -82,12 +144,25 @@ export default function MiPerfil() {
             <span className="pd-eyebrow">MI ESPACIO</span>
             <h1>Mi perfil</h1>
             <p>Gestiona tu información de acceso y colaboraciones en el sistema.</p>
+            {tipo === 'organizacion' && organizations.length > 1 && (
+              <nav className="pd-demo-selector" aria-label="Seleccionar organización">
+                {organizations.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={`/mi-perfil?tipo=organizacion&id=${item.id}`}
+                    aria-current={item.id === organization?.id ? 'page' : undefined}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+            )}
           </div>
           {canEdit ? (
-            <Link className="pd-boton-oscuro" to="/perfil">Editar perfil →</Link>
+            <Link className="pd-boton-oscuro" to={tipo === 'organizacion' ? editOrganizationLink : '/perfil'}>Editar perfil →</Link>
           ) : (
             <span className="pd-boton-deshabilitado" role="status">
-              {canEditOrganization ? 'Administrador activo: edición de organización disponible' : 'Sin permisos para editar esta organización'}
+              Sin permisos para editar esta organización
             </span>
           )}
         </header>
@@ -103,13 +178,21 @@ export default function MiPerfil() {
               <div className="pd-identidad-meta">
                 <span className="pd-chip">{perfil.is_organization ? 'Organización' : 'Persona'}</span>
                 <span className="pd-identidad-descripcion">{perfil.description || 'Sin descripción registrada.'}</span>
+                {tipo === 'organizacion' && organization?.approval_status === 'pending' && (
+                  <span className="pd-boton-deshabilitado" role="status">Registro pendiente de aprobación por ProyectaTec</span>
+                )}
+                {tipo === 'organizacion' && organization?.approval_status === 'rejected' && (
+                  <span className="pd-boton-deshabilitado" role="status">Registro rechazado: {organization.rejection_reason || 'consulta a ProyectaTec el motivo'}. Corrige los datos y vuelve a enviarlo desde Editar perfil.</span>
+                )}
               </div>
             </div>
           </div>
           <div className="pd-mi-contacto">
             <span className="pd-mini-label">CONTACTO</span>
             <p>{perfil.contact.email || 'Sin correo de contacto'}</p>
-            <Link to="/perfil-publico">Ver perfil público ↗</Link>
+            {(tipo !== 'organizacion' || organization?.approval_status === 'approved') && (
+              <Link to={tipo === 'organizacion' && organization ? `/organizaciones/${organization.id}` : '/perfil-publico'}>Ver perfil público ↗</Link>
+            )}
           </div>
         </section>
 
@@ -136,7 +219,7 @@ export default function MiPerfil() {
             </section>
             <section className="pd-tarjeta pd-actividad">
               <div className="pd-fila-titulo"><h2>Actividad reciente</h2><span className="pd-enlace-falso">Sesión activa</span></div>
-              <div className="pd-actividad-items">{actividades.map((actividad, i) => <p key={actividad}><span className={i === 0 ? 'pd-punto-azul' : 'pd-punto-naranja'}>●</span>{actividad}</p>)}</div>
+              <p className="pd-vacio">Aún no hay actividad registrada en este perfil.</p>
             </section>
           </div>
         </div>

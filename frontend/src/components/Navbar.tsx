@@ -78,12 +78,32 @@ export default function Navbar() {
               {isMenuOpen && (
                 <div className="user-dropdown-menu">
                   <Link 
-                    to="/mi-perfil?tipo=persona" 
+                    to={['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'].includes(user.account_type)
+                      ? '/mi-perfil?tipo=organizacion'
+                      : '/mi-perfil?tipo=persona'}
                     onClick={() => setIsMenuOpen(false)}
                     className="dropdown-item"
                   >
                     Mi Perfil
                   </Link>
+
+                  <Link
+                    to="/mi-perfil?tipo=organizacion"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="dropdown-item"
+                  >
+                    Mis organizaciones
+                  </Link>
+
+                  {user.can_manage_platform && (
+                    <Link
+                      to="/admin/organizaciones"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="dropdown-item"
+                    >
+                      Revisar organizaciones
+                    </Link>
+                  )}
                   
                   <hr className="dropdown-divider" />
                   

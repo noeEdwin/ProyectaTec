@@ -75,6 +75,8 @@
 .pd-editar-aside .pd-boton-oscuro { display:flex; width:100%; }
 .pd-editar-aside .pd-ayuda { margin:12px 0 0; }
 .pd-vacio { color:var(--pd-muted); padding:18px; font-size:13px; }
+.pd-casilla { display:flex !important; align-items:center; gap:10px; min-height:40px; margin:6px 0; }
+.pd-casilla input { width:18px; min-height:18px; height:18px; flex:none; accent-color:var(--pd-teal); }
 @media(max-width:950px) { .pd-contenedor { width:calc(100% - 48px) } .pd-mi-resumen { grid-template-columns:1fr } .pd-mi-contacto { border-left:0; border-top:1px solid var(--pd-border); padding:18px 0 0; min-height:auto } .pd-grid-inferior { grid-template-columns:260px minmax(0,1fr) } }
 @media(max-width:720px) { .pd-contenedor{width:calc(100% - 40px)} .pd-encabezado{padding-top:28px} .pd-encabezado-con-accion{align-items:flex-start;flex-direction:column} .pd-encabezado h1{font-size:31px} .pd-grid-inferior,.pd-editar-grid{grid-template-columns:1fr} .pd-mi-identidad{align-items:flex-start} .pd-identidad-meta{align-items:flex-start;flex-direction:column;gap:10px} .pd-fila-titulo{align-items:start} .pd-actividad-items{flex-direction:column;gap:12px} }
 @media(max-width:420px) { .pd-mi-identidad{flex-direction:column} .pd-acciones{flex-direction:column;align-items:stretch} .pd-acciones button{width:100%} .pd-fila-titulo{flex-direction:column} .pd-footer{flex-direction:column;gap:5px} }

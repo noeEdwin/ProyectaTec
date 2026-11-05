@@ -111,6 +111,35 @@ docker compose exec backend php artisan db:show
 docker compose exec backend php artisan migrate:status
 ```
 
+## Registro de perfiles y revisión
+
+El registro pide datos según el tipo de cuenta: estudiante, personal académico
+(docencia/investigación), empleado de una organización, residente de Oaxaca o
+representante de organización. El catálogo público solo incluye organizaciones
+aprobadas; quien no encuentre su institución u organización puede escribirla.
+Los campos de contacto y afiliación del perfil público se muestran solo cuando
+el titular los marca como visibles; la matrícula nunca se publica.
+
+Las organizaciones nuevas quedan `pending`. La cuenta representante puede editar
+su ficha y, si se rechaza con motivo, corregirla y solicitar otra revisión. Los
+cambios posteriores de institución, organización o tipo de cuenta de una persona
+quedan pendientes; los datos vigentes siguen activos. Las decisiones y datos
+anteriores quedan en `profiles.affiliation_history`.
+
+Para habilitar el panel `/admin/organizaciones`, configurar en `backend/.env`
+`PROYECTATEC_ADMIN_EMAILS` con una lista de correos separados por comas. Las
+cuentas administradoras deben existir antes de reservar sus correos en esa
+variable; el registro público rechaza correos reservados. Reiniciar Laravel o
+limpiar la caché de configuración después del cambio. Si no se configura ningún
+administrador, nadie puede aprobar solicitudes.
+
+En bases existentes, aplicar únicamente las migraciones pendientes (son aditivas
+y no eliminan datos):
+
+```bash
+docker compose run --rm backend php artisan migrate --force
+```
+
 ## Explicación del avance
 
 > Preparé la estructura inicial del backend con Laravel dentro de `backend/`.

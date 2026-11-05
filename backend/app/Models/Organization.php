@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
@@ -17,7 +17,17 @@ class Organization extends Model
         'phone',
         'location',
         'logo_path',
+        'public_fields',
+        'approval_status',
+        'rejection_reason',
+        'legal_name',
+        'website',
     ];
+
+    protected function casts(): array
+    {
+        return ['public_fields' => 'array'];
+    }
 
     public function memberships(): HasMany
     {

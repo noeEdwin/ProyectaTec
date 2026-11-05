@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/organizations/catalog', [OrganizationController::class, 'catalog']);
 // Consultar un perfil público por su identificador
 Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
     ->whereNumber('profile');
@@ -58,6 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/me/profile', [ProfileController::class, 'update']);
     Route::post('/me/profile/avatar', [ProfileController::class, 'uploadAvatar']);
     Route::get('/me/organizations', [OrganizationController::class, 'indexOwn']);
+    Route::get('/admin/organizations/pending', [OrganizationController::class, 'pendingApprovals']);
+    Route::patch('/admin/organizations/{organization}/approval', [OrganizationController::class, 'reviewApproval'])
+        ->whereNumber('organization');
+    Route::get('/admin/profiles/affiliations/pending', [ProfileController::class, 'pendingAffiliations']);
+    Route::patch('/admin/profiles/{profile}/affiliation', [ProfileController::class, 'reviewAffiliation'])
+        ->whereNumber('profile');
 
     // Rutas del perfil consumidas por el editor React
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -78,6 +85,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Editar una organización
     Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->whereNumber('organization');
+    Route::post('/organizations/{organization}/resubmit', [OrganizationController::class, 'resubmit'])
         ->whereNumber('organization');
     Route::post('/organizations/{organization}/logo', [OrganizationController::class, 'uploadLogo'])
         ->whereNumber('organization');
@@ -107,13 +116,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Consultar información del usuario autenticado
     Route::get('/me', function (Request $request) {
-        return response()->json(
-            $request->user()->only([
-                'id',
-                'name',
-                'email',
-                'account_type',
-            ])
-        );
+        $user = $request->user();
+        $adminEmails = array_map('strtolower', config('services.proyectatec.admin_emails', []));
+
+        return response()->json($user->only([
+            'id', 'name', 'email', 'account_type',
+        ]) + [
+            'can_manage_platform' => in_array(strtolower($user->email), $adminEmails, true),
+        ]);
     });
 });

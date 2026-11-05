@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class ProjectPolicy
 {
@@ -37,6 +36,10 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
+        if ($project->organization_id !== null && $project->organization?->approval_status !== 'approved') {
+            return false;
+        }
+
         return (int) $project->created_by === (int) $user->id;
     }
 

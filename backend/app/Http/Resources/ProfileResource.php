@@ -20,6 +20,21 @@ class ProfileResource extends JsonResource
             'location' => $this->location,
             'institution' => $this->institution,
             'field_of_study' => $this->field_of_study,
+            'campus' => $this->campus,
+            'semester' => $this->semester,
+            'student_number' => $this->student_number,
+            'expected_graduation' => $this->expected_graduation,
+            'academic_role' => $this->academic_role,
+            'organization_name' => $this->organization_name,
+            'organization_area' => $this->organization_area,
+            'organization_position' => $this->organization_position,
+            'municipality' => $this->municipality,
+            'locality' => $this->locality,
+            'public_fields' => $this->public_fields ?? [],
+            'affiliation_status' => $this->affiliation_status ?? 'current',
+            'pending_affiliation' => $this->pending_affiliation ?? null,
+            'affiliation_history' => $this->affiliation_history ?? [],
+            'affiliation_rejection_reason' => $this->affiliation_rejection_reason,
             'image' => $this->avatar_path,
             'image_url' => $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null,
             'contact' => [
@@ -30,6 +45,8 @@ class ProfileResource extends JsonResource
             // Campos específicos agrupados
             'classification' => trim($this->institution.' '.$this->field_of_study),
             'created_at' => $this->created_at,
+            'email' => $this->whenLoaded('user', fn () => $this->user->email),
+            'account_type' => $this->whenLoaded('user', fn () => $this->user->account_type),
         ];
     }
 }
