@@ -1,0 +1,15 @@
+meta {
+  name: Consultar proyecto
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/projects/{{projectId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
