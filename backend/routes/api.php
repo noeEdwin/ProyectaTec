@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommunityNeedController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -24,6 +25,8 @@ Route::get('/organizations/{organization}', [OrganizationController::class, 'sho
     ->whereNumber('organization');
 Route::get('/projects', [ProjectController::class, 'index']);
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumber('project');
+Route::get('/community-needs', [CommunityNeedController::class, 'index']);
+Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::latest()->first();
@@ -56,6 +59,7 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
