@@ -15,6 +15,9 @@ import Perfil from './pages/Perfil';
 
 import MiPerfil from './pages/MiPerfil';
 import PerfilPublico from './pages/perfilPublico';
+import OrganizacionPublica from './pages/OrganizacionPublica';
+import EditarPerfilOrganizacion from './pages/EditarPerfilOrganizacion';
+import AdminOrganizaciones from './pages/AdminOrganizaciones';
 
 import './styles/App.css';
 
@@ -31,6 +34,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
               <Route path="/perfil-publico" element={<PerfilPublico />} />
+              <Route path="/organizaciones/:id" element={<OrganizacionPublica />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/iniciativas" element={<Catalogo />} />
@@ -38,6 +42,8 @@ function App() {
 
                 {/* Perfil conectado a API del equipo */}
                 <Route path="/perfil" element={<Perfil />} />
+                <Route path="/editar-perfil-organizacion" element={<EditarPerfilOrganizacion />} />
+                <Route path="/admin/organizaciones" element={<AdminOrganizaciones />} />
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />

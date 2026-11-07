@@ -1,0 +1,15 @@
+meta {
+  name: Consultar necesidad de proyecto
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/projects/{{projectId}}/needs/{{projectNeedId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

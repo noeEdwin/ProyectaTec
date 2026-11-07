@@ -1,0 +1,15 @@
+meta {
+  name: Listar proyectos
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/projects?page=1
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

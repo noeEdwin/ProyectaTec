@@ -19,7 +19,34 @@ class Profile extends Model
         'avatar_path',
         'institution',
         'field_of_study',
+        'interest_areas',
+        'campus',
+        'semester',
+        'student_number',
+        'expected_graduation',
+        'academic_role',
+        'organization_name',
+        'organization_id',
+        'organization_area',
+        'organization_position',
+        'municipality',
+        'locality',
+        'public_fields',
+        'pending_affiliation',
+        'affiliation_status',
+        'affiliation_history',
+        'affiliation_rejection_reason',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'public_fields' => 'array',
+            'interest_areas' => 'array',
+            'pending_affiliation' => 'array',
+            'affiliation_history' => 'array',
+        ];
+    }
 
     public function user(): BelongsTo
     {

@@ -5,6 +5,7 @@ export type AuthUser = {
   name: string;
   email: string;
   account_type: string;
+  can_manage_platform?: boolean;
 };
 
 export type LoginCredentials = {

@@ -1,0 +1,15 @@
+meta {
+  name: Consultar necesidad comunitaria
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/community-needs/{{communityNeedId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

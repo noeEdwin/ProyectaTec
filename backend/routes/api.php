@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommunityNeedController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectNeedController;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -15,15 +18,22 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/organizations/catalog', [OrganizationController::class, 'catalog']);
 // Consultar un perfil público por su identificador
 Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
     ->whereNumber('profile');
 // Consultar información pública de una organización
 Route::get('/organizations/{organization}', [OrganizationController::class, 'showPublic'])
     ->whereNumber('organization');
+Route::get('/projects', [ProjectController::class, 'index']);
+Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumber('project');
+Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])->whereNumber('project');
+Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
+Route::get('/community-needs', [CommunityNeedController::class, 'index']);
+Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
-    $project = Project::latest()->first();
+    $project = Project::publiclyVisible()->latest()->first();
 
     // Si la base de datos aún no tiene proyectos creados, responde con la información base
     if (! $project) {
@@ -53,11 +63,20 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
+    Route::post('/community-needs', [CommunityNeedController::class, 'store']);
+    Route::post('/projects', [ProjectController::class, 'store']);
     // Consultar el perfil del usuario autenticado
     Route::get('/me/profile', [ProfileController::class, 'showOwn']);
     Route::patch('/me/profile', [ProfileController::class, 'update']);
     Route::post('/me/profile/avatar', [ProfileController::class, 'uploadAvatar']);
     Route::get('/me/organizations', [OrganizationController::class, 'indexOwn']);
+    Route::get('/admin/organizations/pending', [OrganizationController::class, 'pendingApprovals']);
+    Route::patch('/admin/organizations/{organization}/approval', [OrganizationController::class, 'reviewApproval'])
+        ->whereNumber('organization');
+    Route::get('/admin/profiles/affiliations/pending', [ProfileController::class, 'pendingAffiliations']);
+    Route::patch('/admin/profiles/{profile}/affiliation', [ProfileController::class, 'reviewAffiliation'])
+        ->whereNumber('profile');
 
     // Rutas del perfil consumidas por el editor React
     Route::get('/profile', [ProfileController::class, 'show']);
@@ -78,6 +97,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Editar una organización
     Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
+        ->whereNumber('organization');
+    Route::post('/organizations/{organization}/resubmit', [OrganizationController::class, 'resubmit'])
         ->whereNumber('organization');
     Route::post('/organizations/{organization}/logo', [OrganizationController::class, 'uploadLogo'])
         ->whereNumber('organization');
@@ -107,13 +128,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Consultar información del usuario autenticado
     Route::get('/me', function (Request $request) {
-        return response()->json(
-            $request->user()->only([
-                'id',
-                'name',
-                'email',
-                'account_type',
-            ])
-        );
+        $user = $request->user();
+        $adminEmails = array_map('strtolower', config('services.proyectatec.admin_emails', []));
+
+        return response()->json($user->only([
+            'id', 'name', 'email', 'account_type',
+        ]) + [
+            'can_manage_platform' => in_array(strtolower($user->email), $adminEmails, true),
+        ]);
     });
 });

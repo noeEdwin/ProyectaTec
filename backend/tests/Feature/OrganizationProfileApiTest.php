@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\OrganizationResource;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -276,20 +277,31 @@ class OrganizationProfileApiTest extends TestCase
         $this->assertSame([
             'id' => $first->id,
             'name' => 'Primera',
+            'organization_type' => 'empresa',
             'description' => 'Descripción',
+            'sector' => 'tecnología',
             'location' => 'Oaxaca',
             'image' => 'logos/primera.png',
-            'image_url' => \App\Http\Resources\OrganizationResource::logoUrl('logos/primera.png'),
+            'image_url' => OrganizationResource::logoUrl('logos/primera.png'),
             'classification' => 'empresa - tecnología',
             'role' => 'admin',
             'status' => 'active',
             'can_update' => true,
+            'approval_status' => 'approved',
+            'rejection_reason' => null,
+            'email' => 'privado@example.com',
+            'phone' => '9511234567',
+            'public_fields' => [],
+            'legal_name' => null,
+            'website' => null,
             'membership' => [
                 'role' => 'admin',
                 'status' => 'active',
                 'joined_at' => '2026-10-21T12:00:00.000000Z',
             ],
         ], $organizations[$first->id]);
+        $this->assertSame('social', $organizations[$second->id]['organization_type']);
+        $this->assertSame('educación', $organizations[$second->id]['sector']);
         $this->assertSame([
             'role' => 'member',
             'status' => 'active',
@@ -306,6 +318,67 @@ class OrganizationProfileApiTest extends TestCase
             ->assertExactJson(['organizations' => []]);
     }
 
+    public function test_only_configured_platform_admin_can_review_pending_organizations(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['moderator@example.com']]);
+        $organization = Organization::create([
+            'name' => 'Pendiente de aprobación',
+            'organization_type' => 'empresa',
+            'approval_status' => 'pending',
+        ]);
+
+        $this->getJson('/api/admin/organizations/pending')->assertUnauthorized();
+
+        $user = User::factory()->create(['email' => 'person@example.com']);
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/admin/organizations/pending')
+            ->assertForbidden();
+
+        $admin = User::factory()->create(['email' => 'moderator@example.com']);
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/admin/organizations/pending')
+            ->assertOk()
+            ->assertJsonCount(1, 'organizations')
+            ->assertJsonPath('organizations.0.id', $organization->id);
+
+        $this->getJson("/api/organizations/{$organization->id}")->assertNotFound();
+
+        $this->patchJson("/api/admin/organizations/{$organization->id}/approval", [
+            'approval_status' => 'approved',
+        ])->assertOk()->assertJsonPath('organization.approval_status', 'approved');
+
+        $this->getJson("/api/organizations/{$organization->id}")->assertOk();
+        $this->assertDatabaseHas('organizations', [
+            'id' => $organization->id,
+            'approval_status' => 'approved',
+        ]);
+    }
+
+    public function test_rejected_organization_can_be_resubmitted_by_its_representative(): void
+    {
+        config(['services.proyectatec.admin_emails' => ['admin@example.com']]);
+        $owner = User::factory()->create();
+        $organization = Organization::create([
+            'name' => 'Cooperativa', 'organization_type' => 'sector_social', 'approval_status' => 'pending',
+        ]);
+        $organization->memberships()->create(['user_id' => $owner->id, 'role' => 'admin', 'status' => 'active']);
+        $this->actingAs($owner, 'sanctum')->postJson("/api/organizations/{$organization->id}/resubmit")
+            ->assertStatus(409);
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $this->actingAs($admin, 'sanctum')->patchJson("/api/admin/organizations/{$organization->id}/approval", [
+            'approval_status' => 'rejected',
+        ])->assertUnprocessable()->assertJsonValidationErrors('rejection_reason');
+        $this->patchJson("/api/admin/organizations/{$organization->id}/approval", [
+            'approval_status' => 'rejected', 'rejection_reason' => 'Faltan datos',
+        ])->assertOk();
+        $this->getJson("/api/organizations/{$organization->id}")->assertNotFound();
+        $this->actingAs($owner, 'sanctum')->postJson("/api/organizations/{$organization->id}/resubmit")
+            ->assertOk()->assertJsonPath('organization.approval_status', 'pending');
+        $this->assertDatabaseHas('organizations', [
+            'id' => $organization->id, 'approval_status' => 'pending', 'rejection_reason' => null,
+        ]);
+    }
+
     public function test_guest_cannot_list_own_organizations(): void
     {
         $this->getJson('/api/me/organizations')->assertUnauthorized();
@@ -318,6 +391,12 @@ class OrganizationProfileApiTest extends TestCase
         $created = $this->actingAs($user, 'sanctum')->postJson('/api/organizations', [
             'name' => 'Nueva organización',
             'organization_type' => 'empresa',
+            'legal_name' => 'Nueva organización S.C.',
+            'website' => 'https://nueva.example.org',
+            'sector' => 'Tecnología',
+            'email' => 'nueva@example.org',
+            'phone' => '9511234567',
+            'location' => 'Oaxaca',
         ])->assertCreated();
 
         $this->getJson('/api/me/organizations')
@@ -344,7 +423,11 @@ class OrganizationProfileApiTest extends TestCase
             'name' => 'Empresa de prueba',
             'organization_type' => 'empresa',
             'description' => 'Descripción pública',
+            'legal_name' => 'Empresa de prueba S.A.',
+            'website' => 'https://empresa.example.org',
+            'sector' => 'Tecnología',
             'email' => 'contacto@example.com',
+            'phone' => '9511234567',
             'location' => 'Oaxaca',
         ]);
 
@@ -378,6 +461,12 @@ class OrganizationProfileApiTest extends TestCase
             $response = $this->postJson('/api/organizations', [
                 'name' => 'Organización '.$type,
                 'organization_type' => $type,
+                'legal_name' => 'Organización legal '.$type,
+                'website' => 'https://organizacion.example.org',
+                'sector' => 'Comunidad',
+                'email' => 'organizacion@example.org',
+                'phone' => '9511234567',
+                'location' => 'Oaxaca',
             ])->assertCreated();
 
             $this->assertDatabaseHas('organizations', [

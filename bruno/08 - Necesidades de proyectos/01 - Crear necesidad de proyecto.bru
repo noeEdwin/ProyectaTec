@@ -1,0 +1,37 @@
+meta {
+  name: Crear necesidad de proyecto
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/projects/{{projectId}}/needs
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "title": "Desarrollo de interfaz",
+    "description": "Implementar pantallas de consulta.",
+    "required_profile": "Desarrollo frontend",
+    "openings": 2,
+    "status": "open"
+  }
+}
+
+script:pre-request {
+  bru.setVar('projectNeedId', '0');
+}
+
+script:post-response {
+  if (res.status === 201 && res.body.project_need && res.body.project_need.id) {
+    bru.setVar('projectNeedId', String(res.body.project_need.id));
+  }
+}

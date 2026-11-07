@@ -4,29 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\ProfileResource;
 use App\Models\Profile;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
     public function showPublic(Profile $profile): JsonResponse
     {
+        $publicFields = $profile->public_fields;
+        $legacyProfile = $publicFields === null;
+        $showInstitution = $legacyProfile || in_array('institution', $publicFields, true);
+        $showFieldOfStudy = $legacyProfile || in_array('field_of_study', $publicFields, true);
+        $showOrganizationName = ! $legacyProfile && in_array('organization_name', $publicFields, true);
+        $showOrganizationArea = ! $legacyProfile && in_array('organization_area', $publicFields, true);
+        $showOrganizationPosition = ! $legacyProfile && in_array('organization_position', $publicFields, true);
+        $showAcademicRole = ! $legacyProfile && in_array('academic_role', $publicFields, true);
+        $showEmail = ! $legacyProfile && in_array('email', $publicFields, true);
+        $showPhone = ! $legacyProfile && in_array('phone', $publicFields, true);
+
         return response()->json([
             'profile' => [
                 'id' => $profile->id,
                 'is_organization' => false,
                 'display_name' => $profile->display_name,
                 'description' => $profile->description,
-                'location' => $profile->location,
+                'location' => $legacyProfile || in_array('location', $publicFields, true) ? $profile->location : null,
                 'image' => $profile->avatar_path,
                 'image_url' => $profile->avatar_path ? Storage::disk('public')->url($profile->avatar_path) : null,
                 'classification' => trim(
-                    ($profile->institution ?? '').' '.
-                    ($profile->field_of_study ?? '')
+                    ($showInstitution ? ($profile->institution ?? '') : '').' '.
+                    ($showFieldOfStudy ? ($profile->field_of_study ?? '') : '').' '.
+                    ($showAcademicRole ? ($profile->academic_role ?? '') : '').' '.
+                    ($showOrganizationName ? ($profile->organization_name ?? '') : '').' '.
+                    ($showOrganizationArea ? ($profile->organization_area ?? '') : '').' '.
+                    ($showOrganizationPosition ? ($profile->organization_position ?? '') : '')
                 ),
+                'interest_areas' => ! $legacyProfile && in_array('interest_areas', $publicFields, true)
+                    ? ($profile->interest_areas ?? [])
+                    : [],
+                ...(! $legacyProfile ? ['contact' => [
+                    'email' => $showEmail ? $profile->user?->email : null,
+                    'phone' => $showPhone ? $profile->phone : null,
+                ]] : []),
             ],
         ]);
     }
@@ -62,6 +86,18 @@ class ProfileController extends Controller
                     'location' => '',
                     'institution' => '',
                     'field_of_study' => '',
+                    'interest_areas' => [],
+                    'campus' => '',
+                    'semester' => '',
+                    'student_number' => '',
+                    'expected_graduation' => '',
+                    'academic_role' => '',
+                    'organization_name' => '',
+                    'organization_area' => '',
+                    'organization_position' => '',
+                    'municipality' => '',
+                    'locality' => '',
+                    'public_fields' => [],
                     'image' => null,
                     'image_url' => null,
                     'contact' => [
@@ -130,60 +166,240 @@ class ProfileController extends Controller
 
     public function update(Request $request): JsonResponse
     {
-        $user = $request->user(); // Usuario autenticado
-
-        // 1. Validar los datos entrantes
+        $user = $request->user();
         $validated = $request->validate([
-            'display_name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'email',
-                'max:255',
-                Rule::unique('users', 'email')->ignore($user->id),
+            'account_type' => ['sometimes', Rule::in([
+                'estudiante', 'academico', 'empleado_organizacion', 'residente_oaxaca',
+                'student', 'docente', 'Investigador',
+            ])],
+            'display_name' => 'required|string|max:255',
+            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
+            'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'interest_areas' => ['sometimes', 'array', 'max:6'],
+            'interest_areas.*' => ['string', 'max:80', 'distinct'],
+            'semester' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
+            'student_number' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
+            'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
+            'academic_role' => ['required_if:account_type,academico', 'nullable', Rule::in(['docente', 'investigador', 'ambos'])],
+            'organization_name' => ['required_if:account_type,empleado_organizacion', 'nullable', 'string', 'max:255'],
+            'organization_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('organizations', 'id')->where('approval_status', 'approved'),
             ],
-            'account_type' => [
-                'required',
-                'string',
-                Rule::in([
-                    'empresa',
-                    'institucion_educativa',
-                    'sector_social',
-                    'estudiante',
-                    'docente',
-                ]),
-            ],
-            'description' => ['nullable', 'string', 'max:500'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'institution' => ['nullable', 'string', 'max:255'],
-            'field_of_study' => ['nullable', 'string', 'max:255'],
+            'organization_area' => ['required_if:account_type,empleado_organizacion', 'nullable', 'string', 'max:255'],
+            'organization_position' => ['required_if:account_type,empleado_organizacion', 'nullable', 'string', 'max:255'],
+            'municipality' => ['required_if:account_type,residente_oaxaca', 'nullable', 'string', 'max:255'],
+            'locality' => ['required_if:account_type,residente_oaxaca', 'nullable', 'string', 'max:255'],
+            'description' => 'nullable|string',
+            'phone' => 'nullable|string|max:20',
+            'location' => 'nullable|string|max:255',
+            'public_fields' => 'nullable|array',
+            'public_fields.*' => [Rule::in([
+                'location', 'institution', 'field_of_study', 'organization_name', 'municipality',
+                'locality', 'organization_area', 'organization_position', 'academic_role',
+                'email', 'phone', 'interest_areas',
+            ])],
         ]);
 
-        DB::transaction(function () use ($user, $validated) {
-            // 2. Actualizar la tabla USERS (nombre, correo y tipo de cuenta).
-            //    Se asignan directo para no depender del $fillable de User.
+        if (isset($validated['email']) && strcasecmp($validated['email'], $user->email) !== 0
+            && in_array(strtolower($validated['email']), array_map('strtolower', config('services.proyectatec.admin_emails', [])), true)) {
+            throw ValidationException::withMessages(['email' => ['Este correo está reservado para una cuenta administradora existente.']]);
+        }
+
+        if (! array_key_exists('location', $validated)
+            && isset($validated['municipality'], $validated['locality'])
+            && $request->input('account_type') === 'residente_oaxaca') {
+            $validated['location'] = collect([$validated['locality'], $validated['municipality']])
+                ->filter()->implode(', ');
+        }
+
+        $profile = DB::transaction(function () use ($user, $validated) {
+            $email = $validated['email'] ?? null;
+            unset($validated['email']);
             $user->name = $validated['display_name'];
-            $user->email = $validated['email'];
-            $user->account_type = $validated['account_type'];
+            if ($email !== null) {
+                $user->email = $email;
+            }
             $user->save();
 
-            // 3. Actualizar o crear los datos en la tabla PROFILES
-            $user->profile()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'display_name' => $validated['display_name'],
-                    'description' => $validated['description'] ?? null,
-                    'phone' => $validated['phone'] ?? null,
-                    'location' => $validated['location'] ?? null,
-                    'institution' => $validated['institution'] ?? null,
-                    'field_of_study' => $validated['field_of_study'] ?? null,
-                ]
-            );
+            $currentProfile = $user->profile()->first();
+            if (! $currentProfile) {
+                $accountType = $validated['account_type'] ?? null;
+                unset($validated['account_type']);
+                $newProfile = Profile::create(['user_id' => $user->id] + $validated);
+                if ($accountType !== null && $this->canonicalAccountType($accountType) !== $this->canonicalAccountType($user->account_type)) {
+                    $newProfile->update([
+                        'pending_affiliation' => ['account_type' => $accountType],
+                        'affiliation_status' => 'pending',
+                    ]);
+                }
+                if ($user->account_type === 'empleado_organizacion' && $newProfile->organization_id !== null) {
+                    $user->organizations()->syncWithoutDetaching([
+                        $newProfile->organization_id => ['role' => 'member', 'status' => 'active', 'joined_at' => now()],
+                    ]);
+                }
+
+                return $newProfile;
+            }
+
+            $accountType = $validated['account_type'] ?? null;
+            unset($validated['account_type']);
+            $typeChanged = $accountType !== null
+                && $this->canonicalAccountType($accountType) !== $this->canonicalAccountType($user->account_type);
+
+            $affiliationFields = ['institution', 'organization_name', 'organization_id'];
+            $pendingAffiliation = $currentProfile->pending_affiliation ?? [];
+            foreach ($affiliationFields as $field) {
+                if (array_key_exists($field, $validated)
+                    && ($typeChanged || filled($currentProfile->{$field})
+                        || ($field === 'organization_id' && filled($currentProfile->organization_name)))
+                    && $currentProfile->{$field} != $validated[$field]) {
+                    $pendingAffiliation[$field] = $validated[$field];
+                    unset($validated[$field]);
+                }
+            }
+            if ($typeChanged) {
+                $pendingAffiliation['account_type'] = $accountType;
+            }
+
+            if ($pendingAffiliation !== []) {
+                $currentProfile->pending_affiliation = $pendingAffiliation;
+                $currentProfile->affiliation_status = 'pending';
+                $currentProfile->affiliation_rejection_reason = null;
+            }
+            $currentProfile->fill($validated);
+            $currentProfile->save();
+            if (! $typeChanged && array_key_exists('organization_id', $validated)
+                && $validated['organization_id'] !== null && $user->account_type === 'empleado_organizacion'
+                && ! $user->organizationMemberships()->where('organization_id', $validated['organization_id'])->exists()) {
+                $user->organizations()->attach($validated['organization_id'], [
+                    'role' => 'member', 'status' => 'active', 'joined_at' => now(),
+                ]);
+            }
+
+            return $currentProfile;
+        })->load('user');
+
+        return response()->json([
+            'message' => 'Perfil guardado exitosamente',
+            'data' => new ProfileResource($profile),
+            'profile' => new ProfileResource($profile),
+        ]);
+    }
+
+    public function pendingAffiliations(Request $request): JsonResponse
+    {
+        abort_unless($this->isPlatformAdmin($request->user()), 403);
+
+        return response()->json([
+            'profiles' => Profile::query()
+                ->with('user:id,name,email,account_type')
+                ->where('affiliation_status', 'pending')
+                ->orderBy('updated_at')
+                ->get()
+                ->map(fn (Profile $profile) => [
+                    'id' => $profile->id,
+                    'user_name' => $profile->user->name,
+                    'user_email' => $profile->user->email,
+                    'account_type' => $profile->user->account_type,
+                    'pending_affiliation' => $profile->pending_affiliation,
+                    'updated_at' => $profile->updated_at,
+                ]),
+        ]);
+    }
+
+    public function reviewAffiliation(Request $request, Profile $profile): JsonResponse
+    {
+        abort_unless($this->isPlatformAdmin($request->user()), 403);
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['approved', 'rejected'])],
+            'reason' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1000'],
+        ]);
+
+        abort_unless($profile->affiliation_status === 'pending' && filled($profile->pending_affiliation), 409);
+
+        DB::transaction(function () use ($profile, $data) {
+            $pending = $profile->pending_affiliation ?? [];
+            $before = $profile->only(array_keys(array_diff_key($pending, ['account_type' => true])));
+            if (array_key_exists('account_type', $pending)) {
+                $before['account_type'] = $profile->user->account_type;
+            }
+            $history = $profile->affiliation_history ?? [];
+            $history[] = [
+                'before' => $before,
+                'requested' => $pending,
+                'decision' => $data['decision'],
+                'reason' => $data['reason'] ?? null,
+                'reviewed_at' => now()->toISOString(),
+            ];
+            $profile->affiliation_history = $history;
+            if ($data['decision'] === 'approved') {
+                $accountType = $pending['account_type'] ?? null;
+                unset($pending['account_type']);
+                $oldOrganizationId = $profile->organization_id;
+                $newOrganizationId = array_key_exists('organization_id', $pending)
+                    ? $pending['organization_id']
+                    : $oldOrganizationId;
+                $profile->fill($pending);
+                $profile->affiliation_status = 'current';
+                if ($accountType !== null) {
+                    $profile->user()->update(['account_type' => $accountType]);
+                }
+                $profile->save();
+
+                if ($newOrganizationId !== $oldOrganizationId) {
+                    $user = $profile->user;
+                    if ($oldOrganizationId !== null) {
+                        $user->organizationMemberships()
+                            ->where('organization_id', $oldOrganizationId)
+                            ->where('role', 'member')
+                            ->delete();
+                    }
+                    if ($newOrganizationId !== null) {
+                        $membership = $user->organizationMemberships()
+                            ->where('organization_id', $newOrganizationId)
+                            ->first();
+                        if (! $membership) {
+                            $user->organizations()->attach($newOrganizationId, [
+                                'role' => 'member', 'status' => 'active', 'joined_at' => now(),
+                            ]);
+                        } elseif ($membership->role !== 'admin') {
+                            $membership->update(['role' => 'member', 'status' => 'active', 'joined_at' => now()]);
+                        }
+                    }
+                }
+            } else {
+                $profile->affiliation_status = 'rejected';
+                $profile->affiliation_rejection_reason = $data['reason'];
+            }
+            $profile->pending_affiliation = null;
+            $profile->save();
         });
 
         return response()->json([
-            'message' => 'Perfil y datos de usuario actualizados correctamente',
-            'user' => $user->load('profile'),
+            'profile' => (new ProfileResource($profile->fresh()->load('user')))->resolve($request),
+            'decision' => $data['decision'],
         ]);
+    }
+
+    private function isPlatformAdmin(User $user): bool
+    {
+        $administrators = array_map('strtolower', config('services.proyectatec.admin_emails', []));
+
+        return in_array(strtolower($user->email), $administrators, true);
+    }
+
+    private function canonicalAccountType(string $type): string
+    {
+        return match (strtolower($type)) {
+            'student' => 'estudiante',
+            'docente', 'investigador' => 'academico',
+            'employee' => 'empleado_organizacion',
+            'resident' => 'residente_oaxaca',
+            default => strtolower($type),
+        };
     }
 }

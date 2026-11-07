@@ -1,90 +1,99 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyOrganizations, getMyProfile } from '../api/profileService';
-import type { UserProfile, OrganizationAccess } from '../api/profileService';
+import type { OrganizationAccess } from '../api/profileService';
 import { obtenerTipoPerfil } from '../context/perfil-context';
+import type { TipoPerfil } from '../context/perfil-context';
 import { useAuth } from '../context/auth-context';
+import type { PerfilPublicoData } from '../types/perfil';
+import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
-
-// Etiquetas legibles para cada tipo de cuenta (incluye el valor antiguo 'empresa/MIPYME')
-const ETIQUETAS_TIPO_CUENTA: Record<string, string> = {
-  empresa: 'Empresa / MIPYME',
-  'empresa/MIPYME': 'Empresa / MIPYME',
-  institucion_educativa: 'Institución educativa',
-  sector_social: 'Comunidad / sector social',
-  estudiante: 'Estudiante',
-  docente: 'Docente / asesor',
-};
-
-// Las áreas de interés se guardan en field_of_study separadas por coma
-function separarAreas(valor?: string | null): string[] {
-  if (!valor) return [];
-  return valor
-    .split(',')
-    .map((area) => area.trim())
-    .filter(Boolean);
-}
 
 export default function MiPerfil() {
   const [busqueda] = useSearchParams();
   const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
   const { user } = useAuth();
+  const [perfilCargado, setPerfilCargado] = useState<{
+    tipo: TipoPerfil;
+    perfil: PerfilPublicoData;
+  } | null>(null);
+  const [personLoading, setPersonLoading] = useState(true);
+  const [personError, setPersonError] = useState('');
+  const [organizations, setOrganizations] = useState<OrganizationAccess[]>([]);
+  const [organizationsLoading, setOrganizationsLoading] = useState(true);
+  const [organizationError, setOrganizationError] = useState('');
+  const selectedOrganizationId = Number(busqueda.get('id'));
+  const organization = organizations.find((item) => item.id === selectedOrganizationId) ?? organizations[0];
+  const perfil: PerfilPublicoData = tipo === 'organizacion' && organization
+    ? {
+        id: String(organization.id),
+        is_organization: true,
+        name: organization.name,
+        description: organization.description ?? '',
+        location: organization.location ?? '',
+        image: organization.image_url ?? null,
+        classification: organization.classification ?? '',
+        contact: {},
+        initiatives: [],
+      }
+    : perfilCargado?.tipo === tipo ? perfilCargado.perfil : {
+        id: 'personal', is_organization: false, name: user?.name ?? '',
+        description: '', location: '', image: null, classification: '',
+        contact: { email: user?.email }, initiatives: [],
+      };
 
-  const [perfilReal, setPerfilReal] = useState<UserProfile | null>(null);
-  const [cargando, setCargando] = useState(true);
-  const [errorCarga, setErrorCarga] = useState(false);
-  const [canEditOrganization, setCanEditOrganization] = useState(false);
-
-  // Función para obtener las dos iniciales del avatar
-  const obtenerDosIniciales = (nombre?: string) => {
-    if (!nombre) return 'US';
-    const palabras = nombre.trim().split(/\s+/);
-    if (palabras.length >= 2) {
-      return (palabras[0][0] + palabras[1][0]).toUpperCase();
-    }
-    return nombre.substring(0, 2).toUpperCase();
-  };
-
-  // Actividades dinámicas según el rol
-  const actividades = tipo === 'organizacion'
-    ? ['Actualización de una iniciativa', 'Nueva solicitud de colaboración']
-    : ['Participación en una iniciativa', 'Nueva actividad de colaboración'];
-
-  // Cargar datos reales desde la base de datos
   useEffect(() => {
-    let activo = true;
-    setCargando(true);
-    setErrorCarga(false);
+    if (tipo !== 'persona') return;
 
+    let activo = true;
     void getMyProfile()
       .then((data) => {
         if (!activo) return;
-        setPerfilReal(data);
+
+        setPerfilCargado({
+          tipo,
+          perfil: {
+            id: String(data.id ?? 'personal'),
+            is_organization: false,
+            image: null,
+            initiatives: [],
+            interests: data.interest_areas || [],
+            name: data.display_name || user?.name || '',
+            description: data.description || '',
+            location: data.location || '',
+            classification: [data.institution, data.field_of_study].filter(Boolean).join(' '),
+            contact: {
+              email: data.email || user?.email || '',
+              phone: data.phone,
+            },
+          },
+        });
       })
       .catch(() => {
-        if (!activo) return;
-        setErrorCarga(true);
+        if (activo) setPersonError('No se pudo cargar tu perfil. Intenta recargar la página.');
       })
-      .finally(() => {
-        if (activo) setCargando(false);
-      });
+      .finally(() => { if (activo) setPersonLoading(false); });
 
     return () => {
       activo = false;
     };
-  }, []);
+  }, [tipo, user?.email, user?.name]);
 
-  // Verificar permisos de organizaciones vinculadas
   useEffect(() => {
     if (tipo !== 'organizacion') return;
 
     let activo = true;
     void getMyOrganizations()
-      .then((organizations: OrganizationAccess[]) => {
-        if (activo) setCanEditOrganization(organizations.some((org) => org.can_update));
+      .then((organizations) => {
+        if (!activo) return;
+        setOrganizations(organizations);
+        setOrganizationError('');
       })
       .catch(() => {
-        if (activo) setCanEditOrganization(false);
+        if (activo) setOrganizationError('No se pudieron cargar tus organizaciones. Intenta recargar la página.');
+      })
+      .finally(() => {
+        if (activo) setOrganizationsLoading(false);
       });
 
     return () => {
@@ -92,51 +101,41 @@ export default function MiPerfil() {
     };
   }, [tipo]);
 
-  const canEdit = tipo !== 'organizacion';
+  const canEdit = tipo === 'persona' || Boolean(organization?.can_update);
+  const editOrganizationLink = organization
+    ? `/editar-perfil-organizacion?id=${organization.id}`
+    : '#';
 
-  // Se conserva el ?tipo= al ir a Editar perfil para poder regresar a la misma vista
-  const tipoParam = busqueda.get('tipo');
-  const rutaEditar = tipoParam
-    ? `/perfil?tipo=${encodeURIComponent(tipoParam)}`
-    : '/perfil';
+  if (tipo === 'organizacion' && organizationError) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-error" role="alert">{organizationError}</p></main></div>;
+  }
 
-  // Si está cargando
-  if (cargando) {
+  if (tipo === 'persona' && personError) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-error" role="alert">{personError}</p></main></div>;
+  }
+
+  if (tipo === 'persona' && personLoading) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-vacio" aria-live="polite">Cargando tu perfil…</p></main></div>;
+  }
+
+  if (tipo === 'organizacion' && organizationsLoading) {
+    return <div className="pd-pagina"><main className="pd-contenedor"><p className="pd-vacio" aria-live="polite">Cargando tus organizaciones…</p></main></div>;
+  }
+
+  if (tipo === 'organizacion' && !organization && organizations.length === 0) {
     return (
       <div className="pd-pagina">
-        <div className="pd-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <p className="pd-vacio">Cargando información...</p>
-        </div>
+        <main className="pd-contenedor">
+          <header className="pd-encabezado"><span className="pd-eyebrow">MI ESPACIO</span><h1>Mi perfil</h1></header>
+          <section className="pd-tarjeta" aria-live="polite">
+            <h2>No tienes organizaciones vinculadas</h2>
+            <p className="pd-vacio">Cuando formes parte de una organización activa, podrás consultar aquí su perfil.</p>
+            <Link className="pd-boton-oscuro" to="/mi-perfil?tipo=persona">Ver perfil personal</Link>
+          </section>
+        </main>
       </div>
     );
   }
-
-  // Si ocurrió un error al conectar con la API
-  if (errorCarga) {
-    return (
-      <div className="pd-pagina">
-        <div className="pd-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <p className="pd-error" role="alert">No se pudo conectar con el servidor para obtener el perfil.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Datos estrictamente reales de la base de datos / sesión
-  const nombreUsuario = perfilReal?.display_name || user?.name || 'Sin nombre registrado';
-  const ubicacionUsuario = perfilReal?.location || 'Ubicación no indicada';
-  const descripcionUsuario = perfilReal?.description || 'Sin descripción registrada.';
-
-  // Se prioriza el correo que viene del perfil (el que se guarda al editar).
-  // Solo si el perfil no lo trae se usa el de la sesión, que puede estar desactualizado.
-  const correoReal = (perfilReal?.email || user?.email || '').trim();
-  const correoUsuario = correoReal || 'Sin correo de contacto';
-
-  const tipoCuentaBD = perfilReal?.account_type || user?.account_type || '';
-  const tipoCuentaEtiqueta = ETIQUETAS_TIPO_CUENTA[tipoCuentaBD] || tipoCuentaBD || 'No especificado';
-
-  const institucionUsuario = perfilReal?.institution?.trim() || '';
-  const areasInteres = separarAreas(perfilReal?.field_of_study);
 
   return (
     <div className="pd-pagina">
@@ -145,43 +144,56 @@ export default function MiPerfil() {
           <div>
             <span className="pd-eyebrow">MI ESPACIO</span>
             <h1>Mi perfil</h1>
-            <p>Un espacio para gestionar tu información y colaboraciones.</p>
+            <p>Gestiona tu información de acceso y colaboraciones en el sistema.</p>
+            {tipo === 'organizacion' && organizations.length > 1 && (
+              <nav className="pd-demo-selector" aria-label="Seleccionar organización">
+                {organizations.map((item) => (
+                  <Link
+                    key={item.id}
+                    to={`/mi-perfil?tipo=organizacion&id=${item.id}`}
+                    aria-current={item.id === organization?.id ? 'page' : undefined}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+            )}
           </div>
           {canEdit ? (
-            <Link className="pd-boton-oscuro" to={rutaEditar}>Editar perfil →</Link>
+            <Link className="pd-boton-oscuro" to={tipo === 'organizacion' ? editOrganizationLink : '/perfil'}>Editar perfil →</Link>
           ) : (
             <span className="pd-boton-deshabilitado" role="status">
-              {canEditOrganization ? 'Administrador activo: edición de organización disponible' : 'Sin permisos para editar esta organización'}
+              Sin permisos para editar esta organización
             </span>
           )}
         </header>
 
         <section className="pd-tarjeta pd-mi-resumen" aria-label="Datos de mi perfil">
           <div className="pd-mi-identidad">
-            <div className="pd-avatar" aria-hidden="true" style={{ textTransform: 'uppercase' }}>
-              {obtenerDosIniciales(nombreUsuario)}
+            <div className="pd-avatar" aria-hidden="true">
+              {perfil.image ? <img src={perfil.image} alt="" /> : inicialesPerfil(perfil.name)}
             </div>
             <div className="pd-identidad-info">
-              <h2>{nombreUsuario}</h2>
-              <p>{ubicacionUsuario}</p>
+              <h2>{perfil.name || 'Sin nombre registrado'}</h2>
+              <p>{perfil.location || 'Ubicación no indicada'}</p>
               <div className="pd-identidad-meta">
-                <span className="pd-chip">{tipoCuentaEtiqueta}</span>
-                <span className="pd-identidad-descripcion">{descripcionUsuario}</span>
+                <span className="pd-chip">{perfil.is_organization ? 'Organización' : 'Persona'}</span>
+                <span className="pd-identidad-descripcion">{perfil.description || 'Sin descripción registrada.'}</span>
+                {tipo === 'organizacion' && organization?.approval_status === 'pending' && (
+                  <span className="pd-boton-deshabilitado" role="status">Registro pendiente de aprobación por ProyectaTec</span>
+                )}
+                {tipo === 'organizacion' && organization?.approval_status === 'rejected' && (
+                  <span className="pd-boton-deshabilitado" role="status">Registro rechazado: {organization.rejection_reason || 'consulta a ProyectaTec el motivo'}. Corrige los datos y vuelve a enviarlo desde Editar perfil.</span>
+                )}
               </div>
             </div>
           </div>
           <div className="pd-mi-contacto">
             <span className="pd-mini-label">CONTACTO</span>
-            {correoReal ? (
-              <p>
-                <a href={`mailto:${correoReal}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                  {correoUsuario}
-                </a>
-              </p>
-            ) : (
-              <p>{correoUsuario}</p>
+            <p>{perfil.contact.email || 'Sin correo de contacto'}</p>
+            {(tipo !== 'organizacion' || organization?.approval_status === 'approved') && (
+              <Link to={tipo === 'organizacion' && organization ? `/organizaciones/${organization.id}` : '/perfil-publico'}>Ver perfil público ↗</Link>
             )}
-            <Link to="/perfil-publico">Ver perfil público ↗</Link>
           </div>
         </section>
 
@@ -189,61 +201,37 @@ export default function MiPerfil() {
           <div className="pd-columna-izquierda">
             <section className="pd-tarjeta pd-info">
               <h2>Acerca del perfil</h2>
-              <p>{descripcionUsuario}</p>
-              {institucionUsuario && (
-                <div className="pd-info-detalle">
-                  <span>Institución</span>
-                  <strong>{institucionUsuario}</strong>
-                </div>
-              )}
-            </section>
-
-            <section className="pd-tarjeta pd-info">
-              <h2>Áreas de interés</h2>
-              <div className="pd-intereses">
-                {areasInteres.length > 0 ? (
-                  areasInteres.map((area) => (
-                    <span key={area} style={{ background: '#EDF5F6', color: '#0f172a' }}>
-                      {area}
-                    </span>
-                  ))
-                ) : (
-                  <span style={{ color: '#64748b', fontStyle: 'italic' }}>No indicado</span>
-                )}
+              <p>Información sincronizada directamente desde tu sesión activa.</p>
+              <div className="pd-info-detalle">
+                <span>{perfil.is_organization ? 'Sector o actividad' : 'Área de interés'}</span>
+                <strong>{perfil.classification || 'No indicado'}</strong>
               </div>
             </section>
+            {tipo === 'persona' && Boolean(perfil.interests?.length) && (
+              <section className="pd-tarjeta pd-info">
+                <h2>Áreas de interés</h2>
+                <div className="pd-intereses">{perfil.interests?.map((area) => <span key={area}>{area}</span>)}</div>
+              </section>
+            )}
           </div>
-
           <div className="pd-columna-derecha">
             <section className="pd-tarjeta pd-iniciativas">
-              <div className="pd-fila-titulo">
-                <h2>Mis iniciativas</h2>
-                <Link to="/iniciativas">Explorar iniciativas →</Link>
-              </div>
-              <p className="pd-vacio">Aún no hay iniciativas vinculadas a este perfil.</p>
+              <div className="pd-fila-titulo"><h2>Mis iniciativas</h2><Link to="/iniciativas">Explorar iniciativas →</Link></div>
+              {perfil.initiatives.length === 0 ? <p className="pd-vacio">Aún no hay iniciativas vinculadas a este perfil.</p> : (
+                <ul>{perfil.initiatives.map((item) => <li key={item.id}>
+                  <div><h3>{item.titulo}</h3><p>{item.categoria} · {item.sector}</p></div>
+                  <span>{item.estado === 'En curso' ? '● ' : '• '}{item.estado}</span>
+                </li>)}</ul>
+              )}
             </section>
-
             <section className="pd-tarjeta pd-actividad">
-              <div className="pd-fila-titulo">
-                <h2>Actividad reciente</h2>
-                <span className="pd-enlace-falso">Sesión activa</span>
-              </div>
-              <div className="pd-actividad-items">
-                {actividades.map((actividad, i) => (
-                  <p key={actividad}>
-                    <span className={i === 0 ? 'pd-punto-azul' : 'pd-punto-naranja'}>●</span>
-                    {actividad}
-                  </p>
-                ))}
-              </div>
+              <div className="pd-fila-titulo"><h2>Actividad reciente</h2><span className="pd-enlace-falso">Sesión activa</span></div>
+              <p className="pd-vacio">Aún no hay actividad registrada en este perfil.</p>
             </section>
           </div>
         </div>
 
-        <footer className="pd-footer">
-          <span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span>
-          <span>Privacidad · Ayuda</span>
-        </footer>
+        <footer className="pd-footer"><span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span><span>Privacidad · Ayuda</span></footer>
       </div>
     </div>
   );

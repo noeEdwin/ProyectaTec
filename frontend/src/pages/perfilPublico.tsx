@@ -1,74 +1,49 @@
 import { useEffect, useState } from 'react';
-import { getMyProfile, type UserProfile } from '../api/profileService';
 import { useAuth } from '../context/auth-context';
+import { getMyProfile, type UserProfile } from '../api/profileService';
 import '../styles/perfil.css';
 
 export default function PerfilPublico() {
   const { user } = useAuth();
-  const [perfilReal, setPerfilReal] = useState<UserProfile | null>(null);
-  const [cargando, setCargando] = useState(true);
-  const [errorCarga, setErrorCarga] = useState(false);
   const [mostrarContacto, setMostrarContacto] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // Cargar datos reales desde la base de datos mediante /api/me/profile
   useEffect(() => {
-    let activo = true;
-    setCargando(true);
-    setErrorCarga(false);
-
-    void getMyProfile()
-      .then((data) => {
-        if (!activo) return;
-        setPerfilReal(data);
-      })
-      .catch(() => {
-        if (!activo) return;
-        setErrorCarga(true);
-      })
-      .finally(() => {
-        if (activo) setCargando(false);
-      });
-
-    return () => {
-      activo = false;
-    };
-  }, []);
+    if (!user) return;
+    let active = true;
+    void getMyProfile().then((data) => { if (active) setProfile(data); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [user]);
 
   const getInitials = (name?: string) => {
     if (!name) return 'US';
-    const words = name.trim().split(/\s+/);
+    const words = name.trim().split(' ');
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Si está cargando
-  if (cargando) {
-    return (
-      <div className="perfil-page">
-        <div className="perfil-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <p style={{ color: '#6b7280', fontSize: '15px' }}>Cargando información del perfil...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Si ocurre un error al conectar con la API
-  if (errorCarga) {
-    return (
-      <div className="perfil-page">
-        <div className="perfil-contenedor" style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <p style={{ color: '#b91c1c', fontSize: '15px' }} role="alert">No se pudo conectar con el servidor para obtener el perfil.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const nombreReal = perfilReal?.display_name || user?.name || 'Usuario ProyectaTec';
-  const correoReal = perfilReal?.email || user?.email || 'Sin correo registrado';
-  const ubicacionReal = perfilReal?.location || 'Ubicación no indicada';
-  const descripcionReal = perfilReal?.description || '';
+  const nombreReal = profile?.display_name || user?.name || 'Usuario ProyectaTec';
+  const correoPublico = profile?.public_fields?.includes('email') ? profile.email : null;
+  const telefonoPublico = profile?.public_fields?.includes('phone') ? profile.phone : null;
+  const ubicacionPublica = profile?.public_fields?.includes('location')
+    ? profile.location || 'Ubicación no indicada'
+    : 'Ubicación reservada';
+  const clasificacionPublica = [
+    ...(profile?.public_fields?.includes('institution') ? [profile.institution] : []),
+    ...(profile?.public_fields?.includes('field_of_study') ? [profile.field_of_study] : []),
+    ...(profile?.public_fields?.includes('academic_role') ? [profile.academic_role] : []),
+    ...(profile?.public_fields?.includes('organization_name') ? [profile.organization_name] : []),
+    ...(profile?.public_fields?.includes('organization_area') ? [profile.organization_area] : []),
+    ...(profile?.public_fields?.includes('organization_position') ? [profile.organization_position] : []),
+  ].filter(Boolean).join(' · ');
+  const areasPublicas = profile?.public_fields?.includes('interest_areas') ? profile.interest_areas || [] : [];
+  const tipoCuentaReal = profile?.account_type === 'organizacion' || user?.account_type === 'organizacion'
+    ? 'Organización'
+    : profile?.account_type === 'academico' ? 'Personal académico'
+      : profile?.account_type === 'empleado_organizacion' ? 'Empleado de organización'
+        : profile?.account_type === 'residente_oaxaca' ? 'Persona de Oaxaca' : 'Estudiante';
 
   return (
     <div className="perfil-page">
@@ -80,25 +55,24 @@ export default function PerfilPublico() {
             <p>Así se presenta tu cuenta real al resto del ecosistema.</p>
           </div>
 
-          {/* Tarjeta resumen del perfil con nombre, ubicación y descripción */}
+          {/* Tarjeta resumen del perfil */}
           <section className="perfil-resumen-card" style={{ padding: '2rem', background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600 }}>
                 {getInitials(nombreReal)}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', margin: 0 }}>{nombreReal}</h2>
-                <p style={{ color: '#4A5568', fontSize: '15px', margin: 0 }}>{ubicacionReal}</p>
-                {descripcionReal && (
-                  <p style={{ color: '#4A5568', fontSize: '14px', margin: '4px 0 0 0', lineHeight: '1.4' }}>
-                    {descripcionReal}
-                  </p>
-                )}
+              <div>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', marginBottom: '4px' }}>{nombreReal}</h2>
+                <p style={{ color: '#4A5568', fontSize: '15px', marginBottom: '8px' }}>{ubicacionPublica}</p>
+                <span style={{ display: 'inline-block', padding: '4px 12px', background: '#EDF2F7', color: '#2D3748', borderRadius: '999px', fontSize: '13px', fontWeight: 500 }}>
+                  {tipoCuentaReal}
+                </span>
               </div>
             </div>
 
-            {/* BOTÓN DE CONTACTAR CON INFORMACIÓN FLOTANTE */}
-            <div style={{ position: 'relative' }}>
+            {clasificacionPublica && <p>{clasificacionPublica}</p>}
+
+            {(correoPublico || telefonoPublico) && <div style={{ position: 'relative' }}>
               <button
                 type="button"
                 onClick={() => setMostrarContacto(!mostrarContacto)}
@@ -106,8 +80,8 @@ export default function PerfilPublico() {
                   background: '#0B4A54',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '10px 24px',
-                  borderRadius: '999px',
+                  padding: '10px 20px',
+                  borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -134,10 +108,11 @@ export default function PerfilPublico() {
                   flexDirection: 'column',
                   gap: '8px',
                 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CORREO DE CONTACTO</span>
-                  <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoReal}</p>
-                  <a
-                    href={`mailto:${correoReal}`}
+                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CONTACTO PÚBLICO</span>
+                  {correoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoPublico}</p>}
+                  {telefonoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0 }}>{telefonoPublico}</p>}
+                  {correoPublico && <a
+                    href={`mailto:${correoPublico}`}
                     style={{
                       display: 'block',
                       marginTop: '6px',
@@ -152,11 +127,18 @@ export default function PerfilPublico() {
                     }}
                   >
                     Enviar correo ↗
-                  </a>
+                  </a>}
                 </div>
               )}
-            </div>
+            </div>}
           </section>
+
+          {areasPublicas.length > 0 && (
+            <section className="perfil-iniciativas" aria-label="Áreas de interés públicas">
+              <h2>Áreas de interés</h2>
+              <p>{areasPublicas.join(' · ')}</p>
+            </section>
+          )}
 
           <section className="perfil-iniciativas">
             <h2>Iniciativas públicas</h2>
