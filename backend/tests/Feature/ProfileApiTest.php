@@ -487,6 +487,49 @@ class ProfileApiTest extends TestCase
         $this->assertSame('Instituto anterior', $profile->fresh()->affiliation_history[0]['before']['institution']);
     }
 
+    public function test_interest_areas_and_selected_location_are_independent_of_career_and_respect_public_visibility(): void
+    {
+        $user = User::factory()->create(['account_type' => 'estudiante']);
+        $profile = Profile::create([
+            'user_id' => $user->id,
+            'display_name' => 'Estudiante',
+            'field_of_study' => 'Ingeniería en Sistemas',
+            'location' => 'Oaxaca de Juárez',
+            'interest_areas' => ['Desarrollo de software'],
+            'public_fields' => [],
+        ]);
+
+        $this->actingAs($user, 'sanctum')->getJson('/api/profile')
+            ->assertOk()
+            ->assertJsonPath('data.field_of_study', 'Ingeniería en Sistemas')
+            ->assertJsonPath('data.interest_areas.0', 'Desarrollo de software');
+        $this->getJson("/api/profiles/{$profile->id}")
+            ->assertJsonPath('profile.interest_areas', [])
+            ->assertJsonPath('profile.location', null);
+
+        $this->patchJson('/api/me/profile', [
+            'display_name' => 'Estudiante',
+            'interest_areas' => ['Desarrollo de software', 'Agroindustria y alimentos'],
+            'location' => 'Oaxaca, México',
+            'public_fields' => ['interest_areas', 'location'],
+        ])->assertOk()->assertJsonPath('data.interest_areas.1', 'Agroindustria y alimentos');
+
+        $this->assertDatabaseHas('profiles', [
+            'id' => $profile->id,
+            'field_of_study' => 'Ingeniería en Sistemas',
+            'location' => 'Oaxaca, México',
+        ]);
+        $this->getJson("/api/profiles/{$profile->id}")
+            ->assertJsonPath('profile.interest_areas.0', 'Desarrollo de software')
+            ->assertJsonPath('profile.location', 'Oaxaca, México');
+
+        $this->patchJson('/api/me/profile', [
+            'display_name' => 'Estudiante',
+            'interest_areas' => array_fill(0, 7, 'Desarrollo de software'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('interest_areas');
+        $this->assertCount(2, $profile->fresh()->interest_areas);
+    }
+
     public function test_rejected_affiliation_can_be_requested_again_with_a_reason_and_keeps_old_school(): void
     {
         config(['services.proyectatec.admin_emails' => ['admin@example.com']]);

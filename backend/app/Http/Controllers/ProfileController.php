@@ -44,6 +44,9 @@ class ProfileController extends Controller
                     ($showOrganizationArea ? ($profile->organization_area ?? '') : '').' '.
                     ($showOrganizationPosition ? ($profile->organization_position ?? '') : '')
                 ),
+                'interest_areas' => ! $legacyProfile && in_array('interest_areas', $publicFields, true)
+                    ? ($profile->interest_areas ?? [])
+                    : [],
                 ...(! $legacyProfile ? ['contact' => [
                     'email' => $showEmail ? $profile->user?->email : null,
                     'phone' => $showPhone ? $profile->phone : null,
@@ -83,6 +86,7 @@ class ProfileController extends Controller
                     'location' => '',
                     'institution' => '',
                     'field_of_study' => '',
+                    'interest_areas' => [],
                     'campus' => '',
                     'semester' => '',
                     'student_number' => '',
@@ -173,6 +177,8 @@ class ProfileController extends Controller
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
             'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'interest_areas' => ['sometimes', 'array', 'max:6'],
+            'interest_areas.*' => ['string', 'max:80', 'distinct'],
             'semester' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'student_number' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
@@ -194,7 +200,7 @@ class ProfileController extends Controller
             'public_fields.*' => [Rule::in([
                 'location', 'institution', 'field_of_study', 'organization_name', 'municipality',
                 'locality', 'organization_area', 'organization_position', 'academic_role',
-                'email', 'phone',
+                'email', 'phone', 'interest_areas',
             ])],
         ]);
 
@@ -203,7 +209,9 @@ class ProfileController extends Controller
             throw ValidationException::withMessages(['email' => ['Este correo está reservado para una cuenta administradora existente.']]);
         }
 
-        if (isset($validated['municipality'], $validated['locality']) && $request->input('account_type') === 'residente_oaxaca') {
+        if (! array_key_exists('location', $validated)
+            && isset($validated['municipality'], $validated['locality'])
+            && $request->input('account_type') === 'residente_oaxaca') {
             $validated['location'] = collect([$validated['locality'], $validated['municipality']])
                 ->filter()->implode(', ');
         }

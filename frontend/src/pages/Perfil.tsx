@@ -5,6 +5,8 @@ import axios from 'axios';
 import { getMyProfile, getOrganizationCatalog, updateMyProfile, type OrganizationCatalogItem, type UserProfile } from '../api/profileService';
 import { useAuth } from '../context/auth-context';
 import { traducirErrorCorreo } from '../utils/Correo';
+import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
+import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 
 type ApiErrorResponse = {
   message?: string;
@@ -37,6 +39,7 @@ export default function Perfil() {
     location: '',
     institution: '',
     field_of_study: '',
+    interest_areas: [],
     account_type: 'estudiante',
     email: '',
     campus: '',
@@ -112,6 +115,7 @@ export default function Perfil() {
         location: data.location || '',
         institution: data.institution || '',
         field_of_study: data.field_of_study || '',
+        interest_areas: data.interest_areas || [],
         account_type: normalizeAccountType(data.account_type || user?.account_type),
         email: data.email || user?.email || '',
         campus: data.campus || '',
@@ -177,6 +181,7 @@ export default function Perfil() {
         location: profile.location,
         institution: profile.institution,
         field_of_study: profile.field_of_study,
+        interest_areas: profile.interest_areas,
         campus: profile.campus,
         semester: profile.semester,
         student_number: profile.student_number,
@@ -368,6 +373,7 @@ export default function Perfil() {
                 ['location', 'Ubicación'],
                 ['email', 'Correo electrónico'],
                 ['phone', 'Teléfono'],
+                ['interest_areas', 'Áreas de interés'],
                 ...(profile.account_type === 'estudiante' || profile.account_type === 'academico' ? [['institution', 'Institución']] : []),
                 ...(profile.account_type === 'estudiante' ? [['field_of_study', 'Carrera o programa']] : []),
                 ...(profile.account_type === 'empleado_organizacion' ? [['organization_name', 'Organización'], ['organization_area', 'Área'], ['organization_position', 'Cargo']] : []),
@@ -445,25 +451,16 @@ export default function Perfil() {
               />
             </div>
 
-            {/* Ubicación */}
-            <div>
-              <label htmlFor="profile-location" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Ubicación
-              </label>
-              <input
-                id="profile-location"
-                type="text"
-                value={profile.location || ''}
-                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                placeholder="Oaxaca, México"
-                maxLength={255}
-                style={{
-                  width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                  border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            <SelectorUbicacion
+              idPrefix="profile-location"
+              value={profile.location || ''}
+              onChange={(location) => setProfile((current) => ({ ...current, location }))}
+            />
+            <AreasInteresSelector
+              value={profile.interest_areas || []}
+              onChange={(interest_areas) => setProfile((current) => ({ ...current, interest_areas }))}
+              error={validationErrors.interest_areas?.[0]}
+            />
 
             {/* Botones */}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>

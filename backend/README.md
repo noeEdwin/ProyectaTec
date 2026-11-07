@@ -119,6 +119,10 @@ representante de organización. El catálogo público solo incluye organizacione
 aprobadas; quien no encuentre su institución u organización puede escribirla.
 Los campos de contacto y afiliación del perfil público se muestran solo cuando
 el titular los marca como visibles; la matrícula nunca se publica.
+La ubicación se puede seleccionar por país y estado de México o escribir si no
+aparece. Las áreas de interés se guardan como lista independiente de la carrera
+(`field_of_study`), con un máximo de seis; solo se publican si el titular habilita
+`interest_areas` entre sus campos visibles.
 
 Las organizaciones nuevas quedan `pending`. La cuenta representante puede editar
 su ficha y, si se rechaza con motivo, corregirla y solicitar otra revisión. Los

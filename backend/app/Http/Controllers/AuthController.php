@@ -29,6 +29,9 @@ class AuthController extends Controller
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
             'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'interest_areas' => ['sometimes', 'array', 'max:6'],
+            'interest_areas.*' => ['string', 'max:80', 'distinct'],
+            'location' => ['nullable', 'string', 'max:255'],
             'semester' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'student_number' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
@@ -54,6 +57,7 @@ class AuthController extends Controller
             'public_fields.*' => [Rule::in([
                 'location', 'institution', 'field_of_study', 'organization_name', 'municipality',
                 'locality', 'organization_area', 'organization_position', 'academic_role', 'email', 'phone',
+                'interest_areas',
             ])],
             'organization_public_fields' => ['nullable', 'array'],
             'organization_public_fields.*' => [Rule::in(['location', 'email', 'phone', 'classification'])],
@@ -83,6 +87,7 @@ class AuthController extends Controller
                 'institution' => $validated['institution'] ?? null,
                 'campus' => $validated['campus'] ?? null,
                 'field_of_study' => $validated['field_of_study'] ?? null,
+                'interest_areas' => $validated['interest_areas'] ?? [],
                 'semester' => $validated['semester'] ?? null,
                 'student_number' => $validated['student_number'] ?? null,
                 'expected_graduation' => $validated['expected_graduation'] ?? null,
@@ -94,8 +99,8 @@ class AuthController extends Controller
                 'municipality' => $validated['municipality'] ?? null,
                 'locality' => $validated['locality'] ?? null,
                 'public_fields' => $validated['public_fields'] ?? [],
-                'location' => collect([$validated['locality'] ?? null, $validated['municipality'] ?? null])
-                    ->filter()->implode(', ') ?: null,
+                'location' => $validated['location'] ?? (collect([$validated['locality'] ?? null, $validated['municipality'] ?? null])
+                    ->filter()->implode(', ') ?: null),
                 'phone' => $validated['phone'] ?? null,
             ]);
 

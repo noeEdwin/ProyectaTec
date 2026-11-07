@@ -28,7 +28,15 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        if (in_array($user->account_type, ['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'], true)) {
+            return $user->organizations()
+                ->wherePivot('role', 'admin')
+                ->wherePivot('status', 'active')
+                ->where('organizations.approval_status', 'approved')
+                ->exists();
+        }
+
+        return true;
     }
 
     /**

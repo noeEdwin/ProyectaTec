@@ -9,6 +9,7 @@ export interface UserProfile {
   location?: string;
   institution?: string;
   field_of_study?: string;
+  interest_areas?: string[];
   account_type?: string;
   email?: string;
   campus?: string;

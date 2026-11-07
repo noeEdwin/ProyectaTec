@@ -166,3 +166,19 @@ Las consultas privadas requieren autenticación mediante Sanctum.
 Las rutas públicas pueden consultarse sin iniciar sesión.
 
 Las colecciones Postman y Bruno permiten a los colaboradores verificar el contrato de los endpoints.
+
+### Extensión posterior: ubicación y áreas de interés
+
+`POST /api/register` y `PATCH /api/me/profile` aceptan `location` (texto de hasta
+255 caracteres) e `interest_areas` (lista opcional de hasta seis cadenas
+distintas, máximo 80 caracteres cada una). La interfaz permite seleccionar
+México y un estado o escribir otra ubicación. Las áreas se guardan en
+`profiles.interest_areas`; **no** se utilizan ni sobrescriben
+`field_of_study` (carrera o programa del estudiante).
+
+Las consultas propias incluyen `interest_areas`, incluso cuando la lista está
+vacía. `GET /api/profiles/{profile}` solo devuelve la lista con contenido si
+el titular incluye `interest_areas` en `public_fields`; el correo, teléfono y
+la ubicación también dependen de sus opciones de privacidad. Las respuestas
+de perfiles anteriores, que no tienen configuración de visibilidad, conservan
+su contrato público previo.

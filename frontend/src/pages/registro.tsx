@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/profileService';
 import { traducirErrorCorreo } from '../utils/Correo';
+import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
+import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -17,6 +19,8 @@ export type RegistroPayload = {
   institution?: string;
   campus?: string;
   field_of_study?: string;
+  interest_areas?: string[];
+  location?: string;
   semester?: string;
   student_number?: string;
   expected_graduation?: string;
@@ -64,6 +68,8 @@ export default function Registro({ onRegister }: RegistroProps) {
   const [perfil, setPerfil] = useState<Record<string, string>>(perfilVacio);
   const [publicFields, setPublicFields] = useState<string[]>([]);
   const [organizationPublicFields, setOrganizationPublicFields] = useState<string[]>([]);
+  const [interestAreas, setInterestAreas] = useState<string[]>([]);
+  const [location, setLocation] = useState('');
   const [catalog, setCatalog] = useState<OrganizationCatalogItem[]>([]);
   const [institutionManual, setInstitutionManual] = useState(false);
   const [organizationManual, setOrganizationManual] = useState(false);
@@ -161,6 +167,8 @@ export default function Registro({ onRegister }: RegistroProps) {
       organization_id: perfil.organization_id ? Number(perfil.organization_id) : undefined,
       public_fields: publicFields,
       organization_public_fields: organizationPublicFields,
+      interest_areas: tipoCuenta === 'organizacion' ? [] : interestAreas,
+      location: tipoCuenta === 'organizacion' ? undefined : location || undefined,
     };
 
     try {
@@ -475,6 +483,8 @@ export default function Registro({ onRegister }: RegistroProps) {
                       setPerfil({});
                       setPublicFields([]);
                       setOrganizationPublicFields([]);
+                      setInterestAreas([]);
+                      setLocation('');
                       setInstitutionManual(false);
                       setOrganizationManual(false);
                       setErrores({});
@@ -512,6 +522,12 @@ export default function Registro({ onRegister }: RegistroProps) {
                   <div className="registro-fields" aria-label="Datos del perfil según tipo de cuenta">
                     {renderConditionalProfileFields()}
                     {tipoCuenta !== 'organizacion' && renderProfileInput('phone', 'Teléfono de contacto (opcional)', '9511234567', 'tel', false)}
+                    {tipoCuenta !== 'organizacion' && (
+                      <div className="registro-campos-opcionales">
+                        <SelectorUbicacion idPrefix="registro-location" value={location} onChange={setLocation} />
+                        <AreasInteresSelector value={interestAreas} onChange={setInterestAreas} error={errores.interest_areas} />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -526,6 +542,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                       ...(tipoCuenta === 'residente_oaxaca' ? [['location', 'Ubicación (municipio y colonia/comunidad)']] : []),
                       ['email', 'Correo electrónico'],
                       ['phone', 'Teléfono'],
+                      ['interest_areas', 'Áreas de interés'],
                     ].map(([field, label]) => (
                       <label key={field} className="registro-checkbox">
                         <input

@@ -2,13 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
 {
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query->whereIn('status', ['open', 'in_progress', 'completed'])
+            ->where(function (Builder $query) {
+                $query->whereNull('organization_id')
+                    ->orWhereHas('organization', fn (Builder $organization) => $organization->where('approval_status', 'approved'));
+            });
+    }
+
     protected $fillable = [
         'created_by',
         'organization_id',
@@ -59,20 +69,21 @@ class Project extends Model
     {
         return $this->hasMany(ProjectMember::class);
     }
+
     public function users(): BelongsToMany
-{
-    return $this->belongsToMany(
-        User::class,
-        'project_members'
-    )
-        ->withPivot([
-            'application_id',
-            'role',
-            'status',
-            'joined_at',
-        ])
-        ->withTimestamps();
-}
+    {
+        return $this->belongsToMany(
+            User::class,
+            'project_members'
+        )
+            ->withPivot([
+                'application_id',
+                'role',
+                'status',
+                'joined_at',
+            ])
+            ->withTimestamps();
+    }
 
     public function updates(): HasMany
     {

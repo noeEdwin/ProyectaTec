@@ -20,6 +20,10 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
   await page.getByLabel('Semestre o periodo').selectOption('5');
   await page.getByLabel('Matrícula').fill('E2E-0001');
   await page.getByLabel('Fecha estimada de egreso').fill('2028-06');
+  await page.getByLabel('País').selectOption('mexico');
+  await page.getByLabel('Estado').selectOption('Oaxaca');
+  await page.getByRole('checkbox', { name: 'Desarrollo de software' }).check();
+  await page.getByRole('checkbox', { name: 'Mostrar áreas de interés en mi perfil público' }).check();
   await page.getByLabel('Correo electrónico', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await page.getByLabel('Confirmar contraseña').fill(password);
@@ -29,9 +33,22 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
   await expect(page.getByRole('button', { name: /UE Cuenta/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Proyectos destacados' })).toBeVisible();
 
+  const registrationToken = await page.evaluate(() => localStorage.getItem('token'));
+  const profileResponse = await page.request.get(`${env.API_BASE_URL || 'http://127.0.0.1:8001/api'}/profile`, {
+    headers: { Authorization: `Bearer ${registrationToken}`, Accept: 'application/json' },
+  });
+  expect(profileResponse.ok()).toBeTruthy();
+  const { data: ownProfile } = await profileResponse.json();
+  expect(ownProfile.location).toBe('Oaxaca, México');
+  expect(ownProfile.field_of_study).toBe('Ingeniería en Sistemas');
+  expect(ownProfile.interest_areas).toEqual(['Desarrollo de software']);
+  const publicProfileResponse = await page.request.get(`${env.API_BASE_URL || 'http://127.0.0.1:8001/api'}/profiles/${ownProfile.id}`);
+  expect((await publicProfileResponse.json()).profile.interest_areas).toEqual(['Desarrollo de software']);
+
   await page.getByRole('button', { name: /Cuenta/ }).click();
   await page.getByRole('button', { name: 'Salir' }).click();
   await expect(page).toHaveURL(/\/acceso$/);
+  await page.waitForLoadState('load');
   await page.goto('/iniciativas');
   await expect(page).toHaveURL(/\/acceso$/);
 
@@ -53,6 +70,7 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
   await page.getByRole('button', { name: /Cuenta/ }).click();
   await page.getByRole('button', { name: 'Salir' }).click();
   await expect(page).toHaveURL(/\/acceso$/);
+  await page.waitForLoadState('load');
   const revoked = await page.request.get(`${env.API_BASE_URL || 'http://127.0.0.1:8001/api'}/me`, {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
   });

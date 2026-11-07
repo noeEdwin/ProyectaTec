@@ -19,6 +19,7 @@ class Profile extends Model
         'avatar_path',
         'institution',
         'field_of_study',
+        'interest_areas',
         'campus',
         'semester',
         'student_number',
@@ -41,6 +42,7 @@ class Profile extends Model
     {
         return [
             'public_fields' => 'array',
+            'interest_areas' => 'array',
             'pending_affiliation' => 'array',
             'affiliation_history' => 'array',
         ];

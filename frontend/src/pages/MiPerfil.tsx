@@ -57,6 +57,7 @@ export default function MiPerfil() {
             is_organization: false,
             image: null,
             initiatives: [],
+            interests: data.interest_areas || [],
             name: data.display_name || user?.name || '',
             description: data.description || '',
             location: data.location || '',
@@ -206,6 +207,12 @@ export default function MiPerfil() {
                 <strong>{perfil.classification || 'No indicado'}</strong>
               </div>
             </section>
+            {tipo === 'persona' && Boolean(perfil.interests?.length) && (
+              <section className="pd-tarjeta pd-info">
+                <h2>Áreas de interés</h2>
+                <div className="pd-intereses">{perfil.interests?.map((area) => <span key={area}>{area}</span>)}</div>
+              </section>
+            )}
           </div>
           <div className="pd-columna-derecha">
             <section className="pd-tarjeta pd-iniciativas">

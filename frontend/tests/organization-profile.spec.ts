@@ -111,6 +111,9 @@ test('miembro sin permisos no puede abrir el editor de organización', async ({ 
 
 test('cuenta personal carga perfil existente, lo guarda y conserva cambios al recargar', async ({ page }) => {
   let description = 'Estudiante de ingeniería';
+  let location = 'Oaxaca';
+  let interestAreas: string[] = [];
+  let publicFields: string[] = [];
   await page.addInitScript(() => localStorage.setItem('token', 'token-e2e'));
   await page.route('**/api/me', (route) => route.fulfill({
     json: { id: 9, name: 'María López', email: 'maria@example.com', account_type: 'estudiante' },
@@ -122,9 +125,11 @@ test('cuenta personal carga perfil existente, lo guarda y conserva cambios al re
         display_name: 'María López',
         description,
         phone: '9511234567',
-        location: 'Oaxaca',
+        location,
         institution: 'ITO',
         field_of_study: 'Sistemas',
+        interest_areas: interestAreas,
+        public_fields: publicFields,
         email: 'maria@example.com',
         account_type: 'estudiante',
       },
@@ -132,9 +137,20 @@ test('cuenta personal carga perfil existente, lo guarda y conserva cambios al re
   }));
   await page.route('**/api/me/profile', async (route) => {
     if (route.request().method() === 'PATCH') {
-      description = (route.request().postDataJSON() as { description: string }).description;
+      const payload = route.request().postDataJSON() as {
+        description: string;
+        location: string;
+        field_of_study: string;
+        interest_areas: string[];
+        public_fields: string[];
+      };
+      description = payload.description;
+      location = payload.location;
+      interestAreas = payload.interest_areas;
+      publicFields = payload.public_fields;
+      expect(payload.field_of_study).toBe('Sistemas');
     }
-    await route.fulfill({ json: { data: { display_name: 'María López', description } } });
+    await route.fulfill({ json: { data: { display_name: 'María López', description, location, interest_areas: interestAreas, public_fields: publicFields } } });
   });
 
   await page.goto('/perfil');
@@ -147,10 +163,19 @@ test('cuenta personal carga perfil existente, lo guarda y conserva cambios al re
   await page.getByLabel('Matrícula').fill('ITO-222');
   await page.getByLabel('Fecha estimada de egreso').fill('2028-06');
   await page.getByLabel('Descripción breve').fill('Desarrolladora interesada en impacto social');
+  await page.getByLabel('País').selectOption('mexico');
+  await page.getByLabel('Estado').selectOption('Oaxaca');
+  await page.getByRole('checkbox', { name: 'Agroindustria y alimentos' }).check();
+  await page.getByRole('checkbox', { name: 'Mostrar áreas de interés en mi perfil público' }).check();
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(page.getByText('¡Perfil guardado exitosamente!')).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Descripción breve')).toHaveValue('Desarrolladora interesada en impacto social');
+  await expect(page.getByLabel('Estado')).toHaveValue('Oaxaca');
+  await expect(page.getByRole('checkbox', { name: 'Agroindustria y alimentos' })).toBeChecked();
+  await expect(page.getByLabel('Carrera o programa', { exact: true })).toHaveValue('Sistemas');
+  await page.goto('/perfil-publico');
+  await expect(page.getByText('Agroindustria y alimentos')).toBeVisible();
 });
 
 test('el registro cambia los campos obligatorios según el tipo de cuenta', async ({ page }) => {

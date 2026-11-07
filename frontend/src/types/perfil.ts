@@ -17,4 +17,5 @@ export type PerfilPublicoData = {
   classification: string;
   contact: { email?: string; phone?: string };
   initiatives: IniciativaPublica[];
+  interests?: string[];
 };

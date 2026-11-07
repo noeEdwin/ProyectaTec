@@ -38,6 +38,7 @@ export default function PerfilPublico() {
     ...(profile?.public_fields?.includes('organization_area') ? [profile.organization_area] : []),
     ...(profile?.public_fields?.includes('organization_position') ? [profile.organization_position] : []),
   ].filter(Boolean).join(' · ');
+  const areasPublicas = profile?.public_fields?.includes('interest_areas') ? profile.interest_areas || [] : [];
   const tipoCuentaReal = profile?.account_type === 'organizacion' || user?.account_type === 'organizacion'
     ? 'Organización'
     : profile?.account_type === 'academico' ? 'Personal académico'
@@ -131,6 +132,13 @@ export default function PerfilPublico() {
               )}
             </div>}
           </section>
+
+          {areasPublicas.length > 0 && (
+            <section className="perfil-iniciativas" aria-label="Áreas de interés públicas">
+              <h2>Áreas de interés</h2>
+              <p>{areasPublicas.join(' · ')}</p>
+            </section>
+          )}
 
           <section className="perfil-iniciativas">
             <h2>Iniciativas públicas</h2>

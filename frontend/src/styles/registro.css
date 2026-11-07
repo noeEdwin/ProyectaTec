@@ -156,6 +156,8 @@
   width: 100%;
 }
 
+.registro-campos-opcionales { display: grid; gap: 18px; margin: 10px 0 22px; }
+
 .registro-field {
   margin-bottom: 18px;
 }

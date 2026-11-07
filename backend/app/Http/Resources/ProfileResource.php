@@ -20,6 +20,7 @@ class ProfileResource extends JsonResource
             'location' => $this->location,
             'institution' => $this->institution,
             'field_of_study' => $this->field_of_study,
+            'interest_areas' => $this->interest_areas ?? [],
             'campus' => $this->campus,
             'semester' => $this->semester,
             'student_number' => $this->student_number,
