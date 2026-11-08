@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProjectRequest;
+use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\OrganizationMember;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -31,6 +34,39 @@ class ProjectController extends Controller
         $project = Project::create($data);
 
         return response()->json(['project' => new ProjectResource($project)], 201);
+    }
+
+    public function update(UpdateProjectRequest $request, Project $project): JsonResponse
+    {
+        $data = $request->validated();
+
+        if ($data === []) {
+            throw ValidationException::withMessages(['project' => ['Envía al menos un campo editable.']]);
+        }
+
+        $allowed = match ($project->status) {
+            'draft' => ['draft', 'open', 'withdrawn'],
+            'open' => ['open', 'in_progress', 'completed', 'closed', 'withdrawn'],
+            'in_progress' => ['in_progress', 'completed', 'closed', 'withdrawn'],
+            'completed' => ['completed', 'closed', 'withdrawn'],
+            'closed' => ['closed'],
+            'withdrawn' => ['withdrawn'],
+            default => [],
+        };
+
+        if (array_key_exists('status', $data) && ! in_array($data['status'], $allowed, true)) {
+            throw ValidationException::withMessages(['status' => ['No se permite esta transición de estado.']]);
+        }
+
+        $startsAt = array_key_exists('starts_at', $data) ? $data['starts_at'] : $project->starts_at;
+        $endsAt = array_key_exists('ends_at', $data) ? $data['ends_at'] : $project->ends_at;
+        if ($startsAt !== null && $endsAt !== null && Carbon::parse($endsAt)->lt(Carbon::parse($startsAt))) {
+            throw ValidationException::withMessages(['ends_at' => ['La fecha de fin no puede ser anterior a la de inicio.']]);
+        }
+
+        $project->update($data);
+
+        return response()->json(['project' => new ProjectResource($project->fresh())]);
     }
 
     public function index(Request $request): JsonResponse

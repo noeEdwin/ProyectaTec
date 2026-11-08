@@ -210,7 +210,7 @@ class ProjectApiTest extends TestCase
         $this->actingAs($other, 'sanctum')->patchJson("/api/projects/{$project->id}", ['title' => 'Otro'])
             ->assertForbidden();
         $this->actingAs($owner, 'sanctum')->patchJson("/api/projects/{$project->id}", ['title' => 'Actualizado'])
-            ->assertOk()->assertJsonPath('title', 'Actualizado');
+            ->assertOk()->assertJsonPath('project.title', 'Actualizado');
         $this->assertDatabaseHas('projects', ['id' => $project->id, 'title' => 'Actualizado']);
     }
 

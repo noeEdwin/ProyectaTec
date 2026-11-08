@@ -27,9 +27,11 @@ Las rutas de la tabla incluyen el prefijo `/api`; los identificadores de detalle
 | POST | `/api/projects` | Bearer | Registrar proyecto personal o de una organización autorizada. |
 | GET | `/api/projects` | Pública | Listar proyectos públicos. |
 | GET | `/api/projects/{project}` | Pública | Consultar proyecto público. |
+| PATCH | `/api/projects/{project}` | Bearer y autor/administrador activo | Editar proyecto y cambiar estado sin borrarlo. |
 | POST | `/api/community-needs` | Bearer | Registrar necesidad comunitaria independiente. |
 | GET | `/api/community-needs` | Pública | Listar necesidades comunitarias abiertas. |
 | GET | `/api/community-needs/{communityNeed}` | Pública | Consultar necesidad comunitaria abierta. |
+| PATCH | `/api/community-needs/{communityNeed}` | Bearer y autor | Editar necesidad comunitaria y cerrar o retirar. |
 | POST | `/api/projects/{project}/needs` | Bearer y creador del proyecto | Registrar necesidad de un proyecto público. |
 | GET | `/api/projects/{project}/needs` | Pública | Listar necesidades abiertas de un proyecto público. |
 | GET | `/api/projects/{project}/needs/{need}` | Pública | Consultar necesidad abierta del proyecto indicado. |
@@ -153,9 +155,81 @@ Devuelve `200` con el objeto `project` mostrado en la respuesta de creación. Po
 
 Un proyecto inexistente o con estado no público devuelve `404`.
 
+### PATCH /api/projects/{project} (3.12.2)
+
+Es la **misma ruta de edición anterior**, ampliada; requiere Sanctum y autor del
+proyecto o administrador activo de la organización aprobada a la que pertenece.
+Admite cambios parciales de `title`, `description`, `modality`, `location`,
+`starts_at`, `ends_at` y `status`. Si cambias una fecha, el rango completo
+(incluidas fechas anteriores del proyecto) debe seguir siendo válido.
+`id`, `created_by`, `organization_id` y `category_id` están prohibidos incluso
+si se envían como `null`; tampoco se acepta una petición sin campos editables.
+
+| Estado actual | Destinos permitidos |
+|---|---|
+| `draft` (registro anterior) | `draft`, `open`, `withdrawn` |
+| `open` | `open`, `in_progress`, `completed`, `closed`, `withdrawn` |
+| `in_progress` | `in_progress`, `completed`, `closed`, `withdrawn` |
+| `completed` | `completed`, `closed`, `withdrawn` |
+| `closed` / `withdrawn` | Solo el mismo estado; no se permite reabrir. |
+
+Ejemplo: `PATCH /api/projects/12` con `{ "description": "Nueva descripción", "status": "closed" }`
+responde `200`:
+
+```json
+{
+  "project": {
+    "id": 12,
+    "title": "Monitoreo del agua",
+    "description": "Nueva descripción",
+    "status": "closed",
+    "category_id": 7,
+    "organization_id": null,
+    "modality": "híbrida",
+    "location": "Oaxaca",
+    "starts_at": "2027-01-15T09:00:00.000000Z",
+    "ends_at": "2027-06-15T18:00:00.000000Z",
+    "created_at": "2026-11-05T12:00:00.000000Z",
+    "updated_at": "2026-11-08T12:00:00.000000Z"
+  }
+}
+```
+El recurso permanece en la base de datos con sus solicitudes e historial, pero
+desaparece de las rutas públicas `GET /api/projects` y `GET /api/projects/12`.
+Sin sesión se recibe `401`, sin permiso `403`, identificador inexistente `404`
+y datos o transición inválidos `422` con errores por campo.
+
 ## Necesidades comunitarias independientes
 
 Una `CommunityNeed` pertenece a su creador y a una categoría; no pertenece a un proyecto ni se registra en nombre de una organización. Es distinta de una `ProjectNeed`, que pertenece a un proyecto y se consulta mediante rutas anidadas.
+
+### PATCH /api/community-needs/{communityNeed} (3.12.2)
+
+Solo el autor autenticado puede modificar `title`, `description`, `location` y
+`status`. No se aceptan `id`, `created_by`, `category_id`, `project_id` ni
+`organization_id`. `draft` puede pasar a `open` o `withdrawn`; `open` puede
+pasar a `closed` o `withdrawn`; estos dos últimos estados no se reabren.
+
+Ejemplo: `PATCH /api/community-needs/20` con `{ "status": "withdrawn" }`
+responde `200`:
+
+```json
+{
+  "community_need": {
+    "id": 20,
+    "title": "Capacitación en gestión de agua",
+    "description": "La comunidad requiere acompañamiento técnico.",
+    "status": "withdrawn",
+    "category_id": 7,
+    "location": "Oaxaca",
+    "created_at": "2026-11-05T12:00:00.000000Z",
+    "updated_at": "2026-11-08T12:00:00.000000Z"
+  }
+}
+```
+La publicación se conserva en la base de datos aunque deje de estar visible en
+consultas públicas. Sin sesión: `401`; autor distinto: `403`; recurso
+inexistente: `404`; datos inválidos: `422`.
 
 ### POST /api/community-needs
 
