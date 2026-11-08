@@ -48,7 +48,22 @@ class ProjectPolicy
             return false;
         }
 
-        return (int) $project->created_by === (int) $user->id;
+        if ((int) $project->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $project->organization_id !== null
+            && $project->organization->memberships()
+                ->where('user_id', $user->id)
+                ->where('role', 'admin')
+                ->where('status', 'active')
+                ->exists();
+    }
+
+    public function addNeed(User $user, Project $project): bool
+    {
+        return (int) $project->created_by === (int) $user->id
+            && ($project->organization_id === null || $project->organization?->approval_status === 'approved');
     }
 
     /**

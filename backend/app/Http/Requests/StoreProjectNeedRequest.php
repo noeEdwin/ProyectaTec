@@ -15,7 +15,7 @@ class StoreProjectNeedRequest extends FormRequest
             ->publiclyVisible()
             ->findOrFail($this->route('project'));
 
-        Gate::authorize('update', $project);
+        Gate::authorize('addNeed', $project);
         $this->attributes->set('authorized_project', $project);
 
         return true;

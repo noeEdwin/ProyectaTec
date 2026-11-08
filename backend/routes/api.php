@@ -6,6 +6,8 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
+use App\Http\Controllers\PublicationReportController;
+use App\Http\Controllers\PublicationStatsController;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -82,18 +84,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::post('/profile', [ProfileController::class, 'update']);
     Route::patch('/profile', [ProfileController::class, 'update']);
-    // Editar un proyecto
-    Route::patch('/projects/{project}', function (Request $request, Project $project) {
-        Gate::authorize('update', $project);
-
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-        ]);
-
-        $project->update($data);
-
-        return response()->json($project);
-    });
+    // Ampliación de la ruta de edición existente; conserva la misma URL.
+    Route::patch('/projects/{project}', [ProjectController::class, 'update'])->whereNumber('project');
+    Route::patch('/community-needs/{communityNeed}', [CommunityNeedController::class, 'update'])->whereNumber('communityNeed');
+    Route::post('/publication-reports', [PublicationReportController::class, 'store']);
+    Route::get('/admin/publication-reports', [PublicationReportController::class, 'index']);
+    Route::get('/admin/publication-stats', [PublicationStatsController::class, 'index']);
 
     // Editar una organización
     Route::patch('/organizations/{organization}', [OrganizationController::class, 'update'])
