@@ -9,6 +9,7 @@ use App\Http\Controllers\ProjectNeedController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Models\Application;
+use App\Models\Category;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -33,6 +34,9 @@ Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])
 Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
 Route::get('/community-needs', [CommunityNeedController::class, 'index']);
 Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
+Route::get('/categories', fn () => response()->json([
+    'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+]));
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::publiclyVisible()->latest()->first();

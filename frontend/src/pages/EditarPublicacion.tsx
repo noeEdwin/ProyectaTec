@@ -37,8 +37,6 @@ export default function EditarPublicacion() {
     if (!parametrosValidos || !esTipo(tipo)) return;
 
     let activo = true;
-    setEstado({ fase: 'cargando' });
-
     obtenerPublicacion(tipo, idNumero)
       .then((valores) => {
         if (activo) setEstado({ fase: 'listo', valores: { ...valores, tipo } });
