@@ -19,6 +19,9 @@ import OrganizacionPublica from './pages/OrganizacionPublica';
 import EditarPerfilOrganizacion from './pages/EditarPerfilOrganizacion';
 import AdminOrganizaciones from './pages/AdminOrganizaciones';
 
+import NuevaPublicacion from './pages/NuevaPublicacion';
+import EditarPublicacion from './pages/EditarPublicacion';
+
 import './styles/App.css';
 
 function App() {
@@ -45,6 +48,10 @@ function App() {
                 <Route path="/editar-perfil-organizacion" element={<EditarPerfilOrganizacion />} />
                 <Route path="/admin/organizaciones" element={<AdminOrganizaciones />} />
 
+                {/* Publicaciones: crear y editar */}
+                <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />
+                <Route path="/publicaciones/:tipo/:id/editar" element={<EditarPublicacion />} />
+
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
                 <Route path="/editar-perfil" element={<Navigate to="/perfil" replace />} />
@@ -56,5 +63,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;
