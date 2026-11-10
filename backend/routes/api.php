@@ -13,10 +13,15 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use App\Models\Category;
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
 // --------------------------------------------------------------------------
+
+Route::get('/categories', function () {
+    return response()->json(Category::all());
+});
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);

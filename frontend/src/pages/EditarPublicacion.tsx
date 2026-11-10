@@ -19,22 +19,26 @@ type Estado =
   | { fase: 'error'; mensaje: string }
   | { fase: 'listo'; valores: Partial<PublicacionFormValues> };
 
-function esTipo(valor?: string): valor is TipoPublicacion {
-  return valor === 'proyecto' || valor === 'necesidad';
+function normalizarTipo(valor?: string): TipoPublicacion | null {
+  if (valor === 'proyecto' || valor === 'project') return 'proyecto';
+  if (valor === 'necesidad' || valor === 'community_need') return 'necesidad';
+  return null;
 }
 
 export default function EditarPublicacion() {
   const navigate = useNavigate();
-  const { tipo, id } = useParams<{ tipo: string; id: string }>();
+  const { tipo: tipoParam, id } = useParams<{ tipo: string; id: string }>();
   const { categorias, cargando, error } = useCategorias();
 
+  const tipo = normalizarTipo(tipoParam);
   const idNumero = Number(id);
-  const parametrosValidos = esTipo(tipo) && Number.isInteger(idNumero) && idNumero > 0;
+  const parametrosValidos = tipo !== null && Number.isInteger(idNumero) && idNumero > 0;
 
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!parametrosValidos || !esTipo(tipo)) return;
+    if (!parametrosValidos || !tipo) return;
 
     let activo = true;
     setEstado({ fase: 'cargando' });
@@ -45,51 +49,82 @@ export default function EditarPublicacion() {
       })
       .catch((err: unknown) => {
         if (!activo) return;
-        const noExiste = axios.isAxiosError(err) && err.response?.status === 404;
+        if (axios.isAxiosError(err)) {
+          if (err.response?.status === 401) {
+            navigate('/acceso');
+            return;
+          }
+          if (err.response?.status === 404) {
+            setEstado({ fase: 'error', mensaje: 'La publicación que buscas no existe en PostgreSQL.' });
+            return;
+          }
+        }
         setEstado({
           fase: 'error',
-          mensaje: noExiste
-            ? 'La publicación que buscas no existe.'
-            : 'No se pudo cargar la publicación. Inténtalo nuevamente.',
+          mensaje: 'No se pudo cargar la publicación. Inténtalo nuevamente.',
         });
       });
 
     return () => {
       activo = false;
     };
-  }, [parametrosValidos, tipo, idNumero]);
+  }, [parametrosValidos, tipo, idNumero, navigate]);
 
-  if (!parametrosValidos || !esTipo(tipo)) {
-    return <Mensaje texto="La dirección de la publicación no es válida." />;
+  if (!parametrosValidos || !tipo) {
+    return <Mensaje texto="La dirección de la publicación no es válida." alerta />;
   }
   if (estado.fase === 'cargando') {
-    return <Mensaje texto="Cargando publicación..." />;
+    return <Mensaje texto="Cargando datos de la publicación..." />;
   }
   if (estado.fase === 'error') {
     return <Mensaje texto={estado.mensaje} alerta />;
   }
 
   async function guardar(payload: PublicacionPayload) {
-    await actualizarPublicacion(tipo as TipoPublicacion, idNumero, payload);
-    navigate(RUTA_PUBLICACIONES);
+    setErrorEnvio(null);
+    try {
+      await actualizarPublicacion(tipo as TipoPublicacion, idNumero, payload);
+      navigate(RUTA_PUBLICACIONES);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (status === 401) {
+          navigate('/acceso');
+          return;
+        }
+        if (status === 403) {
+          setErrorEnvio('No tienes permisos para modificar esta publicación.');
+          return;
+        }
+      }
+      // Se relanza el error para que PublicacionForm resalte los inputs con error 422
+      throw err;
+    }
   }
 
   return (
-    <PublicacionForm
-      modo="editar"
-      categorias={categorias}
-      cargandoCategorias={cargando}
-      errorCategorias={error}
-      valoresIniciales={estado.valores}
-      onSubmit={guardar}
-      onCancel={() => navigate(RUTA_PUBLICACIONES)}
-    />
+    <>
+      {errorEnvio && (
+        <div style={{ maxWidth: '800px', margin: '1rem auto 0', padding: '0.875rem 1.25rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '10px', fontSize: '14px' }} role="alert">
+          {errorEnvio}
+        </div>
+      )}
+      <PublicacionForm
+        modo="editar"
+        categorias={categorias}
+        cargandoCategorias={cargando}
+        errorCategorias={error}
+        valoresIniciales={estado.valores}
+        onSubmit={guardar}
+        onCancel={() => navigate(RUTA_PUBLICACIONES)}
+      />
+    </>
   );
 }
 
 function Mensaje({ texto, alerta = false }: { texto: string; alerta?: boolean }) {
   return (
-    <div style={{ padding: '4rem 1.5rem', textAlign: 'center', color: '#64748b' }}>
+    <div style={{ padding: '4rem 1.5rem', textAlign: 'center', color: '#64748b', fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
       <p role={alerta ? 'alert' : 'status'}>{texto}</p>
     </div>
   );
