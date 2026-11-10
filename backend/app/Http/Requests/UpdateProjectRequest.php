@@ -21,7 +21,7 @@ class UpdateProjectRequest extends FormRequest
             'id' => ['missing'],
             'created_by' => ['missing'],
             'organization_id' => ['missing'],
-            'category_id' => ['missing'],
+            'category_id' => ['sometimes', 'required', 'integer', 'exists:categories,id'],
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'required', 'string'],
             'status' => ['sometimes', 'required', Rule::in(['draft', 'open', 'in_progress', 'completed', 'closed', 'withdrawn'])],

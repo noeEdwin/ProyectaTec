@@ -20,6 +20,21 @@ type PublicationRecord = {
   ends_at?: string | null;
 };
 
+export type MiPublicacion = {
+  id: number;
+  type: TipoPublicacion;
+  title: string;
+  description: string;
+  status: string;
+  category_id: number;
+  updated_at: string | null;
+  can_edit: boolean;
+};
+
+export type PublicacionListado = PublicationRecord & {
+  type: TipoPublicacion;
+};
+
 function esTipoProyecto(tipo?: string): boolean {
   return tipo === 'proyecto' || tipo === 'project';
 }
@@ -39,27 +54,12 @@ export async function listarCategorias(): Promise<Categoria[]> {
   return [];
 }
 
-export type MiPublicacion = {
-  id: number;
-  type: TipoPublicacion;
-  title: string;
-  description: string;
-  status: string;
-  category_id: number;
-  updated_at: string | null;
-  can_edit: boolean;
-};
-
-export type PublicacionListado = PublicationRecord & {
-  type: TipoPublicacion;
-};
-
 export async function listarMisPublicaciones(): Promise<MiPublicacion[]> {
   const { data } = await api.get<{ publications: MiPublicacion[] }>('/me/publications');
   return data.publications;
 }
 
-/** Lista de proyectos y necesidades visibles para el catálogo. */
+/** Lista proyectos y necesidades públicas para mostrarlas en el catálogo. */
 export async function listarPublicaciones(): Promise<PublicacionListado[]> {
   const [projectsResponse, needsResponse] = await Promise.all([
     api.get<{ projects?: PublicationRecord[]; data?: PublicationRecord[] }>('/projects'),
@@ -138,7 +138,7 @@ export async function obtenerDetallePublicacion(tipo: string, id: number): Promi
   return extraerPublicacion(data, tipo);
 }
 
-/** Obtiene una publicación administrable por la cuenta autenticada, incluso si es borrador. */
+/** Obtiene una publicación administrable por la cuenta, incluso si es borrador. */
 export async function obtenerPublicacion(
   tipo: TipoPublicacion | string,
   id: number,
@@ -159,7 +159,7 @@ export async function obtenerPublicacion(
   };
 }
 
-/** Reporta una sola publicación usando el contrato real de Laravel. */
+/** Reporta una publicación con el contrato aceptado por Laravel. */
 export async function reportarPublicacion(payload: {
   tipo: TipoPublicacion | string;
   id: number;
@@ -168,8 +168,7 @@ export async function reportarPublicacion(payload: {
 }): Promise<void> {
   const isProject = esTipoProyecto(payload.tipo);
   await api.post('/publication-reports', {
-    project_id: isProject ? payload.id : null,
-    community_need_id: isProject ? null : payload.id,
+    ...(isProject ? { project_id: payload.id } : { community_need_id: payload.id }),
     reason: payload.reason,
     details: payload.details,
   });

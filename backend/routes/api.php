@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommunityNeedController;
+use App\Http\Controllers\MyPublicationController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -69,6 +70,9 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me/publications', [MyPublicationController::class, 'index']);
+    Route::get('/me/publications/{type}/{id}', [MyPublicationController::class, 'show'])
+        ->whereNumber('id');
     Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
     Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);

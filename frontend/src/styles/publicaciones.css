@@ -454,3 +454,131 @@
     gap: 6px;
   }
 }
+
+.pub-mis-contenedor {
+  padding-bottom: 36px;
+}
+
+.pub-mis-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 32px 0 18px;
+  color: var(--pub-muted);
+  font-size: 14px;
+}
+
+.pub-mis-toolbar .pub-boton,
+.pub-mis-vacio .pub-boton,
+.pub-mis-item > .pub-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.pub-mis-lista {
+  display: grid;
+  gap: 14px;
+}
+
+.pub-mis-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pub-mis-item-copy {
+  min-width: 0;
+}
+
+.pub-mis-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pub-mis-tags span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--pub-teal-bg);
+  color: var(--pub-teal);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pub-mis-tags span + span {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.pub-mis-item h2 {
+  margin: 0 0 6px;
+}
+
+.pub-mis-item p {
+  margin: 0 0 10px;
+  color: var(--pub-muted);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.pub-mis-item small {
+  color: var(--pub-muted);
+}
+
+.pub-mis-estado {
+  padding: 30px 0;
+  color: var(--pub-muted);
+}
+
+.pub-mis-vacio {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  max-width: 620px;
+  margin: 24px auto;
+  padding: 36px;
+}
+
+.pub-mis-vacio h2,
+.pub-mis-vacio p {
+  margin: 0;
+}
+
+.pub-mis-vacio-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--pub-teal-bg);
+  color: var(--pub-teal);
+  font-size: 26px;
+}
+
+.pub-alerta button {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .pub-mis-toolbar,
+  .pub-mis-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pub-mis-vacio {
+    padding: 24px 18px;
+  }
+}

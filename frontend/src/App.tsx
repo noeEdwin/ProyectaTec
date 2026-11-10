@@ -21,6 +21,7 @@ import AdminOrganizaciones from './pages/AdminOrganizaciones';
 import NuevaPublicacion from './pages/NuevaPublicacion';
 import EditarPublicacion from './pages/EditarPublicacion';
 import DetallePublicacion from './pages/DetallePublicacion';
+import MisPublicaciones from './pages/MisPublicaciones';
 
 import './styles/App.css';
 
@@ -56,6 +57,7 @@ function App() {
 
                 {/* Publicaciones: Crear y Editar */}
                 <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />
+                <Route path="/mis-publicaciones" element={<MisPublicaciones />} />
                 <Route path="/publicaciones/:tipo/:id/editar" element={<EditarPublicacion />} />
                 <Route path="/iniciativas/:tipo/:id/editar" element={<EditarPublicacion />} />
 

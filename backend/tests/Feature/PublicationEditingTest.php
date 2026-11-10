@@ -60,6 +60,7 @@ class PublicationEditingTest extends TestCase
         $this->actingAs($owner, 'sanctum')->patchJson("/api/projects/{$project->id}", [
             'title' => 'Proyecto editado',
             'description' => 'Nueva descripción',
+            'category_id' => $category->id,
             'modality' => 'Híbrida',
             'location' => 'Oaxaca, México',
             'starts_at' => '2027-02-01',
@@ -125,12 +126,13 @@ class PublicationEditingTest extends TestCase
         $project = $this->project($owner, $this->category());
         $this->actingAs($owner, 'sanctum');
 
-        foreach (['id', 'created_by', 'organization_id', 'category_id'] as $field) {
+        foreach (['id', 'created_by', 'organization_id'] as $field) {
             $this->patchJson("/api/projects/{$project->id}", [$field => null])
                 ->assertUnprocessable()->assertJsonValidationErrors($field);
         }
         foreach ([
             ['title' => ''], ['description' => ''], ['status' => 'draft'],
+            ['category_id' => 999999],
             ['modality' => str_repeat('a', 256)], ['starts_at' => 'invalid'],
             ['ends_at' => '2026-01-01'], ['starts_at' => '2028-01-01'],
         ] as $invalid) {
@@ -160,6 +162,7 @@ class PublicationEditingTest extends TestCase
         ])->assertForbidden();
         $this->actingAs($owner, 'sanctum')->patchJson("/api/community-needs/{$need->id}", [
             'title' => 'Necesidad editada', 'description' => 'Nueva descripción',
+            'category_id' => $need->category_id,
             'location' => 'Oaxaca', 'status' => 'withdrawn',
         ])->assertOk()->assertJsonPath('community_need.status', 'withdrawn');
         $this->assertDatabaseHas('community_needs', [
@@ -177,12 +180,13 @@ class PublicationEditingTest extends TestCase
         $need = $this->communityNeed($owner, $this->category());
         $this->actingAs($owner, 'sanctum');
 
-        foreach (['id', 'created_by', 'category_id', 'project_id', 'organization_id'] as $field) {
+        foreach (['id', 'created_by', 'project_id', 'organization_id'] as $field) {
             $this->patchJson("/api/community-needs/{$need->id}", [$field => null])
                 ->assertUnprocessable()->assertJsonValidationErrors($field);
         }
         foreach ([
             ['title' => ''], ['description' => []], ['status' => 'unknown'], ['location' => str_repeat('x', 256)],
+            ['category_id' => 999999],
         ] as $invalid) {
             $this->patchJson("/api/community-needs/{$need->id}", $invalid)
                 ->assertUnprocessable()->assertJsonValidationErrors(array_key_first($invalid));
