@@ -23,6 +23,9 @@ import EditarPublicacion from './pages/EditarPublicacion';
 import DetallePublicacion from './pages/DetallePublicacion';
 import MisPublicaciones from './pages/MisPublicaciones';
 
+import MasIniciativas from './pages/MasIniciativas';
+import PublicacionesVinculaciones from './pages/PublicacionesVinculaciones';
+
 import './styles/App.css';
 
 function App() {
@@ -64,6 +67,9 @@ function App() {
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
                 <Route path="/editar-perfil" element={<Navigate to="/perfil" replace />} />
+
+                <Route path="/iniciativas/mas" element={<MasIniciativas />} />
+                <Route path="/publicaciones" element={<PublicacionesVinculaciones />} />
               </Route>
             </Route>
           </Routes>
