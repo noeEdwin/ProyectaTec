@@ -10,6 +10,7 @@ use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Controllers\AdminPublicationModerationController;
+use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -72,7 +73,8 @@ Route::get('/proyectos/destacado', function () {
 // Rutas protegidas mediante Laravel Sanctum (Requieren Bearer Token)
 // --------------------------------------------------------------------------
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () {
+
     // Moderación administrativa de proyectos
 Route::patch(
     '/admin/projects/{project}/visibility',
