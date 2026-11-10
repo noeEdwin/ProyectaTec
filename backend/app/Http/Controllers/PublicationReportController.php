@@ -17,12 +17,14 @@ class PublicationReportController extends Controller
     public function store(StorePublicationReportRequest $request): JsonResponse
     {
         $data = $request->validated();
-
-        if (isset($data['project_id'])) {
-            Project::publiclyVisible()->findOrFail($data['project_id']);
-        } else {
-            CommunityNeed::query()->where('status', 'open')->findOrFail($data['community_need_id']);
-        }
+if (isset($data['project_id'])) {
+    Project::publiclyVisible()->findOrFail($data['project_id']);
+} else {
+    CommunityNeed::query()
+        ->where('is_hidden', false)
+        ->where('status', 'open')
+        ->findOrFail($data['community_need_id']);
+}
 
         try {
             $report = PublicationReport::create([
