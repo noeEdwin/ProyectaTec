@@ -15,6 +15,10 @@ class CommunityNeedResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'category_id' => $this->category_id,
+            'category' => $this->whenLoaded('category', fn () => [
+                'id' => $this->category->id,
+                'name' => $this->category->name,
+            ]),
             'location' => $this->location,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

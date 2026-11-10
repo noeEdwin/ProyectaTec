@@ -24,6 +24,7 @@ class ProjectController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->where('role', 'admin')
                 ->where('status', 'active')
+                ->whereHas('organization', fn ($query) => $query->where('approval_status', 'approved'))
                 ->exists();
 
             abort_unless($isAdmin, 403);
@@ -72,6 +73,7 @@ class ProjectController extends Controller
     {
         $projects = Project::query()
             ->publiclyVisible()
+            ->with(['category:id,name', 'organization:id,name'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate(15);
@@ -91,6 +93,7 @@ class ProjectController extends Controller
     {
         $project = Project::query()
             ->publiclyVisible()
+            ->with(['category:id,name', 'organization:id,name'])
             ->findOrFail($project);
 
         return response()->json(['project' => new ProjectResource($project)]);

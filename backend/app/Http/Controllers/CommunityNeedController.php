@@ -51,6 +51,7 @@ class CommunityNeedController extends Controller
         $communityNeeds = CommunityNeed::query()
             ->where('status', 'open')
             ->where('is_hidden', false)
+            ->with('category:id,name')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate(15);
@@ -70,7 +71,8 @@ class CommunityNeedController extends Controller
     {
         $communityNeed = CommunityNeed::query()
             ->where('status', 'open')
-           ->where('is_hidden', false)
+            ->where('is_hidden', false)
+            ->with('category:id,name')
             ->findOrFail($communityNeed);
 
         return response()->json(['community_need' => new CommunityNeedResource($communityNeed)]);

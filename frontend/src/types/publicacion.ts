@@ -1,5 +1,5 @@
 // Ruta a la que se vuelve después de guardar o cancelar
-export const RUTA_PUBLICACIONES = '/iniciativas';
+export const RUTA_PUBLICACIONES = '/mis-publicaciones';
 export type TipoPublicacion = 'proyecto' | 'necesidad';
 
 export const TIPOS_PUBLICACION: {

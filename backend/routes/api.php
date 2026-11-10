@@ -2,30 +2,26 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommunityNeedController;
+use App\Http\Controllers\MyPublicationController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
-use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Controllers\AdminPublicationModerationController;
+use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Application;
+use App\Models\Category;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
-use App\Models\Category;
-
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
 // --------------------------------------------------------------------------
-
-Route::get('/categories', function () {
-    return response()->json(Category::all());
-});
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -42,6 +38,9 @@ Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])
 Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
 Route::get('/community-needs', [CommunityNeedController::class, 'index']);
 Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
+Route::get('/categories', fn () => response()->json([
+    'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+]));
 // Consulta el proyecto destacado para la vista de Inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::publiclyVisible()->latest()->first();
@@ -74,23 +73,26 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () {
+    // Moderación de usuarios
+Route::patch(
+    '/admin/users/{user}/status',
+    [AdminUserModerationController::class, 'updateStatus']
+)->whereNumber('user');
 
-    // Moderación administrativa de proyectos
+// Moderación de proyectos
 Route::patch(
     '/admin/projects/{project}/visibility',
     [AdminPublicationModerationController::class, 'updateProjectVisibility']
 )->whereNumber('project');
 
-// Moderación administrativa de necesidades comunitarias
+// Moderación de necesidades comunitarias
 Route::patch(
     '/admin/community-needs/{communityNeed}/visibility',
     [AdminPublicationModerationController::class, 'updateCommunityNeedVisibility']
 )->whereNumber('communityNeed');
-    // Moderación administrativa de usuarios
-Route::patch(
-    '/admin/users/{user}/status',
-    [AdminUserModerationController::class, 'updateStatus']
-)->whereNumber('user');
+    Route::get('/me/publications', [MyPublicationController::class, 'index']);
+    Route::get('/me/publications/{type}/{id}', [MyPublicationController::class, 'show'])
+        ->whereNumber('id');
     Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
     Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);

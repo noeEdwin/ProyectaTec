@@ -28,6 +28,14 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
+        if (in_array($user->account_type, ['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'], true)) {
+            return $user->organizations()
+                ->wherePivot('role', 'admin')
+                ->wherePivot('status', 'active')
+                ->where('organizations.approval_status', 'approved')
+                ->exists();
+        }
+
         return true;
     }
 
@@ -36,6 +44,10 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
+        if ($project->organization_id !== null && $project->organization?->approval_status !== 'approved') {
+            return false;
+        }
+
         if ((int) $project->created_by === (int) $user->id) {
             return true;
         }
@@ -50,7 +62,8 @@ class ProjectPolicy
 
     public function addNeed(User $user, Project $project): bool
     {
-        return (int) $project->created_by === (int) $user->id;
+        return (int) $project->created_by === (int) $user->id
+            && ($project->organization_id === null || $project->organization?->approval_status === 'approved');
     }
 
     /**

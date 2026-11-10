@@ -20,7 +20,7 @@ class UpdateCommunityNeedRequest extends FormRequest
         return [
             'id' => ['missing'],
             'created_by' => ['missing'],
-            'category_id' => ['missing'],
+            'category_id' => ['sometimes', 'required', 'integer', 'exists:categories,id'],
             'project_id' => ['missing'],
             'organization_id' => ['missing'],
             'title' => ['sometimes', 'required', 'string', 'max:255'],

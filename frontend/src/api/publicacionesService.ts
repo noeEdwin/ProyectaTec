@@ -1,118 +1,175 @@
-import axios from 'axios';
 import type {
   Categoria,
   PublicacionFormValues,
   PublicacionPayload,
   TipoPublicacion,
 } from '../types/publicacion';
+import api from './axios';
 
-// Permitir el envío de cookies de sesión para Laravel Sanctum
-axios.defaults.withCredentials = true;
+type PublicationRecord = {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  category_id: number;
+  category?: { id: number; name: string };
+  organization?: { name: string } | null;
+  location?: string | null;
+  modality?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+};
 
-/** Obtiene la cabecera de autorización si existe un token guardado */
-function obtenerHeaders() {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+export type MiPublicacion = {
+  id: number;
+  type: TipoPublicacion;
+  title: string;
+  description: string;
+  status: string;
+  category_id: number;
+  updated_at: string | null;
+  can_edit: boolean;
+};
 
-/** Auxiliar para saber si el tipo es proyecto (soporta 'proyecto' y 'project') */
+export type PublicacionListado = PublicationRecord & {
+  type: TipoPublicacion;
+};
+
 function esTipoProyecto(tipo?: string): boolean {
   return tipo === 'proyecto' || tipo === 'project';
 }
 
-/** GET de categorías (tabla categories). */
+function extraerPublicacion(data: Record<string, unknown>, tipo: string): PublicationRecord {
+  const key = esTipoProyecto(tipo) ? 'project' : 'community_need';
+  const item = data[key] ?? data.data ?? data;
+  return item as PublicationRecord;
+}
+
+/** Obtiene categorías desde Laravel, aceptando el contrato enveloped o una lista directa. */
 export async function listarCategorias(): Promise<Categoria[]> {
-  try {
-    const response = await axios.get('/api/categories', { headers: obtenerHeaders() });
-    const data = response.data;
+  const { data } = await api.get<Categoria[] | { categories?: Categoria[]; data?: Categoria[] }>('/categories');
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.categories)) return data.categories;
+  if (Array.isArray(data.data)) return data.data;
+  return [];
+}
 
-    if (Array.isArray(data)) {
-      return data;
-    }
-    if (Array.isArray(data?.data)) {
-      return data.data;
-    }
-    return [];
-  } catch (error) {
-    console.error('Error al obtener categorías:', error);
-    return [];
+export async function listarMisPublicaciones(): Promise<MiPublicacion[]> {
+  const { data } = await api.get<{ publications: MiPublicacion[] }>('/me/publications');
+  return data.publications;
+}
+
+/** Lista proyectos y necesidades públicas para mostrarlas en el catálogo. */
+export async function listarPublicaciones(): Promise<PublicacionListado[]> {
+  const [projectsResponse, needsResponse] = await Promise.all([
+    api.get<{ projects?: PublicationRecord[]; data?: PublicationRecord[] }>('/projects'),
+    api.get<{ community_needs?: PublicationRecord[]; data?: PublicationRecord[] }>('/community-needs'),
+  ]);
+
+  const projects = Array.isArray(projectsResponse.data.projects)
+    ? projectsResponse.data.projects
+    : projectsResponse.data.data ?? [];
+  const needs = Array.isArray(needsResponse.data.community_needs)
+    ? needsResponse.data.community_needs
+    : needsResponse.data.data ?? [];
+
+  return [
+    ...projects.map((item) => ({ ...item, type: 'proyecto' as const })),
+    ...needs.map((item) => ({ ...item, type: 'necesidad' as const })),
+  ];
+}
+
+export async function crearPublicacion(payload: PublicacionPayload): Promise<{ id: number }> {
+  if (payload.type === 'project') {
+    const { data } = await api.post<{ project: { id: number } }>('/projects', {
+      title: payload.title,
+      description: payload.description,
+      category_id: payload.category_id,
+      modality: payload.modality,
+      location: payload.location,
+      starts_at: payload.starts_at,
+      ends_at: payload.ends_at,
+      status: 'open',
+    });
+    return { id: data.project.id };
   }
-}
 
-/** POST para crear publicaciones reales en PostgreSQL. */
-export async function crearPublicacion(
-  payload: PublicacionPayload,
-): Promise<{ id: number }> {
-  const endpoint = esTipoProyecto(payload.type) ? '/api/projects' : '/api/community-needs';
-  const { type, ...dataToSend } = payload;
-
-  const body = {
-    ...dataToSend,
+  const { data } = await api.post<{ community_need: { id: number } }>('/community-needs', {
+    title: payload.title,
+    description: payload.description,
+    category_id: payload.category_id,
+    location: payload.location,
     status: 'open',
-  };
-
-  const { data } = await axios.post(endpoint, body, { headers: obtenerHeaders() });
-  const item = data.project || data.community_need || data.data || data;
-  return { id: item.id };
+  });
+  return { id: data.community_need.id };
 }
 
-/** PUT para actualizar proyectos o necesidades comunitarias existentes. */
+/** Actualiza usando PATCH, método declarado por las rutas Laravel. */
 export async function actualizarPublicacion(
   tipo: TipoPublicacion | string,
   id: number,
   payload: PublicacionPayload,
 ): Promise<void> {
-  const endpoint = esTipoProyecto(tipo) ? `/api/projects/${id}` : `/api/community-needs/${id}`;
-  const { type, ...dataToSend } = payload;
-
-  const body = {
-    ...dataToSend,
-    status: 'open',
-  };
-
-  await axios.put(endpoint, body, { headers: obtenerHeaders() });
+  const path = esTipoProyecto(tipo) ? `/projects/${id}` : `/community-needs/${id}`;
+  if (payload.type === 'project') {
+    await api.patch(path, {
+      title: payload.title,
+      description: payload.description,
+      category_id: payload.category_id,
+      modality: payload.modality,
+      location: payload.location,
+      starts_at: payload.starts_at,
+      ends_at: payload.ends_at,
+    });
+  } else {
+    await api.patch(path, {
+      title: payload.title,
+      description: payload.description,
+      category_id: payload.category_id,
+      location: payload.location,
+    });
+  }
 }
 
-/** GET para obtener el detalle de una publicación por tipo e ID. */
+/** Obtiene detalles de una publicación visible públicamente. */
+export async function obtenerDetallePublicacion(tipo: string, id: number): Promise<PublicationRecord> {
+  const path = esTipoProyecto(tipo) ? `/projects/${id}` : `/community-needs/${id}`;
+  const { data } = await api.get<Record<string, unknown>>(path);
+  return extraerPublicacion(data, tipo);
+}
+
+/** Obtiene una publicación administrable por la cuenta, incluso si es borrador. */
 export async function obtenerPublicacion(
   tipo: TipoPublicacion | string,
   id: number,
 ): Promise<Partial<PublicacionFormValues>> {
-  const esProyecto = esTipoProyecto(tipo);
-  const endpoint = esProyecto ? `/api/projects/${id}` : `/api/community-needs/${id}`;
-  const { data } = await axios.get(endpoint, { headers: obtenerHeaders() });
-
-  // Extraer según la clave que devuelve el controlador de Laravel
-  const item = data.project || data.community_need || data.data || data;
-
-  if (esProyecto) {
-    return {
-      tipo: 'proyecto',
-      title: item.title || '',
-      category_id: String(item.category_id || item.category?.id || ''),
-      modality: item.modality || '',
-      location: item.location || '',
-      starts_at: item.starts_at ? item.starts_at.slice(0, 10) : '',
-      ends_at: item.ends_at ? item.ends_at.slice(0, 10) : '',
-      description: item.description || '',
-    };
-  }
+  const normalizedType = esTipoProyecto(tipo) ? 'proyecto' : 'necesidad';
+  const { data } = await api.get<Record<string, unknown>>(`/me/publications/${normalizedType}/${id}`);
+  const publication = extraerPublicacion(data, normalizedType);
 
   return {
-    tipo: 'necesidad',
-    title: item.title || '',
-    category_id: String(item.category_id || item.category?.id || ''),
-    location: item.location || '',
-    description: item.description || '',
+    tipo: normalizedType,
+    title: publication.title ?? '',
+    category_id: String(publication.category_id ?? publication.category?.id ?? ''),
+    modality: publication.modality ?? '',
+    location: publication.location ?? '',
+    starts_at: publication.starts_at?.slice(0, 10) ?? '',
+    ends_at: publication.ends_at?.slice(0, 10) ?? '',
+    description: publication.description ?? '',
   };
 }
 
-/** POST para enviar reportes sobre publicaciones inapropiadas. */
+/** Reporta una publicación con el contrato aceptado por Laravel. */
 export async function reportarPublicacion(payload: {
-  reportable_type: string;
-  reportable_id: number;
-  reason: string;
+  tipo: TipoPublicacion | string;
+  id: number;
+  reason: 'inappropriate' | 'spam' | 'misinformation' | 'other';
   details?: string;
 }): Promise<void> {
-  await axios.post('/api/publication-reports', payload, { headers: obtenerHeaders() });
+  const isProject = esTipoProyecto(payload.tipo);
+  await api.post('/publication-reports', {
+    ...(isProject ? { project_id: payload.id } : { community_need_id: payload.id }),
+    reason: payload.reason,
+    details: payload.details,
+  });
 }

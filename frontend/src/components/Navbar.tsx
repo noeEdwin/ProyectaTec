@@ -55,8 +55,7 @@ export default function Navbar() {
           <NavLink to="/iniciativas" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Iniciativas
           </NavLink>
-          <span className="nav-link">Mis proyectos</span>
-          <span className="nav-link">Publicaciones</span>
+          {user && <NavLink to="/mis-publicaciones" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Mis publicaciones</NavLink>}
         </div>
 
         <div className="navbar-actions">
@@ -85,6 +84,14 @@ export default function Navbar() {
                     className="dropdown-item"
                   >
                     Mi Perfil
+                  </Link>
+
+                  <Link
+                    to="/mis-publicaciones"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="dropdown-item"
+                  >
+                    Mis publicaciones
                   </Link>
 
                   <Link

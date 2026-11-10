@@ -21,6 +21,10 @@ import AdminOrganizaciones from './pages/AdminOrganizaciones';
 import NuevaPublicacion from './pages/NuevaPublicacion';
 import EditarPublicacion from './pages/EditarPublicacion';
 import DetallePublicacion from './pages/DetallePublicacion';
+import MisPublicaciones from './pages/MisPublicaciones';
+
+import MasIniciativas from './pages/MasIniciativas';
+import PublicacionesVinculaciones from './pages/PublicacionesVinculaciones';
 
 import './styles/App.css';
 
@@ -56,12 +60,16 @@ function App() {
 
                 {/* Publicaciones: Crear y Editar */}
                 <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />
+                <Route path="/mis-publicaciones" element={<MisPublicaciones />} />
                 <Route path="/publicaciones/:tipo/:id/editar" element={<EditarPublicacion />} />
                 <Route path="/iniciativas/:tipo/:id/editar" element={<EditarPublicacion />} />
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
                 <Route path="/editar-perfil" element={<Navigate to="/perfil" replace />} />
+
+                <Route path="/iniciativas/mas" element={<MasIniciativas />} />
+                <Route path="/publicaciones" element={<PublicacionesVinculaciones />} />
               </Route>
             </Route>
           </Routes>
