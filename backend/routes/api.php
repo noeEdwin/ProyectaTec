@@ -9,6 +9,7 @@ use App\Http\Controllers\ProjectNeedController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Http\Controllers\AdminUserModerationController;
+use App\Http\Controllers\AdminPublicationModerationController;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
@@ -72,6 +73,17 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Moderación administrativa de proyectos
+Route::patch(
+    '/admin/projects/{project}/visibility',
+    [AdminPublicationModerationController::class, 'updateProjectVisibility']
+)->whereNumber('project');
+
+// Moderación administrativa de necesidades comunitarias
+Route::patch(
+    '/admin/community-needs/{communityNeed}/visibility',
+    [AdminPublicationModerationController::class, 'updateCommunityNeedVisibility']
+)->whereNumber('communityNeed');
     // Moderación administrativa de usuarios
 Route::patch(
     '/admin/users/{user}/status',
