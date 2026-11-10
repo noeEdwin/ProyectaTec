@@ -145,29 +145,37 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|string|email',
-            'password' => 'required|string',
-        ]);
+public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'required|string|email',
+        'password' => 'required|string',
+    ]);
 
-        $user = User::where('email', $request->email)->first();
+    $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Credenciales inválidas',
-            ], 401);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+    if (! $user || ! Hash::check($request->password, $user->password)) {
         return response()->json([
-            'message' => 'Inicio de sesión exitoso',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-        ]);
+            'message' => 'Credenciales inválidas',
+        ], 401);
     }
+
+    // Impedir el acceso a cuentas desactivadas
+    if (! $user->is_active) {
+        return response()->json([
+            'message' => 'Esta cuenta está desactivada.',
+        ], 403);
+    }
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'message' => 'Inicio de sesión exitoso',
+        'access_token' => $token,
+        'token_type' => 'Bearer',
+    ]);
+}
+
 
     public function logout(Request $request)
     {

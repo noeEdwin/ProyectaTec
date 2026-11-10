@@ -8,12 +8,14 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
+use App\Http\Controllers\AdminUserModerationController;
 use App\Models\Application;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use App\Models\Category;
+
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
@@ -70,6 +72,11 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Moderación administrativa de usuarios
+Route::patch(
+    '/admin/users/{user}/status',
+    [AdminUserModerationController::class, 'updateStatus']
+)->whereNumber('user');
     Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
     Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);
