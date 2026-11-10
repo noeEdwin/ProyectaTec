@@ -53,7 +53,7 @@ class ProjectPolicy
         }
 
         return $project->organization_id !== null
-            && $project->organization->memberships()
+            && $project->organization?->memberships()
                 ->where('user_id', $user->id)
                 ->where('role', 'admin')
                 ->where('status', 'active')

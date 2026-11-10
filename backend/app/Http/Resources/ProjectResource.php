@@ -15,7 +15,15 @@ class ProjectResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'category_id' => $this->category_id,
+            'category' => $this->whenLoaded('category', fn () => [
+                'id' => $this->category->id,
+                'name' => $this->category->name,
+            ]),
             'organization_id' => $this->organization_id,
+            'organization' => $this->whenLoaded('organization', fn () => [
+                'id' => $this->organization->id,
+                'name' => $this->organization->name,
+            ]),
             'modality' => $this->modality,
             'location' => $this->location,
             'starts_at' => $this->starts_at?->toISOString(),

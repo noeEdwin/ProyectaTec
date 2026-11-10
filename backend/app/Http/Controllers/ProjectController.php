@@ -73,6 +73,7 @@ class ProjectController extends Controller
     {
         $projects = Project::query()
             ->publiclyVisible()
+            ->with(['category:id,name', 'organization:id,name'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate(15);
@@ -92,6 +93,7 @@ class ProjectController extends Controller
     {
         $project = Project::query()
             ->publiclyVisible()
+            ->with(['category:id,name', 'organization:id,name'])
             ->findOrFail($project);
 
         return response()->json(['project' => new ProjectResource($project)]);

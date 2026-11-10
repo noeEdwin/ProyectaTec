@@ -25,7 +25,7 @@ type Props = {
   cargandoCategorias?: boolean;
   errorCategorias?: string | null;
   valoresIniciales?: Partial<PublicacionFormValues>;
-  /** Heber conecta aquí la API (ver api/publicacionesService.ts). Debe lanzar si falla. */
+  /** Conexión con la API de publicaciones (ver api/publicacionesService.ts). */
   onSubmit: (payload: PublicacionPayload) => Promise<void>;
   onCancel: () => void;
 };
@@ -77,7 +77,7 @@ function MensajeError({ id, texto }: { id: string; texto?: string }) {
 
 export default function PublicacionForm({
   modo,
-  categorias,
+  categorias = [],
   cargandoCategorias = false,
   errorCategorias = null,
   valoresIniciales,
@@ -99,7 +99,10 @@ export default function PublicacionForm({
   const editando = modo === 'editar';
   const esProyecto = valores.tipo === 'proyecto';
 
-  // La descripción crece con el texto 
+  // Garantizar que categorias sea siempre un array válido
+  const listaCategorias = Array.isArray(categorias) ? categorias : [];
+
+  // Ajusta la altura de la descripción dinámicamente
   useEffect(() => {
     const el = descripcionRef.current;
     if (!el) return;
@@ -154,13 +157,13 @@ export default function PublicacionForm({
     }
   }
 
-  const categoriaSeleccionada = categorias.find(
+  const categoriaSeleccionada = listaCategorias.find(
     (c) => String(c.id) === valores.category_id,
   );
   const tipoSeleccionado = TIPOS_PUBLICACION.find((t) => t.value === valores.tipo);
   const modalidadSeleccionada = MODALIDADES.find((m) => m.value === valores.modality);
 
-  const sinCategorias = !cargandoCategorias && categorias.length === 0;
+  const sinCategorias = !cargandoCategorias && listaCategorias.length === 0;
 
   return (
     <div className="pub-page">
@@ -180,7 +183,7 @@ export default function PublicacionForm({
         </header>
 
         <div className="pub-grid">
-          {/* Tipo de participación (va primero en el DOM para que sea lo primero que se llena) */}
+          {/* Tipo de participación */}
           <section className="pub-card pub-area-tipo" aria-labelledby="pub-tipo-titulo">
             <h2 id="pub-tipo-titulo">Tipo de participación</h2>
             <p className="pub-texto">
@@ -221,7 +224,7 @@ export default function PublicacionForm({
             )}
           </section>
 
-          {/* Formulario / vista previa */}
+          {/* Formulario / Vista Previa */}
           <section className="pub-card pub-area-form" aria-labelledby="pub-form-titulo">
             {vista === 'formulario' ? (
               <>
@@ -261,7 +264,7 @@ export default function PublicacionForm({
                           id="pub-category_id"
                           value={valores.category_id}
                           className={valores.category_id ? '' : 'pub-vacio'}
-                          disabled={cargandoCategorias || sinCategorias}
+                          disabled={cargandoCategorias || sinCategorias}  // <--- AQUÍ ESTÁ
                           onChange={(e) => cambiar('category_id', e.target.value)}
                           aria-invalid={Boolean(errores.category_id)}
                           aria-describedby={
@@ -275,7 +278,7 @@ export default function PublicacionForm({
                               ? 'Cargando sectores...'
                               : 'Selecciona el sector de la iniciativa'}
                           </option>
-                          {categorias.map((c) => (
+                          {listaCategorias.map((c) => (
                             <option key={c.id} value={String(c.id)}>
                               {c.name}
                             </option>
