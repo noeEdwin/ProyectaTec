@@ -12,7 +12,8 @@ class Project extends Model
 {
     public function scopePubliclyVisible(Builder $query): Builder
     {
-        return $query->whereIn('status', ['open', 'in_progress', 'completed'])
+        return $query->where('is_hidden', false)
+    ->whereIn('status', ['open', 'in_progress', 'completed'])
             ->where(function (Builder $query) {
                 $query->whereNull('organization_id')
                     ->orWhereHas('organization', fn (Builder $organization) => $organization->where('approval_status', 'approved'));
@@ -35,6 +36,7 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'is_hidden' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
         ];

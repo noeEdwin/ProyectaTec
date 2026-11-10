@@ -15,6 +15,13 @@ class CommunityNeed extends Model
         'location',
         'status',
     ];
+    protected function casts(): array
+{
+    return [
+        'is_hidden' => 'boolean',
+    ];
+}
+
 
     public function creator(): BelongsTo
     {
