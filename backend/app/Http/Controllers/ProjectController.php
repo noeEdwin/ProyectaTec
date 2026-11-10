@@ -24,7 +24,6 @@ class ProjectController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->where('role', 'admin')
                 ->where('status', 'active')
-                ->whereHas('organization', fn ($query) => $query->where('approval_status', 'approved'))
                 ->exists();
 
             abort_unless($isAdmin, 403);

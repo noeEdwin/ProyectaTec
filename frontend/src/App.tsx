@@ -1,4 +1,3 @@
-
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 
 import { AuthProvider } from './context/AuthContext';
@@ -21,6 +20,7 @@ import AdminOrganizaciones from './pages/AdminOrganizaciones';
 
 import NuevaPublicacion from './pages/NuevaPublicacion';
 import EditarPublicacion from './pages/EditarPublicacion';
+import DetallePublicacion from './pages/DetallePublicacion';
 
 import './styles/App.css';
 
@@ -30,27 +30,34 @@ function App() {
       <PerfilProvider>
         <BrowserRouter>
           <Routes>
-            {/* Autenticación */}
+            {/* Rutas de autenticación sin layout */}
             <Route path="/acceso" element={<Acceso />} />
             <Route path="/registro" element={<Registro />} />
 
+            {/* Vista de detalle a pantalla completa (sin el menú de MainLayout) */}
+            <Route path="/iniciativas/:tipo/:id" element={<DetallePublicacion />} />
+            <Route path="/publicaciones/:tipo/:id" element={<DetallePublicacion />} />
+
+            {/* Layout Principal con Menú Superior (Navbar) */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
               <Route path="/perfil-publico" element={<PerfilPublico />} />
               <Route path="/organizaciones/:id" element={<OrganizacionPublica />} />
 
+              {/* Rutas protegidas que requieren sesión activa */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/iniciativas" element={<Catalogo />} />
                 <Route path="/catalogo" element={<Catalogo />} />
 
-                {/* Perfil conectado a API del equipo */}
+                {/* Perfil conectado a la API de Laravel */}
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/editar-perfil-organizacion" element={<EditarPerfilOrganizacion />} />
                 <Route path="/admin/organizaciones" element={<AdminOrganizaciones />} />
 
-                {/* Publicaciones: crear y editar */}
+                {/* Publicaciones: Crear y Editar */}
                 <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />
                 <Route path="/publicaciones/:tipo/:id/editar" element={<EditarPublicacion />} />
+                <Route path="/iniciativas/:tipo/:id/editar" element={<EditarPublicacion />} />
 
                 {/* Vistas de demostración - Issue #50 */}
                 <Route path="/mi-perfil" element={<MiPerfil />} />
@@ -63,4 +70,5 @@ function App() {
     </AuthProvider>
   );
 }
+
 export default App;

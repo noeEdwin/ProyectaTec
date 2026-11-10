@@ -5,7 +5,6 @@ import { useAuth } from '../context/auth-context';
 import colaboracionImage from '../assets/inicio_sesion.png';
 import '../styles/inicio.css';
 
-// Tipos de TypeScript para la respuesta de Laravel
 interface ProyectoDestacado {
   id: number;
   titulo: string;
@@ -14,6 +13,7 @@ interface ProyectoDestacado {
   estado: string;
   dias_restantes: number;
   imagen_url?: string;
+  tipo: 'project' | 'community_need';
 }
 
 interface Estadisticas {
@@ -26,13 +26,32 @@ function PanelVinculacion() {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Consulta la iniciativa destacada desde Laravel
-    api.get('/proyectos/destacado')
+    // Consulta la lista de proyectos reales desde PostgreSQL a través de Laravel
+    api.get('/api/projects')
       .then((res) => {
-        setProyecto(res.data);
+        const projects = Array.isArray(res.data?.projects)
+          ? res.data.projects
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+        if (projects.length > 0) {
+          const primero = projects[0];
+          setProyecto({
+            id: primero.id,
+            titulo: primero.title,
+            subtitulo: primero.organization?.name || primero.location || 'Iniciativa ProyectaTec',
+            fase: 'Fase 01',
+            estado: primero.status === 'open' ? 'Activo' : 'Activo',
+            dias_restantes: 24,
+            tipo: 'project',
+          });
+        } else {
+          throw new Error('Sin proyectos');
+        }
       })
       .catch(() => {
-        // Fallback local si el endpoint en Laravel aún no responde
+        // Fallback local si la base de datos está vacía o el servidor no responde
         setProyecto({
           id: 1,
           titulo: 'AgroTech Oaxaca',
@@ -40,12 +59,12 @@ function PanelVinculacion() {
           fase: 'Fase 01',
           estado: 'Activo',
           dias_restantes: 24,
+          tipo: 'project',
         });
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // Usa la imagen remota si Laravel la manda, o la local de assets si no
   const imagenMostrar = proyecto?.imagen_url || colaboracionImage;
 
   return (
@@ -76,7 +95,7 @@ function PanelVinculacion() {
           <div style={{ padding: '1rem', color: '#888' }}>Cargando proyecto...</div>
         ) : (
           <Link
-            to={proyecto ? `/iniciativas/${proyecto.id}` : '/iniciativas'}
+            to={proyecto ? `/iniciativas/${proyecto.tipo}/${proyecto.id}` : '/iniciativas'}
             className="inicio-panel-project"
           >
             <span className="inicio-panel-project-icon" aria-hidden="true">
@@ -113,10 +132,9 @@ export default function Inicio() {
   const [stats, setStats] = useState<Estadisticas>({ impacto: '100%', sectores: 3 });
 
   useEffect(() => {
-    // Carga estadísticas globales desde el backend
     api.get('/estadisticas/inicio')
       .then(res => setStats(res.data))
-      .catch(() => {}); // Si falla, mantiene el estado inicial
+      .catch(() => {});
   }, []);
 
   return (
@@ -137,16 +155,16 @@ export default function Inicio() {
                 <strong>{stats.impacto} <small>IMPACTO</small></strong>
               </div>
 
-              {/* Botón dinámico según el estado de la sesión */}
+              {/* Redirección al catálogo real /iniciativas */}
               {user ? (
-                <Link to="/catalogo" className="inicio-explore">
+                <Link to="/iniciativas" className="inicio-explore">
                   <span aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 21v-9" />
                       <path d="M12 15c0-4 2.5-6.5 7-7-0.5 4.5-3 7-7 7Z" />
                       <path d="M12 12c0-3.5-2-5.5-6-6 0.5 4 2.5 6 6 6Z" />
                     </svg>
-                  </span> Ir a Mi Panel
+                  </span> Ir a las Iniciativas
                 </Link>
               ) : (
                 <Link to="/iniciativas" className="inicio-explore">
