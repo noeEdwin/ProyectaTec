@@ -71,8 +71,27 @@ class ProjectController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['sometimes', 'required', 'integer', 'min:1', 'max:9223372036854775807'],
+            'sector' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $search = trim($filters['q'] ?? '');
+        $sector = trim($filters['sector'] ?? '');
+
         $projects = Project::query()
             ->publiclyVisible()
+            ->when($search !== '', function ($query) use ($search) {
+                $pattern = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], strtolower($search)).'%';
+
+                $query->where(function ($query) use ($pattern) {
+                    $query->whereRaw("LOWER(title) LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhereRaw("LOWER(description) LIKE ? ESCAPE '!'", [$pattern]);
+                });
+            })
+            ->when(isset($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
+            ->when($sector !== '', fn ($query) => $query->whereHas('organization', fn ($organization) => $organization->where('sector', $sector)))
             ->with(['category:id,name', 'organization:id,name'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
