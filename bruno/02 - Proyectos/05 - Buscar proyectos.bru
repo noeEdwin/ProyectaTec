@@ -1,0 +1,15 @@
+meta {
+  name: Buscar proyectos
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/projects?q=agua
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

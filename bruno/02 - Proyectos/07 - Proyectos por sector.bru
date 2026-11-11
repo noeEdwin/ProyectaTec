@@ -1,0 +1,15 @@
+meta {
+  name: Proyectos por sector
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/projects?sector=Educaci%C3%B3n
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

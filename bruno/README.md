@@ -50,10 +50,9 @@ solicitudes agregan ese prefijo. Consulta el contrato completo en
 [API de proyectos y necesidades](../docs/API_PROYECTOS_NECESIDADES.md).
 
 Antes de crear proyectos o necesidades comunitarias, configura `categoryId` con
-un identificador entero real de la base utilizada. El marcador del entorno no
-es un ID válido y no existe actualmente un endpoint público para listar
-categorías. Solicita el catálogo al equipo backend o consulta `categories` por
-un medio autorizado de solo lectura; los IDs no son universales. Configura la
+un identificador entero real de la base utilizada. Consulta el catálogo público
+`GET /api/categories`, que devuelve `categories` con `id` y `name`; los IDs no
+son universales. El marcador del entorno no es un ID válido: configura la
 variable exclusivamente como un entero válido, sin comillas; el marcador inicial
 no permite ejecutar correctamente estos POST porque no produce un número JSON.
 
@@ -61,6 +60,30 @@ Para las solicitudes protegidas, utiliza **Perfiles / Login para token** con
 credenciales locales de prueba configuradas en Bruno. Un login exitoso guarda
 `token` temporalmente; no compartas tokens ni credenciales privadas. Los GET
 de estas tres carpetas son públicos.
+
+### Búsqueda y filtros de publicaciones — tarea 3.13.1
+
+Las solicitudes **Listar proyectos** y **Listar necesidades comunitarias** se
+conservan sin filtros como ejemplos de regresión. Las solicitudes adicionales
+de esas carpetas muestran `q`, `category_id` y combinaciones; proyectos también
+incluye `sector`. Son GET públicos y no necesitan token. Sustituye el ID `2` y
+el sector `Educación` por valores reales del entorno; los ejemplos no modifican
+las variables existentes. Un sector inexistente o una categoría positiva sin
+coincidencias devuelve `200` con una lista vacía.
+
+`q` busca subcadenas literales en título o descripción e ignora mayúsculas ASCII;
+no se garantiza equivalencia Unicode completa entre motores. Los filtros se
+combinan con AND y los espacios externos de `q` y `sector` se recortan. Con
+sector se excluyen proyectos individuales; sin él siguen visibles. Necesidades
+comunitarias no filtra por sector ni apoyo. Las respuestas mantienen su arreglo
+`projects` o `community_needs` y `meta`, con 15 elementos por página. Consulta
+el contrato enlazado para visibilidad, validación y detalles de paginación.
+
+La integración de estos parámetros y la paginación en React queda para una tarea
+posterior: el catálogo actual filtra localmente una cantidad limitada de
+resultados. Se reportaron 36 pruebas y 444 verificaciones aprobadas con SQLite en
+memoria; la validación específica en PostgreSQL está pendiente. El filtro de
+apoyo no está implementado y requiere definición de Alessandro.
 
 ### Recorrido recomendado
 

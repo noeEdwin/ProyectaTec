@@ -1,0 +1,15 @@
+meta {
+  name: Necesidades por categoria
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/community-needs?category_id=2
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
