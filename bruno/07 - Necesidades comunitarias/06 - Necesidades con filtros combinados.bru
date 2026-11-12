@@ -1,0 +1,15 @@
+meta {
+  name: Necesidades con filtros combinados
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/community-needs?q=agua&category_id=2&page=1
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

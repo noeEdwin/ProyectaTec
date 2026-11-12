@@ -38,7 +38,7 @@ Las rutas de la tabla incluyen el prefijo `/api`; los identificadores de detalle
 
 ## Paginación y códigos HTTP
 
-Los tres listados usan `?page=N`, con **15 elementos por página**, ordenados por `created_at` descendente y luego por `id` descendente. Devuelven la colección correspondiente y `meta` con `current_page`, `per_page`, `last_page` y `total`. No se implementan filtros avanzados.
+Los tres listados usan `?page=N`, con **15 elementos por página**, ordenados por `created_at` descendente y luego por `id` descendente. Devuelven la colección correspondiente y `meta` con `current_page`, `per_page`, `last_page` y `total`. Los filtros descritos a continuación se aplican a proyectos y necesidades comunitarias, no al listado anidado de necesidades de proyecto.
 
 | Código | Significado |
 |---|---|
@@ -50,6 +50,14 @@ Los tres listados usan `?page=N`, con **15 elementos por página**, ordenados po
 | 422 | Datos que no cumplen las validaciones. |
 
 Los mensajes concretos de Laravel pueden variar según la configuración; el cliente debe basarse en el código HTTP y, para validación, en las claves de `errors`.
+
+### Reglas comunes de búsqueda
+
+En los listados de proyectos y necesidades comunitarias, `q` busca una **subcadena literal** en `title` **o** `description`. Los caracteres `%`, `_` y `!` son literales, no comodines. Se eliminan espacios externos; si `q` está ausente, vacío o solo contiene espacios, no se aplica búsqueda textual. La búsqueda ignora diferencias de mayúsculas y minúsculas ASCII; no se garantiza una equivalencia Unicode completa entre SQLite y PostgreSQL ni una búsqueda insensible a acentos.
+
+Los filtros suministrados se combinan con **AND**; dentro de `q`, título y descripción se combinan con un **OR agrupado**. Las reglas de visibilidad siempre se mantienen. Los parámetros desconocidos se ignoran. Una categoría positiva inexistente o cualquier combinación sin coincidencias devuelve `200` con un arreglo vacío y metadatos; un `category_id` vacío, no entero, no positivo o mayor que `9223372036854775807`, así como un `q` de tipo inválido o mayor de 255 caracteres, devuelve `422`. Envía `Accept: application/json` para recibir errores JSON.
+
+Los IDs y sectores de los ejemplos son ilustrativos y deben sustituirse por valores reales del entorno. Codifica los parámetros en la URL; por ejemplo, `Educación` se envía como `Educaci%C3%B3n`.
 
 ## Proyectos
 
@@ -106,7 +114,25 @@ Respuesta `201`:
 
 ### GET /api/projects
 
-Devuelve proyectos con estado `open`, `in_progress` o `completed`; si pertenecen a una organización, solo cuando esta está aprobada. Excluye `draft`, otros estados y proyectos vinculados a organizaciones pendientes o rechazadas. Por ejemplo, `GET /api/projects?page=1` responde `200`:
+Devuelve proyectos no ocultos (`is_hidden = false`) con estado `open`, `in_progress` o `completed`; si pertenecen a una organización, solo cuando esta está aprobada. Excluye proyectos ocultos, `draft`, otros estados y proyectos vinculados a organizaciones pendientes o rechazadas.
+
+| Parámetro opcional | Comportamiento |
+|---|---|
+| `q` | Cadena de hasta 255 caracteres; búsqueda literal en título o descripción según las reglas comunes. |
+| `category_id` | Entero positivo; igualdad exacta con la categoría del proyecto. |
+| `sector` | Cadena de hasta 255 caracteres; igualdad exacta con `organizations.sector`, con mayúsculas y acentos significativos. Se recortan espacios externos; vacío o solo espacios no filtra. Una cadena inválida o demasiado larga devuelve `422`. |
+| `page` | Página del listado; 15 elementos por página. |
+
+Sin `sector` se incluyen proyectos individuales visibles. Al solicitar un sector no vacío, solo se incluyen proyectos de organizaciones aprobadas con ese sector exacto; quedan fuera los individuales y las organizaciones con sector nulo o distinto. `sector` es texto libre de la organización, no `organization_type`, y el listado no devuelve el sector dentro de `organization`.
+
+```http
+GET /api/projects?q=agua
+GET /api/projects?category_id=2
+GET /api/projects?sector=Educaci%C3%B3n
+GET /api/projects?q=agua&category_id=2&sector=Educaci%C3%B3n&page=1
+```
+
+Ejemplo de respuesta `200` paginada para el último GET, si los datos coinciden:
 
 ```json
 {
@@ -116,8 +142,10 @@ Devuelve proyectos con estado `open`, `in_progress` o `completed`; si pertenecen
       "title": "Monitoreo del agua",
       "description": "Herramienta para una comunidad.",
       "status": "open",
-      "category_id": 7,
-      "organization_id": null,
+      "category_id": 2,
+      "category": { "id": 2, "name": "Medio ambiente" },
+      "organization_id": 3,
+      "organization": { "id": 3, "name": "Organización comunitaria" },
       "modality": "híbrida",
       "location": "Oaxaca",
       "starts_at": "2027-01-15T09:00:00.000000Z",
@@ -127,6 +155,24 @@ Devuelve proyectos con estado `open`, `in_progress` o `completed`; si pertenecen
     }
   ],
   "meta": { "current_page": 1, "per_page": 15, "last_page": 1, "total": 1 }
+}
+```
+
+Ejemplo `200` sin coincidencias para `GET /api/projects?category_id=999999`:
+
+```json
+{
+  "projects": [],
+  "meta": { "current_page": 1, "per_page": 15, "last_page": 1, "total": 0 }
+}
+```
+
+Ejemplo `422` para `GET /api/projects?category_id=0` con `Accept: application/json`:
+
+```json
+{
+  "message": "The category id field must be at least 1.",
+  "errors": { "category_id": ["The category id field must be at least 1."] }
 }
 ```
 
@@ -275,7 +321,23 @@ Respuesta `201`:
 
 ### GET /api/community-needs
 
-Lista exclusivamente necesidades comunitarias `open`. Ejemplo de `GET /api/community-needs?page=1`, respuesta `200`:
+Lista exclusivamente necesidades comunitarias con `status = open` e `is_hidden = false`.
+
+| Parámetro opcional | Comportamiento |
+|---|---|
+| `q` | Cadena de hasta 255 caracteres; búsqueda literal en título o descripción según las reglas comunes. |
+| `category_id` | Entero positivo; igualdad exacta con la categoría. |
+| `page` | Página del listado; 15 elementos por página. |
+
+No hay filtro de sector ni de apoyo para necesidades comunitarias. Un parámetro `sector` desconocido se ignora; no filtra ni devuelve error.
+
+```http
+GET /api/community-needs?q=agua
+GET /api/community-needs?category_id=2
+GET /api/community-needs?q=agua&category_id=2&page=1
+```
+
+Ejemplo de `GET /api/community-needs?q=agua&category_id=2&page=1`, respuesta `200`:
 
 ```json
 {
@@ -285,7 +347,8 @@ Lista exclusivamente necesidades comunitarias `open`. Ejemplo de `GET /api/commu
       "title": "Capacitación en gestión de agua",
       "description": "La comunidad requiere acompañamiento técnico.",
       "status": "open",
-      "category_id": 7,
+      "category_id": 2,
+      "category": { "id": 2, "name": "Medio ambiente" },
       "location": "Oaxaca",
       "created_at": "2026-11-05T12:00:00.000000Z",
       "updated_at": "2026-11-05T12:00:00.000000Z"
@@ -294,6 +357,8 @@ Lista exclusivamente necesidades comunitarias `open`. Ejemplo de `GET /api/commu
   "meta": { "current_page": 1, "per_page": 15, "last_page": 1, "total": 1 }
 }
 ```
+
+Sin coincidencias se responde `200` con `"community_needs": []` y `meta` con los mismos campos que en el ejemplo de proyectos sin resultados. Una validación fallida responde `422` con `message` y `errors`, como en el ejemplo anterior.
 
 ### GET /api/community-needs/{communityNeed}
 
@@ -435,14 +500,16 @@ El texto concreto no es un contrato estable. En particular, una categoría u org
 
 ## Categorías e integración con React
 
-`category_id` identifica una categoría existente y es obligatorio al crear proyectos y necesidades comunitarias. Actualmente **no hay un endpoint público para listar categorías**. Los nombres incluidos en el seeder no garantizan IDs iguales entre entornos: el equipo debe obtener los IDs reales mediante una fuente autorizada, por ejemplo una consulta de solo lectura a `categories` o el catálogo proporcionado por backend. Los IDs de este documento son ilustrativos.
+`category_id` identifica una categoría y es obligatorio al crear proyectos y necesidades comunitarias. `GET /api/categories` es público y devuelve `{ "categories": [{ "id": 2, "name": "Medio ambiente" }] }`, ordenado por nombre. Los IDs varían entre entornos. Al filtrar, un entero positivo inexistente devuelve una lista vacía; al crear, una categoría inexistente produce `422`.
 
-El cliente Axios de `frontend/src/api/axios.ts` ya usa por defecto `http://localhost:8001/api` como `baseURL` y agrega el Bearer token almacenado cuando existe. Desde ese cliente, usa rutas como `api.get('/projects')`, no `api.get('/api/projects')`. Los recursos responden con nombres de campos en inglés y no incluyen objetos completos de usuario, categoría, organización ni postulaciones; muestran los IDs aplicables. Las fechas de respuesta usan el formato ISO de los recursos Laravel y los campos opcionales pueden ser `null`.
+El cliente Axios de `frontend/src/api/axios.ts` ya usa por defecto `http://localhost:8001/api` como `baseURL` y agrega el Bearer token almacenado cuando existe. Desde ese cliente, usa rutas como `api.get('/projects')`, no `api.get('/api/projects')`. Los listados incluyen categoría y, para proyectos, organización limitada a `id` y `name`; no incluyen objetos completos de usuario ni postulaciones. Las fechas usan el formato ISO de los recursos Laravel y los campos opcionales pueden ser `null`.
+
+El catálogo actual de React solicita la primera página de cada listado y filtra localmente los resultados recibidos: puede operar sobre una cantidad limitada de publicaciones. Los nuevos parámetros aún no están integrados allí; consumir los filtros y gestionar la paginación de ambos listados corresponde a una tarea posterior.
 
 ## Limitaciones actuales
 
-- No hay filtros avanzados del Sprint 6 en estos listados.
+- El filtro de apoyo no está implementado: requiere definición de Alessandro.
 - Estas rutas no implementan edición, cierre ni eliminación de necesidades; no constituyen un CRUD completo de necesidades.
 - No existe un flujo privado de borradores en estas APIs: los POST no aceptan `draft` y los GET públicos lo excluyen.
-- La integración de estas APIs con el catálogo y formularios de React no forma parte de la tarea documentada.
+- Las pruebas reportadas para búsqueda y regresión se ejecutaron con SQLite en memoria: **36 pruebas y 444 verificaciones aprobadas**. La validación específica en PostgreSQL permanece pendiente; estos resultados no prueban PostgreSQL directamente.
 - `/api/proyectos/destacado` es una ruta anterior, con un contrato diferente en español; no forma parte de estos nueve endpoints. Selecciona el último proyecto público de una organización aprobada o responde con la información base cuando no hay uno.

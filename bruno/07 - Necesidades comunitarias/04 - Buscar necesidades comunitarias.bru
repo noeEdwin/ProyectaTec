@@ -1,0 +1,15 @@
+meta {
+  name: Buscar necesidades comunitarias
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/community-needs?q=agua
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
