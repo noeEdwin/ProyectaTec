@@ -38,9 +38,9 @@
 .dp-page { min-height:calc(100vh - 80px); background:#f8fafc; color:#111827; padding:48px max(28px, calc((100vw - 1150px)/2)); }
 .dp-contenido { max-width:1150px; margin:0 auto; }
 .dp-eyebrow { color:#9c721d; font-size:11px; font-weight:700; text-transform:uppercase; display:inline-block; border-bottom:2px solid #f59e0b; padding-bottom:7px; }
-.dp-page h1 { font-size:clamp(28px,3vw,39px); margin:20px 0 8px; letter-spacing:-.025em; line-height:1.15; }
+.dp-page h1 { font-size:clamp(28px,3vw,39px); margin:20px 0 14px; letter-spacing:-.025em; line-height:1.15; }
 .dp-subtitulo { color:#64748b; font-size:15px; margin:0 0 32px; }
-.dp-cabecera-tipo { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.dp-cabecera-tipo { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:4px; }
 .dp-grid { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:24px; align-items:start; }
 .dp-tarjeta { background:#fff; border:1px solid #e2e8f0; border-radius:17px; padding:28px; }
 .dp-tarjeta h2 { margin:0 0 12px; font-size:19px; font-weight:700; color:#111827; }

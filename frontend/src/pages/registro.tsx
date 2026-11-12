@@ -8,6 +8,7 @@ import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
+import { REGLAS_CAMPO, SECTORES, SEMESTRES, filtrarCampo, ubicacionOaxaca } from '../utils/camposPerfil';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -60,33 +61,6 @@ const tiposCuenta = [
 
 const perfilVacio: Record<string, string> = {};
 
-// Sectores disponibles para organizaciones (lista cerrada).
-// Idealmente deben coincidir con las categorías de las publicaciones.
-const SECTORES = [
-  'Tecnología e innovación', 'Agroindustria y campo', 'Educación y capacitación', 'Salud y bienestar',
-  'Turismo', 'Artesanías y cultura', 'Medio ambiente y energía', 'Comercio y servicios',
-  'Manufactura e industria', 'Gobierno', 'Desarrollo social y comunitario', 'Otro',
-];
-
-const LETRAS = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]/g;
-const LETRAS_NUM = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,'#°-]/g;
-
-// Matrícula: ajusta MATRICULA_RE si el ITO usa otro formato.
-const MATRICULA_RE = /^\d{8,10}$/;
-
-type ReglaCampo = { filtrar?: (v: string) => string; valido?: (v: string) => boolean; mensaje?: string; maxLength?: number };
-
-const REGLAS_CAMPO: Record<string, ReglaCampo> = {
-  phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
-  organization_phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
-  student_number: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => MATRICULA_RE.test(v), mensaje: 'La matrícula debe tener de 8 a 10 dígitos.', maxLength: 10 },
-  field_of_study: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 3, mensaje: 'Escribe tu carrera o programa (solo letras).' },
-  organization_position: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un cargo válido (solo letras).' },
-  organization_area: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un área válida (solo letras).' },
-  locality: { filtrar: (v) => v.replace(LETRAS_NUM, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un nombre válido de colonia, barrio o comunidad.' },
-  campus: { filtrar: (v) => v.replace(LETRAS_NUM, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un campus o plantel válido.' },
-};
-
 export default function Registro({ onRegister }: RegistroProps) {
   const [nombre, setNombre] = useState('');
   const [tipoCuenta, setTipoCuenta] = useState('');
@@ -114,7 +88,7 @@ export default function Registro({ onRegister }: RegistroProps) {
   }, []);
 
   function setProfileField(key: string, value: string) {
-    const valorFiltrado = REGLAS_CAMPO[key]?.filtrar ? REGLAS_CAMPO[key].filtrar!(value) : value;
+    const valorFiltrado = filtrarCampo(key, value);
     setPerfil((current) => ({ ...current, [key]: valorFiltrado }));
   }
 
@@ -201,7 +175,11 @@ export default function Registro({ onRegister }: RegistroProps) {
       public_fields: publicFields,
       organization_public_fields: organizationPublicFields,
       interest_areas: tipoCuenta === 'organizacion' ? [] : interestAreas,
-      location: tipoCuenta === 'organizacion' ? undefined : location || undefined,
+      location: tipoCuenta === 'organizacion'
+        ? undefined
+        : tipoCuenta === 'residente_oaxaca'
+          ? ubicacionOaxaca(perfil.municipality ?? '', perfil.locality ?? '')
+          : location || undefined,
     };
 
     try {
@@ -388,8 +366,7 @@ export default function Registro({ onRegister }: RegistroProps) {
             <label htmlFor="registro-semester">Semestre o periodo</label>
             <select id="registro-semester" value={perfil.semester ?? ''} onChange={(event) => setProfileField('semester', event.target.value)} required aria-invalid={Boolean(errores.semester)}>
               <option value="">Selecciona tu semestre</option>
-              {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index + 1}° semestre</option>)}
-              <option value="egresado">Egresado/a</option>
+              {SEMESTRES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
             {errores.semester && <p className="registro-error">{errores.semester}</p>}
           </div>
@@ -586,7 +563,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                     {tipoCuenta !== 'organizacion' && renderProfileInput('phone', 'Teléfono de contacto (opcional)', '9511234567', 'tel', false)}
                     {tipoCuenta !== 'organizacion' && (
                       <div className="registro-campos-opcionales">
-                        <SelectorUbicacion idPrefix="registro-location" value={location} onChange={setLocation} />
+                        {tipoCuenta !== 'residente_oaxaca' && <SelectorUbicacion idPrefix="registro-location" value={location} onChange={setLocation} />}
                         <AreasInteresSelector value={interestAreas} onChange={setInterestAreas} error={errores.interest_areas} />
                       </div>
                     )}

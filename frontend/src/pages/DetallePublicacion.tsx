@@ -45,7 +45,7 @@ export default function DetallePublicacion() {
         setPublicacion({
           id: item.id,
           titulo: item.title ?? 'Publicación sin título',
-          organizacion: item.organization?.name || item.location || (esProyecto ? 'Iniciativa ProyectaTec' : 'Comunidad de Oaxaca'),
+          organizacion: item.organization?.name || (esProyecto ? 'Iniciativa ProyectaTec' : 'Comunidad de Oaxaca'),
           sector: item.category?.name || `Sector ${item.category_id}`,
           ubicacion: item.location || 'Oaxaca',
           modalidad: item.modality ? (MODALIDADES[item.modality] ?? item.modality) : '',

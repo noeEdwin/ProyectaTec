@@ -34,19 +34,29 @@ export function adaptarIniciativa(item: PublicacionListado): Iniciativa {
   };
 }
 
+/** "CULTURA Y ARTE" -> "Cultura y arte". Se usa para los botones de filtro y para comparar. */
+export function etiquetaCategoria(categoria: string): string {
+  const texto = categoria.trim().toLocaleLowerCase('es-MX');
+  return texto.charAt(0).toLocaleUpperCase('es-MX') + texto.slice(1);
+}
+
+/** Categorías que realmente existen en las publicaciones cargadas, sin repetir y en orden alfabético. */
+export function categoriasDe(items: Iniciativa[]): string[] {
+  return [...new Set(items.map((item) => etiquetaCategoria(item.categoria)))]
+    .sort((a, b) => a.localeCompare(b, 'es-MX'));
+}
+
 export function filtrarIniciativas(
   items: Iniciativa[],
   texto: string,
   categoria: string = 'Todos',
 ): Iniciativa[] {
   const consulta = texto.trim().toLocaleLowerCase('es-MX');
+  const categoriaBuscada = etiquetaCategoria(categoria);
   return items.filter((item) => {
     const coincideTexto = [item.titulo, item.categoria, item.organizacion, item.ubicacion]
       .join(' ').toLocaleLowerCase('es-MX').includes(consulta);
-    const sector = item.categoria.toLocaleLowerCase('es-MX');
-    const otros = !['agroindustria', 'software', 'ia', 'turismo'].some((valor) => sector.includes(valor));
-    const coincideCategoria = categoria === 'Todos' || (categoria === 'Otros sectores'
-      ? otros : sector.includes(categoria.toLocaleLowerCase('es-MX')));
+    const coincideCategoria = categoria === 'Todos' || etiquetaCategoria(item.categoria) === categoriaBuscada;
     return coincideTexto && coincideCategoria;
   });
 }
