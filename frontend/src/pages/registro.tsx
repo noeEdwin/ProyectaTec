@@ -4,9 +4,10 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/profileService';
-import { traducirErrorCorreo } from '../utils/Correo';
+import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
+import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -59,6 +60,33 @@ const tiposCuenta = [
 
 const perfilVacio: Record<string, string> = {};
 
+// Sectores disponibles para organizaciones (lista cerrada).
+// Idealmente deben coincidir con las categorías de las publicaciones.
+const SECTORES = [
+  'Tecnología e innovación', 'Agroindustria y campo', 'Educación y capacitación', 'Salud y bienestar',
+  'Turismo', 'Artesanías y cultura', 'Medio ambiente y energía', 'Comercio y servicios',
+  'Manufactura e industria', 'Gobierno', 'Desarrollo social y comunitario', 'Otro',
+];
+
+const LETRAS = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]/g;
+const LETRAS_NUM = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,'#°-]/g;
+
+// Matrícula: ajusta MATRICULA_RE si el ITO usa otro formato.
+const MATRICULA_RE = /^\d{8,10}$/;
+
+type ReglaCampo = { filtrar?: (v: string) => string; valido?: (v: string) => boolean; mensaje?: string; maxLength?: number };
+
+const REGLAS_CAMPO: Record<string, ReglaCampo> = {
+  phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
+  organization_phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
+  student_number: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => MATRICULA_RE.test(v), mensaje: 'La matrícula debe tener de 8 a 10 dígitos.', maxLength: 10 },
+  field_of_study: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 3, mensaje: 'Escribe tu carrera o programa (solo letras).' },
+  organization_position: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un cargo válido (solo letras).' },
+  organization_area: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un área válida (solo letras).' },
+  locality: { filtrar: (v) => v.replace(LETRAS_NUM, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un nombre válido de colonia, barrio o comunidad.' },
+  campus: { filtrar: (v) => v.replace(LETRAS_NUM, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un campus o plantel válido.' },
+};
+
 export default function Registro({ onRegister }: RegistroProps) {
   const [nombre, setNombre] = useState('');
   const [tipoCuenta, setTipoCuenta] = useState('');
@@ -86,7 +114,8 @@ export default function Registro({ onRegister }: RegistroProps) {
   }, []);
 
   function setProfileField(key: string, value: string) {
-    setPerfil((current) => ({ ...current, [key]: value }));
+    const valorFiltrado = REGLAS_CAMPO[key]?.filtrar ? REGLAS_CAMPO[key].filtrar!(value) : value;
+    setPerfil((current) => ({ ...current, [key]: valorFiltrado }));
   }
 
   function validateProfileFields(errors: RegistroErrors) {
@@ -99,6 +128,12 @@ export default function Registro({ onRegister }: RegistroProps) {
     };
     for (const key of required[tipoCuenta] ?? []) {
       if (!perfil[key]?.trim()) errors[key as keyof RegistroPayload] = 'Este dato es obligatorio para el tipo de cuenta seleccionado.';
+    }
+    for (const [key, regla] of Object.entries(REGLAS_CAMPO)) {
+      const valor = perfil[key]?.trim() ?? '';
+      if (valor && regla.valido && !regla.valido(valor) && !errors[key as keyof RegistroPayload]) {
+        errors[key as keyof RegistroPayload] = regla.mensaje;
+      }
     }
     if (tipoCuenta === 'organizacion' && perfil.organization_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(perfil.organization_email)) {
       errors.organization_email = 'Ingresa un correo de contacto válido.';
@@ -127,12 +162,10 @@ export default function Registro({ onRegister }: RegistroProps) {
 
     if (!correoLimpio) {
       nuevosErrores.email = 'Ingresa tu correo electrónico.';
-    } else if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoLimpio)
-    ) {
-      nuevosErrores.email = 'Ingresa un correo electrónico válido.';
     } else if (correoLimpio.length > 255) {
       nuevosErrores.email = 'El correo es demasiado largo.';
+    } else if (!correoValido(correoLimpio)) {
+      nuevosErrores.email = 'Ingresa un correo electrónico válido.';
     }
 
     if (!password) {
@@ -220,7 +253,8 @@ export default function Registro({ onRegister }: RegistroProps) {
           onChange={(event) => setProfileField(key as string, event.target.value)}
           placeholder={placeholder}
           required={required}
-          maxLength={255}
+          maxLength={REGLAS_CAMPO[key as string]?.maxLength ?? 255}
+          inputMode={type === 'tel' || key === 'student_number' ? 'numeric' : undefined}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `registro-${key}-error` : undefined}
         />
@@ -322,6 +356,27 @@ export default function Registro({ onRegister }: RegistroProps) {
     );
   }
 
+  function renderMunicipioField() {
+    const error = errores.municipality;
+    return (
+      <div className="registro-field">
+        <label htmlFor="registro-municipality">Municipio</label>
+        <select
+          id="registro-municipality"
+          value={perfil.municipality ?? ''}
+          onChange={(event) => setProfileField('municipality', event.target.value)}
+          required
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'registro-municipality-error' : undefined}
+        >
+          <option value="">Selecciona tu municipio</option>
+          {MUNICIPIOS_OAXACA.map((municipio) => <option key={municipio} value={municipio}>{municipio}</option>)}
+        </select>
+        {error && <p className="registro-error" id="registro-municipality-error">{error}</p>}
+      </div>
+    );
+  }
+
   function renderConditionalProfileFields() {
     switch (tipoCuenta) {
       case 'estudiante':
@@ -364,7 +419,7 @@ export default function Registro({ onRegister }: RegistroProps) {
         </>;
       case 'residente_oaxaca':
         return <>
-          {renderProfileInput('municipality', 'Municipio')}
+          {renderMunicipioField()}
           {renderProfileInput('locality', 'Barrio, colonia o comunidad')}
         </>;
       case 'organizacion':
@@ -381,8 +436,15 @@ export default function Registro({ onRegister }: RegistroProps) {
               <option value="sector_social">Sector social</option>
             </select>
           </div>
-          {renderProfileInput('organization_sector', 'Sector o actividad')}
-          {renderProfileInput('municipality', 'Municipio')}
+          <div className="registro-field">
+            <label htmlFor="registro-organization_sector">Sector o actividad</label>
+            <select id="registro-organization_sector" value={perfil.organization_sector ?? ''} onChange={(event) => setProfileField('organization_sector', event.target.value)} required aria-invalid={Boolean(errores.organization_sector)}>
+              <option value="">Selecciona un sector</option>
+              {SECTORES.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
+            </select>
+            {errores.organization_sector && <p className="registro-error">{errores.organization_sector}</p>}
+          </div>
+          {renderMunicipioField()}
           {renderProfileInput('locality', 'Barrio, colonia o comunidad')}
           {renderProfileInput('organization_email', 'Correo de contacto', 'contacto@organizacion.org', 'email')}
           {renderProfileInput('organization_phone', 'Teléfono de contacto', '9511234567', 'tel')}
@@ -498,7 +560,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                     className={!tipoCuenta ? 'registro-placeholder' : ''}
                   >
                     <option value="" disabled>
-                      Empresa, institución educativa o sector social
+                      Selecciona el tipo de cuenta
                     </option>
 
                     {tiposCuenta.map((tipo) => (

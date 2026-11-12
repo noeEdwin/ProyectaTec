@@ -38,15 +38,15 @@ function App() {
             <Route path="/acceso" element={<Acceso />} />
             <Route path="/registro" element={<Registro />} />
 
-            {/* Vista de detalle a pantalla completa (sin el menú de MainLayout) */}
-            <Route path="/iniciativas/:tipo/:id" element={<DetallePublicacion />} />
-            <Route path="/publicaciones/:tipo/:id" element={<DetallePublicacion />} />
-
             {/* Layout Principal con Menú Superior (Navbar) */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
               <Route path="/perfil-publico" element={<PerfilPublico />} />
               <Route path="/organizaciones/:id" element={<OrganizacionPublica />} />
+
+              {/* Detalle de iniciativa: pública, con el menú de MainLayout */}
+              <Route path="/iniciativas/:tipo/:id" element={<DetallePublicacion />} />
+              <Route path="/publicaciones/:tipo/:id" element={<DetallePublicacion />} />
 
               {/* Rutas protegidas que requieren sesión activa */}
               <Route element={<ProtectedRoute />}>
