@@ -1,0 +1,36 @@
+/**
+ * Municipios de Oaxaca de Juárez y su zona conurbada / Valles Centrales.
+ * Lista provisional de 30. Pendiente: reemplazar por el catálogo completo (INEGI).
+ */
+export const MUNICIPIOS_OAXACA: readonly string[] = [
+  'Oaxaca de Juárez',
+  'Ánimas Trujano',
+  'Cuilápam de Guerrero',
+  'Nazareno Etla',
+  'Ocotlán de Morelos',
+  'Reyes Etla',
+  'San Agustín de las Juntas',
+  'San Agustín Yatareni',
+  'San Andrés Huayápam',
+  'San Antonio de la Cal',
+  'San Bartolo Coyotepec',
+  'San Francisco Telixtlahuaca',
+  'San Jacinto Amilpas',
+  'San Lorenzo Cacaotepec',
+  'San Pablo Etla',
+  'San Pedro Ixtlahuaca',
+  'San Sebastián Tutla',
+  'Santa Ana Zegache',
+  'Santa Cruz Amilpas',
+  'Santa Cruz Xoxocotlán',
+  'Santa Lucía del Camino',
+  'Santa María Atzompa',
+  'Santa María del Tule',
+  'Santo Domingo Tomaltepec',
+  'Teotitlán del Valle',
+  'Tlacolula de Matamoros',
+  'Tlalixtac de Cabrera',
+  'Villa de Etla',
+  'Villa de Zaachila',
+  'Villa Díaz Ordaz',
+];
