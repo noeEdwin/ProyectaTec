@@ -213,6 +213,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  flex: none;
+  overflow: hidden;
   background-color: #EFF6F7; 
   color: #0B4A54; 
   display: flex;

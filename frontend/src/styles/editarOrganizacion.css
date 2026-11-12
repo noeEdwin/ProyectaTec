@@ -1,0 +1,10 @@
+/* Complementos de la pantalla "Editar organización". Se carga después de perfilEspacio.css */
+.eo-aviso { margin:0 0 24px; padding:14px 18px; border-radius:12px; font-size:14px; font-weight:600; line-height:1.5; }
+.eo-aviso-exito { background:#e8f5f1; color:#146a57; border:1px solid #bfe3d8; }
+.eo-aviso-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.eo-publicos { margin:28px 0 0; padding:18px 20px 8px; border:1px solid #e2e8f0; border-radius:12px; min-width:0; }
+.eo-publicos legend { padding:0 8px; font-size:14px; font-weight:700; color:#111827; }
+.eo-publicos .pd-casilla { display:flex; align-items:center; gap:10px; margin:0 0 14px; font-size:14px; color:#334155; }
+.eo-acciones { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:12px; margin-top:32px; padding-top:24px; border-top:1px solid #f1f5f9; }
+.eo-acciones .pd-boton-claro { text-decoration:none; }
+.eo-ayuda-campo { margin:6px 0 0; color:#64748b; font-size:12px; }

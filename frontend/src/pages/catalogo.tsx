@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { listarPublicaciones } from '../api/publicacionesService';
-import { adaptarIniciativa, filtrarIniciativas } from '../types/iniciativa';
+import { adaptarIniciativa, categoriasDe, filtrarIniciativas } from '../types/iniciativa';
 import type { Iniciativa } from '../types/iniciativa';
 import IniciativaCard from '../components/catalogo/IniciativaCard';
 import EstadoCatalogo from '../components/catalogo/EstadoCatalogo';
 import '../styles/catalogo.css';
 import '../styles/catalogoComponentes.css';
-
-const categoriasMenu = ['Todos', 'Agroindustria', 'Software e IA', 'Turismo', 'Otros sectores'];
 
 export default function Catalogo() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,6 +26,8 @@ export default function Catalogo() {
     return () => { activo = false; };
   }, [intento]);
 
+  // Los filtros salen de las categorías reales de las publicaciones.
+  const categoriasMenu = ['Todos', ...categoriasDe(iniciativas)];
   const coincidencias = filtrarIniciativas(iniciativas, texto, categoria);
   const tarjetas = coincidencias.slice(0, 6);
   const urlMas = `/iniciativas/mas?${new URLSearchParams({ q: texto.trim(), categoria }).toString()}`;
@@ -62,7 +62,7 @@ export default function Catalogo() {
             style={{ flex:1, minWidth:0, border:'none', outline:'none', padding:'10px 0', color:'#111827' }}/>
           <button type="submit" style={{ background:'#111827', color:'#fff', border:0, borderRadius:25, padding:'10px 22px', cursor:'pointer' }}>Buscar</button>
         </form>
-        <div className="catalogo-filtros" style={{ display:'flex', gap:10, marginTop:18 }}>
+        <div className="catalogo-filtros" style={{ display:'flex', flexWrap:'wrap', gap:10, marginTop:18 }}>
           {categoriasMenu.map((cat) => (
             <button type="button" key={cat} aria-pressed={categoria === cat} onClick={() => setCategoria(cat)}
               style={{ border:categoria === cat ? '1px solid #0f4c5c' : '1px solid #e2e8f0', background:categoria === cat ? '#0f4c5c' : '#fff', color:categoria === cat ? '#fff' : '#64748b', padding:'9px 18px', borderRadius:25, cursor:'pointer' }}>

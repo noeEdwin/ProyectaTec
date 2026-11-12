@@ -1,13 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getMyOrganizations, getMyProfile } from '../api/profileService';
-import type { OrganizationAccess } from '../api/profileService';
+import type { OrganizationAccess, UserProfile } from '../api/profileService';
 import { obtenerTipoPerfil } from '../context/perfil-context';
 import type { TipoPerfil } from '../context/perfil-context';
 import { useAuth } from '../context/auth-context';
 import type { PerfilPublicoData } from '../types/perfil';
 import { inicialesPerfil } from '../utils/perfil';
 import '../styles/perfilEspacio.css';
+
+const ROLES_ACADEMICOS: Record<string, string> = {
+  docente: 'Docente',
+  investigador: 'Investigador/a',
+  ambos: 'Docente e investigador/a',
+};
+
+/** Etiqueta y valor de la sección "Acerca del perfil" según el tipo de cuenta. */
+function resumenPersona(data: UserProfile): { etiqueta: string; valor: string } {
+  const unir = (...partes: Array<string | null | undefined>) => partes.filter(Boolean).join(' · ');
+  switch (data.account_type) {
+    case 'academico':
+      return { etiqueta: 'Institución y actividad', valor: unir(data.institution, ROLES_ACADEMICOS[data.academic_role ?? ''] ?? data.academic_role) };
+    case 'empleado_organizacion':
+      return { etiqueta: 'Organización y cargo', valor: unir(data.organization_name, data.organization_position) };
+    case 'residente_oaxaca':
+      return { etiqueta: 'Municipio y comunidad', valor: unir(data.municipality, data.locality) };
+    default:
+      return { etiqueta: 'Institución y carrera', valor: unir(data.institution, data.field_of_study) };
+  }
+}
 
 export default function MiPerfil() {
   const [busqueda] = useSearchParams();
@@ -16,6 +37,7 @@ export default function MiPerfil() {
   const [perfilCargado, setPerfilCargado] = useState<{
     tipo: TipoPerfil;
     perfil: PerfilPublicoData;
+    etiqueta: string;
   } | null>(null);
   const [personLoading, setPersonLoading] = useState(true);
   const [personError, setPersonError] = useState('');
@@ -50,8 +72,10 @@ export default function MiPerfil() {
       .then((data) => {
         if (!activo) return;
 
+        const resumen = resumenPersona(data);
         setPerfilCargado({
           tipo,
+          etiqueta: resumen.etiqueta,
           perfil: {
             id: String(data.id ?? 'personal'),
             is_organization: false,
@@ -61,7 +85,7 @@ export default function MiPerfil() {
             name: data.display_name || user?.name || '',
             description: data.description || '',
             location: data.location || '',
-            classification: [data.institution, data.field_of_study].filter(Boolean).join(' '),
+            classification: resumen.valor,
             contact: {
               email: data.email || user?.email || '',
               phone: data.phone,
@@ -101,6 +125,7 @@ export default function MiPerfil() {
     };
   }, [tipo]);
 
+  const etiquetaResumen = perfilCargado?.tipo === tipo ? perfilCargado.etiqueta : 'Información adicional';
   const canEdit = tipo === 'persona' || Boolean(organization?.can_update);
   const editOrganizationLink = organization
     ? `/editar-perfil-organizacion?id=${organization.id}`
@@ -203,7 +228,7 @@ export default function MiPerfil() {
               <h2>Acerca del perfil</h2>
               <p>Información sincronizada directamente desde tu sesión activa.</p>
               <div className="pd-info-detalle">
-                <span>{perfil.is_organization ? 'Sector o actividad' : 'Área de interés'}</span>
+                <span>{perfil.is_organization ? 'Sector o actividad' : etiquetaResumen}</span>
                 <strong>{perfil.classification || 'No indicado'}</strong>
               </div>
             </section>

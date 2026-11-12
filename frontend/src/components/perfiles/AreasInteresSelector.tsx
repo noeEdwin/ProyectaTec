@@ -35,7 +35,7 @@ export default function AreasInteresSelector({ value, onChange, error }: Props) 
   return (
     <fieldset className="campos-perfil-grupo" aria-invalid={Boolean(error)}>
       <legend>Áreas de interés (opcional)</legend>
-      <p>Elige hasta {MAX_AREAS} áreas. Son distintas de tu carrera o programa de estudios. {value.length}/{MAX_AREAS} seleccionadas.</p>
+      <p>Elige hasta {MAX_AREAS} temas en los que te gustaría colaborar. {value.length}/{MAX_AREAS} seleccionadas.</p>
       <div className="campos-perfil-opciones">
         {AREAS_INTERES.map((area) => {
           const checked = value.includes(area);

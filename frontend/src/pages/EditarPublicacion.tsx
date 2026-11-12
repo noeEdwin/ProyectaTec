@@ -53,7 +53,7 @@ export default function EditarPublicacion() {
             return;
           }
           if (err.response?.status === 404) {
-            setEstado({ fase: 'error', mensaje: 'La publicación que buscas no existe en PostgreSQL.' });
+            setEstado({ fase: 'error', mensaje: 'La publicación que buscas no existe.' });
             return;
           }
         }

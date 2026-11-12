@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
+import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { getMyProfile, getOrganizationCatalog, updateMyProfile, type OrganizationCatalogItem, type UserProfile } from '../api/profileService';
@@ -7,6 +7,10 @@ import { useAuth } from '../context/auth-context';
 import { traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
+import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
+import {
+  REGLAS_CAMPO, SEMESTRES, filtrarCampo, opcionesConActual, validarCampo, ubicacionOaxaca, separarUbicacionOaxaca,
+} from '../utils/camposPerfil';
 
 type ApiErrorResponse = {
   message?: string;
@@ -19,6 +23,30 @@ const accountTypeOptions = [
   { value: 'empleado_organizacion', label: 'Empleado de una organización' },
   { value: 'residente_oaxaca', label: 'Persona de Oaxaca' },
 ];
+
+const estiloLabel: CSSProperties = { display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' };
+const estiloInput: CSSProperties = {
+  width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1',
+  fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+};
+
+// Campos que se validan según el tipo de cuenta (además del teléfono).
+const CAMPOS_A_VALIDAR: Record<string, string[]> = {
+  estudiante: ['campus', 'field_of_study', 'student_number'],
+  academico: ['organization_area', 'organization_position'],
+  empleado_organizacion: ['organization_area', 'organization_position'],
+  residente_oaxaca: ['locality'],
+};
+
+function Campo({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={id} style={estiloLabel}>{label}</label>
+      {children}
+      {error && <span role="alert" style={{ color: '#b91c1c', fontSize: '12px', marginTop: '4px', display: 'block' }}>{error}</span>}
+    </div>
+  );
+}
 
 function normalizeAccountType(type?: string): string {
   if (['student', 'estudiante'].includes(type ?? '')) return 'estudiante';
@@ -127,8 +155,8 @@ export default function Perfil() {
         organization_id: data.organization_id ?? null,
         organization_area: data.organization_area || '',
         organization_position: data.organization_position || '',
-        municipality: data.municipality || '',
-        locality: data.locality || '',
+        municipality: data.municipality || separarUbicacionOaxaca(data.location || '', MUNICIPIOS_OAXACA).municipio,
+        locality: data.locality || separarUbicacionOaxaca(data.location || '', MUNICIPIOS_OAXACA).colonia,
         public_fields: data.public_fields || [],
         affiliation_status: data.affiliation_status || 'current',
         affiliation_rejection_reason: data.affiliation_rejection_reason || null,
@@ -164,8 +192,37 @@ export default function Perfil() {
     return () => window.clearTimeout(timer);
   }, [fetchProfileData]);
 
+  const esResidente = profile.account_type === 'residente_oaxaca';
+
+  const setField = (key: string, value: string) => {
+    setProfile((current) => ({ ...current, [key]: filtrarCampo(key, value) }));
+    setValidationErrors((current) => {
+      if (!current[key]) return current;
+      const resto = { ...current };
+      delete resto[key];
+      return resto;
+    });
+  };
+
+  const errorDe = (key: string) => validationErrors[key]?.[0];
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const erroresLocales: Record<string, string[]> = {};
+    for (const clave of ['phone', ...(CAMPOS_A_VALIDAR[profile.account_type ?? ''] ?? [])]) {
+      const mensaje = validarCampo(clave, String(profile[clave as keyof UserProfile] ?? ''));
+      if (mensaje) erroresLocales[clave] = [mensaje];
+    }
+    if (Object.keys(erroresLocales).length > 0) {
+      setValidationErrors(erroresLocales);
+      setErrorMessage('Por favor corrige los campos indicados.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     setSaving(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -178,7 +235,9 @@ export default function Perfil() {
         account_type: profile.account_type,
         description: profile.description,
         phone: profile.phone,
-        location: profile.location,
+        location: esResidente
+          ? ubicacionOaxaca(profile.municipality ?? '', profile.locality ?? '')
+          : profile.location,
         institution: profile.institution,
         field_of_study: profile.field_of_study,
         interest_areas: profile.interest_areas,
@@ -200,9 +259,11 @@ export default function Perfil() {
         setSuccessMessage(res.affiliation_status === 'pending'
           ? 'La solicitud de cambio de institución u organización quedó pendiente de revisión. Los datos actuales siguen activos.'
           : '¡Perfil guardado exitosamente!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error: unknown) {
       handleApiError(error);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -328,30 +389,76 @@ export default function Perfil() {
             </div>
 
             {profile.account_type === 'estudiante' && <>
-              <div><label htmlFor="profile-institution" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Institución educativa</label><input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setProfile({ ...profile, institution: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /><datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist></div>
-              <div><label htmlFor="profile-campus" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Campus o plantel</label><input id="profile-campus" value={profile.campus || ''} onChange={(e) => setProfile({ ...profile, campus: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-field-of-study" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Carrera o programa</label><input id="profile-field-of-study" value={profile.field_of_study || ''} onChange={(e) => setProfile({ ...profile, field_of_study: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-semester" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Semestre o periodo</label><input id="profile-semester" value={profile.semester || ''} onChange={(e) => setProfile({ ...profile, semester: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-student-number" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Matrícula</label><input id="profile-student-number" value={profile.student_number || ''} onChange={(e) => setProfile({ ...profile, student_number: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-expected-graduation" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Fecha estimada de egreso</label><input id="profile-expected-graduation" type="month" value={profile.expected_graduation || ''} onChange={(e) => setProfile({ ...profile, expected_graduation: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
+              <Campo id="profile-institution" label="Institución educativa" error={errorDe('institution')}>
+                <input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setField('institution', e.target.value)} required maxLength={255} style={estiloInput} />
+                <datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist>
+              </Campo>
+              <Campo id="profile-campus" label="Campus o plantel" error={errorDe('campus')}>
+                <input id="profile-campus" value={profile.campus || ''} onChange={(e) => setField('campus', e.target.value)} required maxLength={255} style={estiloInput} />
+              </Campo>
+              <Campo id="profile-field-of-study" label="Carrera o programa" error={errorDe('field_of_study')}>
+                <input id="profile-field-of-study" value={profile.field_of_study || ''} onChange={(e) => setField('field_of_study', e.target.value)} required maxLength={255} style={estiloInput} />
+              </Campo>
+              <Campo id="profile-semester" label="Semestre o periodo" error={errorDe('semester')}>
+                <select id="profile-semester" value={profile.semester || ''} onChange={(e) => setField('semester', e.target.value)} required style={estiloInput}>
+                  <option value="">Selecciona tu semestre</option>
+                  {SEMESTRES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                  {profile.semester && !SEMESTRES.some((item) => item.value === profile.semester) && <option value={profile.semester}>{profile.semester}</option>}
+                </select>
+              </Campo>
+              <Campo id="profile-student-number" label="Matrícula" error={errorDe('student_number')}>
+                <input id="profile-student-number" inputMode="numeric" value={profile.student_number || ''} onChange={(e) => setField('student_number', e.target.value)} required maxLength={REGLAS_CAMPO.student_number.maxLength} style={estiloInput} />
+              </Campo>
+              <Campo id="profile-expected-graduation" label="Fecha estimada de egreso" error={errorDe('expected_graduation')}>
+                <input id="profile-expected-graduation" type="month" value={profile.expected_graduation || ''} onChange={(e) => setField('expected_graduation', e.target.value)} required style={estiloInput} />
+              </Campo>
             </>}
 
             {profile.account_type === 'academico' && <>
-              <div><label htmlFor="profile-institution" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Institución</label><input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setProfile({ ...profile, institution: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /><datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist></div>
-              <div><label htmlFor="profile-academic-role" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Actividad académica</label><select id="profile-academic-role" value={profile.academic_role || ''} onChange={(e) => setProfile({ ...profile, academic_role: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px' }}><option value="">Selecciona</option><option value="docente">Docente</option><option value="investigador">Investigador/a</option><option value="ambos">Docente e investigador/a</option></select></div>
-              <div><label htmlFor="profile-organization-area" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Área o campo de investigación</label><input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setProfile({ ...profile, organization_area: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-organization-position" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Cargo o función</label><input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setProfile({ ...profile, organization_position: e.target.value })} style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
+              <Campo id="profile-institution" label="Institución" error={errorDe('institution')}>
+                <input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setField('institution', e.target.value)} required maxLength={255} style={estiloInput} />
+                <datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist>
+              </Campo>
+              <Campo id="profile-academic-role" label="Actividad académica" error={errorDe('academic_role')}>
+                <select id="profile-academic-role" value={profile.academic_role || ''} onChange={(e) => setField('academic_role', e.target.value)} required style={estiloInput}>
+                  <option value="">Selecciona</option>
+                  <option value="docente">Docente</option>
+                  <option value="investigador">Investigador/a</option>
+                  <option value="ambos">Docente e investigador/a</option>
+                </select>
+              </Campo>
+              <Campo id="profile-organization-area" label="Área o campo de investigación" error={errorDe('organization_area')}>
+                <input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setField('organization_area', e.target.value)} maxLength={255} style={estiloInput} />
+              </Campo>
+              <Campo id="profile-organization-position" label="Cargo o función" error={errorDe('organization_position')}>
+                <input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setField('organization_position', e.target.value)} maxLength={255} style={estiloInput} />
+              </Campo>
             </>}
 
             {profile.account_type === 'empleado_organizacion' && <>
-              <div><label htmlFor="profile-organization-name" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Organización</label><input id="profile-organization-name" list="profile-organization-list" value={profile.organization_name || ''} onChange={(e) => { const name = e.target.value; setProfile({ ...profile, organization_name: name, organization_id: catalog.find((item) => item.name === name)?.id ?? null }); }} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /><datalist id="profile-organization-list">{catalog.map((item) => <option key={item.id} value={item.name} />)}</datalist><p style={{ color: '#64748b', fontSize: '12px' }}>Selecciona una opción o escribe una organización que aún no esté en la lista.</p></div>
-              <div><label htmlFor="profile-organization-area" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Área o departamento</label><input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setProfile({ ...profile, organization_area: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-organization-position" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Cargo o puesto</label><input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setProfile({ ...profile, organization_position: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
+              <Campo id="profile-organization-name" label="Organización" error={errorDe('organization_name')}>
+                <input id="profile-organization-name" list="profile-organization-list" value={profile.organization_name || ''} onChange={(e) => { const name = e.target.value; setProfile({ ...profile, organization_name: name, organization_id: catalog.find((item) => item.name === name)?.id ?? null }); }} required maxLength={255} style={estiloInput} />
+                <datalist id="profile-organization-list">{catalog.map((item) => <option key={item.id} value={item.name} />)}</datalist>
+                <p style={{ color: '#64748b', fontSize: '12px' }}>Selecciona una opción o escribe una organización que aún no esté en la lista.</p>
+              </Campo>
+              <Campo id="profile-organization-area" label="Área o departamento" error={errorDe('organization_area')}>
+                <input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setField('organization_area', e.target.value)} required maxLength={255} style={estiloInput} />
+              </Campo>
+              <Campo id="profile-organization-position" label="Cargo o puesto" error={errorDe('organization_position')}>
+                <input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setField('organization_position', e.target.value)} required maxLength={255} style={estiloInput} />
+              </Campo>
             </>}
 
-            {profile.account_type === 'residente_oaxaca' && <>
-              <div><label htmlFor="profile-municipality" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Municipio</label><input id="profile-municipality" value={profile.municipality || ''} onChange={(e) => setProfile({ ...profile, municipality: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
-              <div><label htmlFor="profile-locality" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>Barrio, colonia o comunidad</label><input id="profile-locality" value={profile.locality || ''} onChange={(e) => setProfile({ ...profile, locality: e.target.value })} required style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} /></div>
+            {esResidente && <>
+              <Campo id="profile-municipality" label="Municipio" error={errorDe('municipality')}>
+                <select id="profile-municipality" value={profile.municipality || ''} onChange={(e) => setField('municipality', e.target.value)} required style={estiloInput}>
+                  <option value="">Selecciona tu municipio</option>
+                  {opcionesConActual(MUNICIPIOS_OAXACA, profile.municipality || '').map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </Campo>
+              <Campo id="profile-locality" label="Barrio, colonia o comunidad" error={errorDe('locality')}>
+                <input id="profile-locality" value={profile.locality || ''} onChange={(e) => setField('locality', e.target.value)} required maxLength={255} style={estiloInput} />
+              </Campo>
             </>}
 
             {profile.affiliation_status === 'pending' && (
@@ -418,19 +525,18 @@ export default function Perfil() {
               {validationErrors.email && <span style={{ color: '#b91c1c', fontSize: '12px' }}>{validationErrors.email[0]}</span>}
             </div>
 
-            <div>
-              <label htmlFor="profile-phone" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Teléfono de contacto
-              </label>
+            <Campo id="profile-phone" label="Teléfono de contacto" error={errorDe('phone')}>
               <input
                 id="profile-phone"
                 type="tel"
+                inputMode="numeric"
+                placeholder="9511234567"
                 value={profile.phone || ''}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                maxLength={20}
-                style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                onChange={(e) => setField('phone', e.target.value)}
+                maxLength={REGLAS_CAMPO.phone.maxLength}
+                style={estiloInput}
               />
-            </div>
+            </Campo>
 
             {/* Descripción breve */}
             <div>
@@ -451,11 +557,13 @@ export default function Perfil() {
               />
             </div>
 
-            <SelectorUbicacion
-              idPrefix="profile-location"
-              value={profile.location || ''}
-              onChange={(location) => setProfile((current) => ({ ...current, location }))}
-            />
+            {!esResidente && (
+              <SelectorUbicacion
+                idPrefix="profile-location"
+                value={profile.location || ''}
+                onChange={(location) => setProfile((current) => ({ ...current, location }))}
+              />
+            )}
             <AreasInteresSelector
               value={profile.interest_areas || []}
               onChange={(interest_areas) => setProfile((current) => ({ ...current, interest_areas }))}
