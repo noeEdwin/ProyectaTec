@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AdminPublicationModerationController;
+use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommunityNeedController;
 use App\Http\Controllers\MyPublicationController;
@@ -9,8 +11,6 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
-use App\Http\Controllers\AdminPublicationModerationController;
-use App\Http\Controllers\AdminUserModerationController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Application;
 use App\Models\Category;
@@ -74,22 +74,22 @@ Route::get('/proyectos/destacado', function () {
 
 Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () {
     // Moderación de usuarios
-Route::patch(
-    '/admin/users/{user}/status',
-    [AdminUserModerationController::class, 'updateStatus']
-)->whereNumber('user');
+    Route::patch(
+        '/admin/users/{user}/status',
+        [AdminUserModerationController::class, 'updateStatus']
+    )->whereNumber('user');
 
-// Moderación de proyectos
-Route::patch(
-    '/admin/projects/{project}/visibility',
-    [AdminPublicationModerationController::class, 'updateProjectVisibility']
-)->whereNumber('project');
+    // Moderación de proyectos
+    Route::patch(
+        '/admin/projects/{project}/visibility',
+        [AdminPublicationModerationController::class, 'updateProjectVisibility']
+    )->whereNumber('project');
 
-// Moderación de necesidades comunitarias
-Route::patch(
-    '/admin/community-needs/{communityNeed}/visibility',
-    [AdminPublicationModerationController::class, 'updateCommunityNeedVisibility']
-)->whereNumber('communityNeed');
+    // Moderación de necesidades comunitarias
+    Route::patch(
+        '/admin/community-needs/{communityNeed}/visibility',
+        [AdminPublicationModerationController::class, 'updateCommunityNeedVisibility']
+    )->whereNumber('communityNeed');
     Route::get('/me/publications', [MyPublicationController::class, 'index']);
     Route::get('/me/publications/{type}/{id}', [MyPublicationController::class, 'show'])
         ->whereNumber('id');
@@ -117,6 +117,8 @@ Route::patch(
     Route::patch('/community-needs/{communityNeed}', [CommunityNeedController::class, 'update'])->whereNumber('communityNeed');
     Route::post('/publication-reports', [PublicationReportController::class, 'store']);
     Route::get('/admin/publication-reports', [PublicationReportController::class, 'index']);
+    Route::patch('/admin/publication-reports/{report}', [PublicationReportController::class, 'resolve'])
+        ->whereNumber('report');
     Route::get('/admin/publication-stats', [PublicationStatsController::class, 'index']);
 
     // Editar una organización

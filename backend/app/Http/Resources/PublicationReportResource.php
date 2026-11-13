@@ -17,6 +17,9 @@ class PublicationReportResource extends JsonResource
             'reason' => $this->reason,
             'details' => $this->details,
             'status' => $this->status,
+            'reviewed_by' => $this->reviewed_by,
+            'reviewed_at' => $this->reviewed_at?->toISOString(),
+            'decision_notes' => $this->decision_notes,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

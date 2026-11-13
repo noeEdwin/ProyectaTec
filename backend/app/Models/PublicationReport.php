@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PublicationReport extends Model
 {
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_REVIEWED = 'reviewed';
+
+    public const STATUS_DISCARDED = 'discarded';
+
     protected $fillable = [
         'reporter_id',
         'project_id',
@@ -14,7 +20,17 @@ class PublicationReport extends Model
         'reason',
         'details',
         'status',
+        'reviewed_by',
+        'reviewed_at',
+        'decision_notes',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'reviewed_at' => 'datetime',
+        ];
+    }
 
     public function reporter(): BelongsTo
     {
@@ -29,5 +45,10 @@ class PublicationReport extends Model
     public function communityNeed(): BelongsTo
     {
         return $this->belongsTo(CommunityNeed::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 }
