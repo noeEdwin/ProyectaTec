@@ -74,22 +74,29 @@ Route::get('/proyectos/destacado', function () {
 
 Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () {
     // Moderación de usuarios
+    Route::get(
+        '/admin/users',
+        [AdminUserModerationController::class, 'index']
+    );
     Route::patch(
         '/admin/users/{user}/status',
         [AdminUserModerationController::class, 'updateStatus']
     )->whereNumber('user');
 
-    // Moderación de proyectos
+    // Moderación de publicaciones (proyectos y necesidades comunitarias)
+    Route::get(
+        '/admin/publications',
+        [AdminPublicationModerationController::class, 'index']
+    );
     Route::patch(
         '/admin/projects/{project}/visibility',
         [AdminPublicationModerationController::class, 'updateProjectVisibility']
     )->whereNumber('project');
-
-    // Moderación de necesidades comunitarias
     Route::patch(
         '/admin/community-needs/{communityNeed}/visibility',
         [AdminPublicationModerationController::class, 'updateCommunityNeedVisibility']
     )->whereNumber('communityNeed');
+
     Route::get('/me/publications', [MyPublicationController::class, 'index']);
     Route::get('/me/publications/{type}/{id}', [MyPublicationController::class, 'show'])
         ->whereNumber('id');

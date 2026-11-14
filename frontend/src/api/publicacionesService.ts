@@ -13,11 +13,13 @@ type PublicationRecord = {
   status: string;
   category_id: number;
   category?: { id: number; name: string };
-  organization?: { name: string } | null;
+  organization?: { id?: number; name: string } | null;
   location?: string | null;
   modality?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
+  is_hidden?: boolean;
+  created_at?: string;
 };
 
 export type MiPublicacion = {
@@ -34,6 +36,43 @@ export type MiPublicacion = {
 export type PublicacionListado = PublicationRecord & {
   type: TipoPublicacion;
 };
+
+export type FiltrosPublicaciones = {
+  q?: string;
+  category_id?: number;
+  sector?: string;
+  page?: number;
+};
+
+export type MetaPaginacionPublicaciones = {
+  current_page: number;
+  per_page: number;
+  last_page: number;
+  total: number;
+};
+
+export type ResultadoBusquedaPublicaciones = {
+  items: PublicacionListado[];
+  meta: MetaPaginacionPublicaciones;
+};
+
+type ProjectsListResponse = {
+  projects?: PublicationRecord[];
+  data?: PublicationRecord[];
+  meta?: MetaPaginacionPublicaciones;
+};
+
+type CommunityNeedsListResponse = {
+  community_needs?: PublicationRecord[];
+  data?: PublicationRecord[];
+  meta?: MetaPaginacionPublicaciones;
+};
+
+const cacheBusquedas = new Map<
+  string,
+  { expira: number; data: ResultadoBusquedaPublicaciones }
+>();
+const CACHE_TTL_MS = 30_000;
 
 function esTipoProyecto(tipo?: string): boolean {
   return tipo === 'proyecto' || tipo === 'project';
@@ -59,27 +98,103 @@ export async function listarMisPublicaciones(): Promise<MiPublicacion[]> {
   return data.publications;
 }
 
-/** Lista proyectos y necesidades públicas para mostrarlas en el catálogo. */
-export async function listarPublicaciones(): Promise<PublicacionListado[]> {
+/** Consulta proyectos y necesidades públicas aplicando filtros de servidor y paginación. */
+export async function buscarPublicaciones(
+  filtros: FiltrosPublicaciones = {},
+): Promise<ResultadoBusquedaPublicaciones> {
+  const q = filtros.q?.trim();
+  const sector = filtros.sector?.trim();
+  const categoryId =
+    typeof filtros.category_id === 'number' && filtros.category_id > 0
+      ? filtros.category_id
+      : undefined;
+  const page = typeof filtros.page === 'number' && filtros.page >= 1 ? filtros.page : 1;
+
+  const cacheKey = JSON.stringify({
+    q: q ?? '',
+    categoryId: categoryId ?? 0,
+    sector: sector ?? '',
+    page,
+  });
+  const enCache = cacheBusquedas.get(cacheKey);
+  if (enCache && enCache.expira > Date.now()) {
+    return enCache.data;
+  }
+
+  const paramsBase: Record<string, string | number> = { page };
+  if (q) paramsBase.q = q;
+  if (categoryId) paramsBase.category_id = categoryId;
+
+  const paramsProyectos: Record<string, string | number> = { ...paramsBase };
+  if (sector) paramsProyectos.sector = sector;
+
+  // El filtro "sector" solo aplica a proyectos de organizaciones aprobadas.
   const [projectsResponse, needsResponse] = await Promise.all([
-    api.get<{ projects?: PublicationRecord[]; data?: PublicationRecord[] }>('/projects'),
-    api.get<{ community_needs?: PublicationRecord[]; data?: PublicationRecord[] }>('/community-needs'),
+    api.get<ProjectsListResponse>('/projects', { params: paramsProyectos }),
+    sector
+      ? Promise.resolve<{ data: CommunityNeedsListResponse }>({
+          data: {
+            community_needs: [],
+            meta: { current_page: page, per_page: 15, last_page: 1, total: 0 },
+          },
+        })
+      : api.get<CommunityNeedsListResponse>('/community-needs', { params: paramsBase }),
   ]);
 
-  const projects = Array.isArray(projectsResponse.data.projects)
+  const projects: PublicationRecord[] = Array.isArray(projectsResponse.data.projects)
     ? projectsResponse.data.projects
-    : projectsResponse.data.data ?? [];
-  const needs = Array.isArray(needsResponse.data.community_needs)
-    ? needsResponse.data.community_needs
-    : needsResponse.data.data ?? [];
+    : (projectsResponse.data.data ?? []);
 
-  return [
-    ...projects.map((item) => ({ ...item, type: 'proyecto' as const })),
-    ...needs.map((item) => ({ ...item, type: 'necesidad' as const })),
-  ];
+  const needs: PublicationRecord[] = Array.isArray(needsResponse.data.community_needs)
+    ? needsResponse.data.community_needs
+    : (needsResponse.data.data ?? []);
+
+  const metaProjects = projectsResponse.data.meta ?? {
+    current_page: page,
+    per_page: 15,
+    last_page: 1,
+    total: projects.length,
+  };
+
+  const metaNeeds = needsResponse.data.meta ?? {
+    current_page: page,
+    per_page: 15,
+    last_page: 1,
+    total: needs.length,
+  };
+
+  const resultado: ResultadoBusquedaPublicaciones = {
+    items: [
+      ...projects.map((item) => ({ ...item, type: 'proyecto' as const })),
+      ...needs.map((item) => ({ ...item, type: 'necesidad' as const })),
+    ],
+    meta: {
+      current_page: page,
+      per_page: metaProjects.per_page + (sector ? 0 : metaNeeds.per_page),
+      last_page: Math.max(metaProjects.last_page, sector ? 1 : metaNeeds.last_page),
+      total: metaProjects.total + (sector ? 0 : metaNeeds.total),
+    },
+  };
+
+  cacheBusquedas.set(cacheKey, {
+    expira: Date.now() + CACHE_TTL_MS,
+    data: resultado,
+  });
+
+  return resultado;
+}
+
+/** Lista proyectos y necesidades públicas para mostrarlas en el catálogo o inicio. */
+export async function listarPublicaciones(
+  filtros: FiltrosPublicaciones = {},
+): Promise<PublicacionListado[]> {
+  const resultado = await buscarPublicaciones(filtros);
+  return resultado.items;
 }
 
 export async function crearPublicacion(payload: PublicacionPayload): Promise<{ id: number }> {
+  cacheBusquedas.clear();
+
   if (payload.type === 'project') {
     const { data } = await api.post<{ project: { id: number } }>('/projects', {
       title: payload.title,
@@ -110,6 +225,8 @@ export async function actualizarPublicacion(
   id: number,
   payload: PublicacionPayload,
 ): Promise<void> {
+  cacheBusquedas.clear();
+
   const path = esTipoProyecto(tipo) ? `/projects/${id}` : `/community-needs/${id}`;
   if (payload.type === 'project') {
     await api.patch(path, {
