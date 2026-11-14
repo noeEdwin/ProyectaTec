@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import '../styles/Navbar.css';
 
 export default function Navbar() {
   const { user, logout, isLoggingOut } = useAuth();
-  const navigate = useNavigate();
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -24,7 +23,6 @@ export default function Navbar() {
     setIsMenuOpen(false);
     try {
       await logout();
-      navigate('/acceso');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
