@@ -11,8 +11,8 @@ export const perfilOrganizacionInicial: PerfilPublicoData = {
   classification: 'Organización',
   contact: { email: 'contacto@ejemplo.com' },
   initiatives: [
-    { id: 'cafe-demo', titulo: 'Monitoreo y secado solar de café', categoria: 'Colaboración', sector: 'Agroindustria', estado: 'En curso' },
-    { id: 'mezcal-demo', titulo: 'Trazabilidad digital para mezcal', categoria: 'Colaboración', sector: 'Tecnología', estado: 'En revisión' },
+    { id: 'cafe-demo', titulo: 'Monitoreo y secado solar de café', categoria: 'Colaboración', sector: 'Agroindustria y campo', estado: 'En curso' },
+    { id: 'mezcal-demo', titulo: 'Trazabilidad digital para mezcal', categoria: 'Colaboración', sector: 'Tecnología e innovación', estado: 'En revisión' },
   ],
 };
 
@@ -26,6 +26,6 @@ export const perfilPersonaInicial: PerfilPublicoData = {
   classification: 'Estudiante · Ingeniería en Sistemas',
   contact: { email: 'persona@ejemplo.com' },
   initiatives: [
-    { id: 'tecnologia-demo', titulo: 'Tecnología para comunidades de Oaxaca', categoria: 'Colaboración', sector: 'Tecnología', estado: 'En curso' },
+    { id: 'tecnologia-demo', titulo: 'Tecnología para comunidades de Oaxaca', categoria: 'Colaboración', sector: 'Tecnología e innovación', estado: 'En curso' },
   ],
 };
