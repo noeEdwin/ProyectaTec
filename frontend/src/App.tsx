@@ -17,6 +17,7 @@ import PerfilPublico from './pages/perfilPublico';
 import OrganizacionPublica from './pages/OrganizacionPublica';
 import EditarPerfilOrganizacion from './pages/EditarPerfilOrganizacion';
 import AdminOrganizaciones from './pages/AdminOrganizaciones';
+import ModeracionAdmin from './pages/ModeracionAdmin.tsx';
 
 import NuevaPublicacion from './pages/NuevaPublicacion';
 import EditarPublicacion from './pages/EditarPublicacion';
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/editar-perfil-organizacion" element={<EditarPerfilOrganizacion />} />
                 <Route path="/admin/organizaciones" element={<AdminOrganizaciones />} />
+                <Route path="/admin/moderacion" element={<ModeracionAdmin />} />
 
                 {/* Publicaciones: Crear y Editar */}
                 <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />

@@ -103,6 +103,7 @@ export default function Navbar() {
                   </Link>
 
                   {user.can_manage_platform && (
+                    <>
                     <Link
                       to="/admin/organizaciones"
                       onClick={() => setIsMenuOpen(false)}
@@ -110,6 +111,14 @@ export default function Navbar() {
                     >
                       Revisar organizaciones
                     </Link>
+                    <Link
+                      to="/admin/moderacion"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="dropdown-item"
+                    >
+                      Moderación
+                    </Link>
+                    </>
                   )}
                   
                   <hr className="dropdown-divider" />
