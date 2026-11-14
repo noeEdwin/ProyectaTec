@@ -99,8 +99,9 @@ export default function Catalogo() {
         // Conservar el ordenamiento implementado por el equipo.
         const ordenadas = [...resultado.items].sort(
           (a, b) =>
-            (b.created_at ?? '').localeCompare(b.created_at ?? '') ||
-            b.id - a.id,
+            (b.created_at ?? '').localeCompare(a.created_at ?? '') ||
+            b.id - a.id ||
+            a.type.localeCompare(b.type),
         );
 
         setEstadoBusqueda({
