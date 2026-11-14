@@ -3,7 +3,7 @@ import { env } from 'node:process';
 import { expect, test } from '@playwright/test';
 
 test('registro → acceso privado → logout → login → acceso denegado', async ({ page }) => {
-  const email = `e2e-${randomUUID()}@example.com`;
+  const email = `e2e-${randomUUID()}@gmail.com`;
   const password = 'password123';
 
   await page.goto('/iniciativas');
@@ -18,7 +18,7 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
   await page.getByLabel('Campus o plantel').fill('Oaxaca');
   await page.getByLabel('Carrera o programa', { exact: true }).fill('Ingeniería en Sistemas');
   await page.getByLabel('Semestre o periodo').selectOption('5');
-  await page.getByLabel('Matrícula').fill('E2E-0001');
+  await page.getByLabel('Matrícula').fill('20260001');
   await page.getByLabel('Fecha estimada de egreso').fill('2028-06');
   await page.getByLabel('País').selectOption('mexico');
   await page.getByLabel('Estado').selectOption('Oaxaca');
@@ -31,7 +31,7 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
 
   await expect(page).toHaveURL(/\/catalogo$/);
   await expect(page.getByRole('button', { name: /UE Cuenta/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Proyectos destacados' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Iniciativas destacadas' })).toBeVisible();
 
   const registrationToken = await page.evaluate(() => localStorage.getItem('token'));
   const profileResponse = await page.request.get(`${env.API_BASE_URL || 'http://127.0.0.1:8001/api'}/profile`, {
@@ -81,7 +81,7 @@ test('registro → acceso privado → logout → login → acceso denegado', asy
 });
 
 test('registro de organización crea perfil pendiente y lo oculta del catálogo público', async ({ page }) => {
-  const email = `organizacion-e2e-${randomUUID()}@example.com`;
+  const email = `organizacion-e2e-${randomUUID()}@gmail.com`;
   await page.goto('/registro');
   await page.getByLabel('Tipo de cuenta', { exact: true }).selectOption('organizacion');
   await page.getByLabel('Nombre de la persona representante').fill('Representante E2E');
@@ -89,8 +89,8 @@ test('registro de organización crea perfil pendiente y lo oculta del catálogo 
   await page.getByLabel('Razón social legal').fill('Cooperativa E2E S.C.');
   await page.getByLabel('Sitio web (URL)').fill('https://cooperativa.example.org');
   await page.getByLabel('Tipo de organización').selectOption('sector_social');
-  await page.getByLabel('Sector o actividad').fill('Economía comunitaria');
-  await page.getByLabel('Municipio', { exact: true }).fill('Oaxaca de Juárez');
+  await page.getByLabel('Sector o actividad').selectOption('Desarrollo social y comunitario');
+  await page.getByLabel('Municipio', { exact: true }).selectOption('Oaxaca de Juárez');
   await page.getByLabel('Barrio, colonia o comunidad').fill('Centro');
   await page.getByLabel('Correo de contacto', { exact: true }).fill('contacto@cooperativa.example.org');
   await page.getByLabel('Teléfono de contacto', { exact: true }).fill('9511234567');

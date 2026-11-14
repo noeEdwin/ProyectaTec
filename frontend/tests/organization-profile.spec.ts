@@ -60,14 +60,16 @@ test('administrador puede consultar, editar, guardar y volver a consultar su org
   await expect(page.getByRole('heading', { name: 'Editar organización' })).toBeVisible();
   await page.getByLabel('Nombre o razón social').fill('Colectivo Semilla Oaxaca');
   await page.getByLabel('Descripción').fill('Proyectos comunitarios de tecnología');
-  await page.getByLabel('Ubicación', { exact: true }).fill('Valles Centrales');
+  await page.getByLabel('Municipio').selectOption('Oaxaca de Juárez');
+  await page.getByLabel('Barrio, colonia o comunidad').fill('Centro');
   await page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(page.getByRole('status')).toContainText('Los cambios se guardaron correctamente.');
 
   await page.reload();
   await expect(page.getByLabel('Nombre o razón social')).toHaveValue('Colectivo Semilla Oaxaca');
   await expect(page.getByLabel('Descripción')).toHaveValue('Proyectos comunitarios de tecnología');
-  await expect(page.getByLabel('Ubicación', { exact: true })).toHaveValue('Valles Centrales');
+  await expect(page.getByLabel('Municipio')).toHaveValue('Oaxaca de Juárez');
+  await expect(page.getByLabel('Barrio, colonia o comunidad')).toHaveValue('Centro');
 
   await page.goto('/mi-perfil?tipo=organizacion&id=17');
   await page.getByRole('link', { name: /Ver perfil público/ }).click();
@@ -159,8 +161,8 @@ test('cuenta personal carga perfil existente, lo guarda y conserva cambios al re
   await page.getByLabel('Institución educativa').fill('Instituto Tecnológico de Oaxaca');
   await page.getByLabel('Campus o plantel').fill('Oaxaca');
   await page.getByLabel('Carrera o programa', { exact: true }).fill('Sistemas');
-  await page.getByLabel('Semestre o periodo').fill('5');
-  await page.getByLabel('Matrícula').fill('ITO-222');
+  await page.getByLabel('Semestre o periodo').selectOption('5');
+  await page.getByLabel('Matrícula').fill('20260002');
   await page.getByLabel('Fecha estimada de egreso').fill('2028-06');
   await page.getByLabel('Descripción breve').fill('Desarrolladora interesada en impacto social');
   await page.getByLabel('País').selectOption('mexico');
