@@ -5,6 +5,7 @@ import {
   MODO_SIMULADO,
   cambiarEstadoUsuario,
   cambiarVisibilidadPublicacion,
+  extraerMensajeErrorModeracion,
   listarPublicacionesModeracion,
   listarReportesModeracion,
   listarUsuariosModeracion,
@@ -32,7 +33,6 @@ type AccionPendiente = {
   publicacionTipo?: TipoPublicacionModeracion;
 };
 
-// "Motivo" solo se pide cuando el backend lo guarda (decision_notes al resolver o descartar un reporte).
 const CONFIG_ACCION: Record<TipoAccion, {
   titulo: string;
   texto: (objetivo: string) => string;
@@ -105,10 +105,10 @@ const ETIQUETA_ESTADO_REPORTE: Record<EstadoReporte, string> = {
   discarded: 'Descartado',
 };
 
-const fecha = (valor: string) => new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+const fecha = (valor: string) =>
+  new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 const normalizar = (texto: string) => texto.toLocaleLowerCase('es-MX');
 
-/** Un reporte es de un proyecto O de una necesidad comunitaria. */
 function objetivoDeReporte(reporte: ReporteModeracion): { tipo: TipoPublicacionModeracion; id: number } {
   return reporte.project_id !== null
     ? { tipo: 'proyecto', id: reporte.project_id }
@@ -126,7 +126,7 @@ export default function ModeracionAdmin() {
   const [reportes, setReportes] = useState<ReporteModeracion[]>([]);
   const [meta, setMeta] = useState<MetaPaginacion | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [errorCarga, setErrorCarga] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
   const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
   const [pendiente, setPendiente] = useState<AccionPendiente | null>(null);
@@ -138,7 +138,7 @@ export default function ModeracionAdmin() {
 
   const cargar = useCallback(async (pagina = 1) => {
     setCargando(true);
-    setErrorCarga(false);
+    setErrorCarga(null);
     try {
       const [u, p, r] = await Promise.all([
         listarUsuariosModeracion(),
@@ -149,8 +149,10 @@ export default function ModeracionAdmin() {
       setPublicaciones(p);
       setReportes(r.reports);
       setMeta(r.meta);
-    } catch {
-      setErrorCarga(true);
+    } catch (err: unknown) {
+      setErrorCarga(
+        extraerMensajeErrorModeracion(err, 'No fue posible cargar la información de moderación.'),
+      );
     } finally {
       setCargando(false);
     }
@@ -158,7 +160,9 @@ export default function ModeracionAdmin() {
 
   useEffect(() => {
     if (!puedeModerar) return;
-    const temporizador = window.setTimeout(() => { void cargar(1); }, 0);
+    const temporizador = window.setTimeout(() => {
+      void cargar(1);
+    }, 0);
     return () => window.clearTimeout(temporizador);
   }, [cargar, puedeModerar]);
 
@@ -171,23 +175,25 @@ export default function ModeracionAdmin() {
     return () => window.removeEventListener('keydown', alPresionar);
   }, [pendiente, procesando]);
 
-  function cambiarPestana(nueva: Pestana) {
+  function cambiarPestana(nueva: Pestana, busquedaInicial = '') {
     setPestana(nueva);
     setMensaje(null);
-    setBusqueda('');
+    setBusqueda(busquedaInicial);
     setFiltro('todos');
   }
 
   async function irAPagina(pagina: number) {
     setMensaje(null);
     setCargando(true);
-    setErrorCarga(false);
+    setErrorCarga(null);
     try {
       const r = await listarReportesModeracion(pagina);
       setReportes(r.reports);
       setMeta(r.meta);
-    } catch {
-      setErrorCarga(true);
+    } catch (err: unknown) {
+      setErrorCarga(
+        extraerMensajeErrorModeracion(err, 'No fue posible cargar la página solicitada.'),
+      );
     } finally {
       setCargando(false);
     }
@@ -220,30 +226,64 @@ export default function ModeracionAdmin() {
       switch (pendiente.tipo) {
         case 'ocultar':
         case 'restaurar': {
-          const actualizada = await cambiarVisibilidadPublicacion(pendiente.publicacionTipo ?? 'proyecto', pendiente.id, pendiente.tipo === 'ocultar');
-          setPublicaciones((lista) => lista.map((p) => (p.type === actualizada.type && p.id === actualizada.id ? actualizada : p)));
+          const actualizada = await cambiarVisibilidadPublicacion(
+            pendiente.publicacionTipo ?? 'proyecto',
+            pendiente.id,
+            pendiente.tipo === 'ocultar',
+          );
+          setPublicaciones((lista) =>
+            lista.map((p) =>
+              p.type === actualizada.type && p.id === actualizada.id ? actualizada : p,
+            ),
+          );
+          setMensaje({ tipo: 'exito', texto: `${config.titulo}: acción realizada correctamente.` });
           break;
         }
         case 'desactivar':
         case 'activar': {
-          const actualizado = await cambiarEstadoUsuario(pendiente.id, pendiente.tipo === 'activar');
-          setUsuarios((lista) => lista.map((u) => (u.id === actualizado.id ? actualizado : u)));
+          const actualizado = await cambiarEstadoUsuario(
+            pendiente.id,
+            pendiente.tipo === 'activar',
+          );
+          setUsuarios((lista) =>
+            lista.map((u) => (u.id === actualizado.id ? actualizado : u)),
+          );
+          setMensaje({
+            tipo: 'exito',
+            texto: `${config.titulo}: ${actualizado.name} (${actualizado.email}) ahora está ${actualizado.is_active ? 'activo' : 'desactivado'}.`,
+          });
           break;
         }
         case 'resolver':
         case 'descartar':
         case 'reabrir': {
-          const estado: EstadoReporte = pendiente.tipo === 'resolver' ? 'reviewed' : pendiente.tipo === 'descartar' ? 'discarded' : 'pending';
-          const actualizado = await resolverReporte(pendiente.id, estado, estado === 'pending' ? undefined : texto);
-          setReportes((lista) => lista.map((r) => (r.id === actualizado.id ? actualizado : r)));
+          const estado: EstadoReporte =
+            pendiente.tipo === 'resolver'
+              ? 'reviewed'
+              : pendiente.tipo === 'descartar'
+                ? 'discarded'
+                : 'pending';
+          const actualizado = await resolverReporte(
+            pendiente.id,
+            estado,
+            estado === 'pending' ? undefined : texto,
+          );
+          setReportes((lista) =>
+            lista.map((r) => (r.id === actualizado.id ? actualizado : r)),
+          );
+          setMensaje({ tipo: 'exito', texto: `${config.titulo}: acción realizada correctamente.` });
           break;
         }
       }
-      setMensaje({ tipo: 'exito', texto: `${config.titulo}: acción realizada correctamente.` });
       cerrarDialogo();
-    } catch {
-      // TODO (Heber): mostrar el mensaje que devuelve el backend (por ejemplo, cuentas administradoras no moderables).
-      setMensaje({ tipo: 'error', texto: 'No se pudo completar la acción. Vuelve a intentarlo.' });
+    } catch (err: unknown) {
+      setMensaje({
+        tipo: 'error',
+        texto: extraerMensajeErrorModeracion(
+          err,
+          'No se pudo completar la acción. Vuelve a intentarlo.',
+        ),
+      });
       cerrarDialogo();
     } finally {
       setProcesando(false);
@@ -251,34 +291,56 @@ export default function ModeracionAdmin() {
   }
 
   const buscarPublicacion = useCallback(
-    (tipo: TipoPublicacionModeracion, id: number) => publicaciones.find((p) => p.type === tipo && p.id === id),
+    (tipo: TipoPublicacionModeracion, id: number) =>
+      publicaciones.find((p) => p.type === tipo && p.id === id),
     [publicaciones],
   );
 
-  const reportesVisibles = useMemo(() => reportes.filter((r) => {
-    const objetivo = objetivoDeReporte(r);
-    const titulo = buscarPublicacion(objetivo.tipo, objetivo.id)?.title ?? '';
-    const coincide = normalizar(`${titulo} ${r.reason} ${r.details ?? ''} ${objetivo.id}`).includes(normalizar(busqueda.trim()));
-    return coincide && (filtro === 'todos' || r.status === filtro);
-  }), [reportes, busqueda, filtro, buscarPublicacion]);
+  const reportesVisibles = useMemo(
+    () =>
+      reportes.filter((r) => {
+        const objetivo = objetivoDeReporte(r);
+        const titulo = buscarPublicacion(objetivo.tipo, objetivo.id)?.title ?? '';
+        const coincide = normalizar(
+          `${titulo} ${r.reason} ${r.details ?? ''} ${objetivo.id} ${r.reporter_id}`,
+        ).includes(normalizar(busqueda.trim()));
+        return coincide && (filtro === 'todos' || r.status === filtro);
+      }),
+    [reportes, busqueda, filtro, buscarPublicacion],
+  );
 
-  const publicacionesVisibles = useMemo(() => publicaciones.filter((p) => {
-    const coincide = normalizar(`${p.title} ${p.author_name}`).includes(normalizar(busqueda.trim()));
-    const estado = p.is_hidden ? 'ocultas' : 'visibles';
-    return coincide && (filtro === 'todos' || estado === filtro);
-  }), [publicaciones, busqueda, filtro]);
+  const publicacionesVisibles = useMemo(
+    () =>
+      publicaciones.filter((p) => {
+        const coincide = normalizar(`${p.title} ${p.author_name} ${p.id}`).includes(
+          normalizar(busqueda.trim()),
+        );
+        const estado = p.is_hidden ? 'ocultas' : 'visibles';
+        return coincide && (filtro === 'todos' || estado === filtro);
+      }),
+    [publicaciones, busqueda, filtro],
+  );
 
-  const usuariosVisibles = useMemo(() => usuarios.filter((u) => {
-    const coincide = normalizar(`${u.name} ${u.email}`).includes(normalizar(busqueda.trim()));
-    const estado = u.is_active ? 'activos' : 'inactivos';
-    return coincide && (filtro === 'todos' || estado === filtro);
-  }), [usuarios, busqueda, filtro]);
+  const usuariosVisibles = useMemo(
+    () =>
+      usuarios.filter((u) => {
+        if (user?.id && u.id === user.id) return false;
+        const coincide = normalizar(`${u.name} ${u.email} ${u.id}`).includes(
+          normalizar(busqueda.trim()),
+        );
+        const estado = u.is_active ? 'activos' : 'inactivos';
+        return coincide && (filtro === 'todos' || estado === filtro);
+      }),
+    [usuarios, user?.id, busqueda, filtro],
+  );
 
   if (!puedeModerar) {
     return (
       <div className="pd-pagina">
         <main className="pd-contenedor">
-          <p className="pd-error" role="alert">No tienes permisos para acceder al panel de moderación.</p>
+          <p className="pd-error" role="alert">
+            No tienes permisos para acceder al panel de moderación.
+          </p>
           <Link to="/">Volver al inicio</Link>
         </main>
       </div>
@@ -286,13 +348,30 @@ export default function ModeracionAdmin() {
   }
 
   const opcionesFiltro: Record<Pestana, Array<[string, string]>> = {
-    reportes: [['todos', 'Todos los estados'], ['pending', 'Pendientes'], ['reviewed', 'Revisados'], ['discarded', 'Descartados']],
-    publicaciones: [['todos', 'Todas'], ['visibles', 'Visibles'], ['ocultas', 'Ocultas']],
-    usuarios: [['todos', 'Todos'], ['activos', 'Activos'], ['inactivos', 'Desactivados']],
+    reportes: [
+      ['todos', 'Todos los estados'],
+      ['pending', 'Pendientes'],
+      ['reviewed', 'Revisados'],
+      ['discarded', 'Descartados'],
+    ],
+    publicaciones: [
+      ['todos', 'Todas'],
+      ['visibles', 'Visibles'],
+      ['ocultas', 'Ocultas'],
+    ],
+    usuarios: [
+      ['todos', 'Todos'],
+      ['activos', 'Activos'],
+      ['inactivos', 'Desactivados'],
+    ],
   };
 
-  const hayResultados = pestana === 'reportes' ? reportesVisibles.length
-    : pestana === 'publicaciones' ? publicacionesVisibles.length : usuariosVisibles.length;
+  const hayResultados =
+    pestana === 'reportes'
+      ? reportesVisibles.length
+      : pestana === 'publicaciones'
+        ? publicacionesVisibles.length
+        : usuariosVisibles.length;
 
   const configPendiente = pendiente ? CONFIG_ACCION[pendiente.tipo] : null;
 
@@ -306,17 +385,30 @@ export default function ModeracionAdmin() {
         </header>
 
         {MODO_SIMULADO && (
-          <p className="mod-aviso-datos" role="status">Vista con datos de ejemplo. Los cambios no se guardan en la base de datos.</p>
+          <p className="mod-aviso-datos" role="status">
+            Vista con datos de ejemplo. Los cambios no se guardan en la base de datos.
+          </p>
         )}
 
         {mensaje && (
-          <p className={`mod-mensaje ${mensaje.tipo === 'exito' ? 'mod-mensaje-exito' : 'mod-mensaje-error'}`} role={mensaje.tipo === 'exito' ? 'status' : 'alert'}>
+          <p
+            className={`mod-mensaje ${
+              mensaje.tipo === 'exito' ? 'mod-mensaje-exito' : 'mod-mensaje-error'
+            }`}
+            role={mensaje.tipo === 'exito' ? 'status' : 'alert'}
+          >
             {mensaje.texto}
           </p>
         )}
 
         <div className="mod-pestanas" role="tablist" aria-label="Secciones de moderación">
-          {([['reportes', 'Reportes'], ['publicaciones', 'Publicaciones'], ['usuarios', 'Usuarios']] as const).map(([clave, etiqueta]) => (
+          {(
+            [
+              ['reportes', 'Reportes'],
+              ['publicaciones', 'Publicaciones'],
+              ['usuarios', 'Usuarios'],
+            ] as const
+          ).map(([clave, etiqueta]) => (
             <button
               key={clave}
               type="button"
@@ -337,26 +429,60 @@ export default function ModeracionAdmin() {
             <input
               type="search"
               aria-label="Buscar"
-              placeholder={pestana === 'usuarios' ? 'Buscar por nombre o correo…' : pestana === 'publicaciones' ? 'Buscar por título o autor…' : 'Buscar en esta página de reportes…'}
+              placeholder={
+                pestana === 'usuarios'
+                  ? 'Buscar por nombre, correo o ID…'
+                  : pestana === 'publicaciones'
+                    ? 'Buscar por título o autor…'
+                    : 'Buscar en esta página de reportes…'
+              }
               value={busqueda}
               onChange={(evento) => setBusqueda(evento.target.value)}
             />
-            <select aria-label="Filtrar por estado" value={filtro} onChange={(evento) => setFiltro(evento.target.value)}>
-              {opcionesFiltro[pestana].map(([valor, etiqueta]) => <option key={valor} value={valor}>{etiqueta}</option>)}
+            <select
+              aria-label="Filtrar por estado"
+              value={filtro}
+              onChange={(evento) => setFiltro(evento.target.value)}
+            >
+              {opcionesFiltro[pestana].map(([valor, etiqueta]) => (
+                <option key={valor} value={valor}>
+                  {etiqueta}
+                </option>
+              ))}
             </select>
           </div>
 
-          {cargando && <p className="pd-vacio" role="status">Cargando información…</p>}
+          {cargando && (
+            <p className="pd-vacio" role="status">
+              Cargando información…
+            </p>
+          )}
 
           {errorCarga && (
             <div className="pd-tarjeta">
-              <p className="pd-error" role="alert">No fue posible cargar la información de moderación.</p>
-              <div className="pd-acciones"><button type="button" className="pd-boton-oscuro" onClick={() => void cargar(meta?.current_page ?? 1)}>Reintentar</button></div>
+              <p className="pd-error" role="alert">
+                {errorCarga}
+              </p>
+              <div className="pd-acciones">
+                <button
+                  type="button"
+                  className="pd-boton-oscuro"
+                  onClick={() => void cargar(meta?.current_page ?? 1)}
+                >
+                  Reintentar
+                </button>
+              </div>
             </div>
           )}
 
           {!cargando && !errorCarga && hayResultados === 0 && (
-            <p className="pd-vacio" role="status">No hay resultados con la búsqueda o el filtro seleccionados.</p>
+            <p className="pd-vacio" role="status">
+              {pestana === 'usuarios'
+                ? usuarios.length === 0
+                  ? 'No hay usuarios registrados para moderar.'
+                  : 'No se encontraron usuarios con ese nombre, correo o ID.'
+                : 'No hay resultados con la búsqueda o el filtro seleccionados.'}
+            </p>
           )}
 
           {!cargando && !errorCarga && pestana === 'reportes' && (
@@ -365,46 +491,149 @@ export default function ModeracionAdmin() {
                 {reportesVisibles.map((reporte) => {
                   const objetivo = objetivoDeReporte(reporte);
                   const publicacion = buscarPublicacion(objetivo.tipo, objetivo.id);
-                  const nombreTipo = objetivo.tipo === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria';
+                  const nombreTipo =
+                    objetivo.tipo === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria';
                   const titulo = publicacion?.title ?? `${nombreTipo} #${objetivo.id}`;
+                  const estaOculta = publicacion ? publicacion.is_hidden : true;
+                  const reportante = usuarios.find((u) => u.id === reporte.reporter_id);
+
                   return (
                     <article className="pd-tarjeta mod-item" key={reporte.id}>
                       <div className="mod-item-cabecera">
                         <div>
                           <h2>{titulo}</h2>
-                          <p className="mod-meta">{nombreTipo} #{objetivo.id} · Reportado por usuario #{reporte.reporter_id} · {fecha(reporte.created_at)}</p>
+                          <p className="mod-meta">
+                            {nombreTipo} #{objetivo.id} · Reportado por{' '}
+                            {reportante
+                              ? `${reportante.name} (#${reporte.reporter_id})`
+                              : `usuario #${reporte.reporter_id}`}{' '}
+                            · {fecha(reporte.created_at)}
+                          </p>
                         </div>
-                        <span className={`mod-etiqueta ${reporte.status === 'pending' ? 'mod-etiqueta-alerta' : reporte.status === 'reviewed' ? 'mod-etiqueta-ok' : 'mod-etiqueta-neutra'}`}>
+                        <span
+                          className={`mod-etiqueta ${
+                            reporte.status === 'pending'
+                              ? 'mod-etiqueta-alerta'
+                              : reporte.status === 'reviewed'
+                                ? 'mod-etiqueta-ok'
+                                : 'mod-etiqueta-neutra'
+                          }`}
+                        >
                           {ETIQUETA_ESTADO_REPORTE[reporte.status]}
                         </span>
                       </div>
-                      <p><strong>Motivo:</strong> {reporte.reason}</p>
+                      <p>
+                        <strong>Motivo:</strong> {reporte.reason}
+                      </p>
                       {reporte.details && <p>{reporte.details}</p>}
                       {reporte.decision_notes && (
-                        <p className="mod-nota">Nota de decisión: {reporte.decision_notes}{reporte.reviewed_at ? ` · ${fecha(reporte.reviewed_at)}` : ''}</p>
+                        <p className="mod-nota">
+                          Nota de decisión: {reporte.decision_notes}
+                          {reporte.reviewed_at ? ` · ${fecha(reporte.reviewed_at)}` : ''}
+                        </p>
                       )}
                       <div className="mod-acciones">
+                        {reporte.reporter_id !== user?.id && (
+                          <button
+                            type="button"
+                            className="pd-boton-claro"
+                            onClick={() => cambiarPestana('usuarios', String(reporte.reporter_id))}
+                          >
+                            Ver usuario #{reporte.reporter_id}
+                          </button>
+                        )}
+
+                        {!estaOculta ? (
+                          <button
+                            type="button"
+                            className="mod-boton-peligro"
+                            onClick={() =>
+                              abrirDialogo({
+                                tipo: 'ocultar',
+                                id: objetivo.id,
+                                objetivo: titulo,
+                                publicacionTipo: objetivo.tipo,
+                              })
+                            }
+                          >
+                            Ocultar publicación
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="pd-boton-claro"
+                            onClick={() =>
+                              abrirDialogo({
+                                tipo: 'restaurar',
+                                id: objetivo.id,
+                                objetivo: titulo,
+                                publicacionTipo: objetivo.tipo,
+                              })
+                            }
+                          >
+                            Restaurar publicación
+                          </button>
+                        )}
+
                         {reporte.status === 'pending' ? (
                           <>
-                            {publicacion && !publicacion.is_hidden && (
-                              <button type="button" className="mod-boton-peligro" onClick={() => abrirDialogo({ tipo: 'ocultar', id: publicacion.id, objetivo: publicacion.title, publicacionTipo: publicacion.type })}>Ocultar publicación</button>
-                            )}
-                            <button type="button" className="pd-boton-claro" onClick={() => abrirDialogo({ tipo: 'descartar', id: reporte.id, objetivo: titulo })}>Descartar</button>
-                            <button type="button" className="pd-boton-oscuro" onClick={() => abrirDialogo({ tipo: 'resolver', id: reporte.id, objetivo: titulo })}>Resolver</button>
+                            <button
+                              type="button"
+                              className="pd-boton-claro"
+                              onClick={() =>
+                                abrirDialogo({ tipo: 'descartar', id: reporte.id, objetivo: titulo })
+                              }
+                            >
+                              Descartar
+                            </button>
+                            <button
+                              type="button"
+                              className="pd-boton-oscuro"
+                              onClick={() =>
+                                abrirDialogo({ tipo: 'resolver', id: reporte.id, objetivo: titulo })
+                              }
+                            >
+                              Resolver
+                            </button>
                           </>
                         ) : (
-                          <button type="button" className="pd-boton-claro" onClick={() => abrirDialogo({ tipo: 'reabrir', id: reporte.id, objetivo: titulo })}>Reabrir reporte</button>
+                          <button
+                            type="button"
+                            className="pd-boton-claro"
+                            onClick={() =>
+                              abrirDialogo({ tipo: 'reabrir', id: reporte.id, objetivo: titulo })
+                            }
+                          >
+                            Reabrir reporte
+                          </button>
                         )}
                       </div>
                     </article>
                   );
                 })}
               </div>
+
               {meta && meta.last_page > 1 && (
                 <nav className="mod-paginacion" aria-label="Paginación de reportes">
-                  <button type="button" className="pd-boton-claro" disabled={meta.current_page <= 1} onClick={() => void irAPagina(meta.current_page - 1)}>← Anterior</button>
-                  <span>Página {meta.current_page} de {meta.last_page} · {meta.total} reportes</span>
-                  <button type="button" className="pd-boton-claro" disabled={meta.current_page >= meta.last_page} onClick={() => void irAPagina(meta.current_page + 1)}>Siguiente →</button>
+                  <button
+                    type="button"
+                    className="pd-boton-claro"
+                    disabled={meta.current_page <= 1}
+                    onClick={() => void irAPagina(meta.current_page - 1)}
+                  >
+                    ← Anterior
+                  </button>
+                  <span>
+                    Página {meta.current_page} de {meta.last_page} · {meta.total} reportes
+                  </span>
+                  <button
+                    type="button"
+                    className="pd-boton-claro"
+                    disabled={meta.current_page >= meta.last_page}
+                    onClick={() => void irAPagina(meta.current_page + 1)}
+                  >
+                    Siguiente →
+                  </button>
                 </nav>
               )}
             </>
@@ -413,22 +642,61 @@ export default function ModeracionAdmin() {
           {!cargando && !errorCarga && pestana === 'publicaciones' && (
             <div className="mod-lista">
               {publicacionesVisibles.map((publicacion) => (
-                <article className="pd-tarjeta mod-item" key={`${publicacion.type}-${publicacion.id}`}>
+                <article
+                  className="pd-tarjeta mod-item"
+                  key={`${publicacion.type}-${publicacion.id}`}
+                >
                   <div className="mod-item-cabecera">
                     <div>
                       <h2>{publicacion.title}</h2>
-                      <p className="mod-meta">{publicacion.author_name} · {fecha(publicacion.created_at)}</p>
+                      <p className="mod-meta">
+                        {publicacion.author_name} · {fecha(publicacion.created_at)}
+                      </p>
                     </div>
                     <div className="mod-etiquetas">
-                      <span className="mod-etiqueta">{publicacion.type === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria'}</span>
-                      <span className={`mod-etiqueta ${publicacion.is_hidden ? 'mod-etiqueta-peligro' : 'mod-etiqueta-ok'}`}>{publicacion.is_hidden ? 'Oculta' : 'Visible'}</span>
+                      <span className="mod-etiqueta">
+                        {publicacion.type === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria'}
+                      </span>
+                      <span
+                        className={`mod-etiqueta ${
+                          publicacion.is_hidden ? 'mod-etiqueta-peligro' : 'mod-etiqueta-ok'
+                        }`}
+                      >
+                        {publicacion.is_hidden ? 'Oculta' : 'Visible'}
+                      </span>
                     </div>
                   </div>
                   <div className="mod-acciones">
                     {publicacion.is_hidden ? (
-                      <button type="button" className="pd-boton-oscuro" onClick={() => abrirDialogo({ tipo: 'restaurar', id: publicacion.id, objetivo: publicacion.title, publicacionTipo: publicacion.type })}>Restaurar</button>
+                      <button
+                        type="button"
+                        className="pd-boton-oscuro"
+                        onClick={() =>
+                          abrirDialogo({
+                            tipo: 'restaurar',
+                            id: publicacion.id,
+                            objetivo: publicacion.title,
+                            publicacionTipo: publicacion.type,
+                          })
+                        }
+                      >
+                        Restaurar
+                      </button>
                     ) : (
-                      <button type="button" className="mod-boton-peligro" onClick={() => abrirDialogo({ tipo: 'ocultar', id: publicacion.id, objetivo: publicacion.title, publicacionTipo: publicacion.type })}>Ocultar</button>
+                      <button
+                        type="button"
+                        className="mod-boton-peligro"
+                        onClick={() =>
+                          abrirDialogo({
+                            tipo: 'ocultar',
+                            id: publicacion.id,
+                            objetivo: publicacion.title,
+                            publicacionTipo: publicacion.type,
+                          })
+                        }
+                      >
+                        Ocultar
+                      </button>
                     )}
                   </div>
                 </article>
@@ -438,48 +706,89 @@ export default function ModeracionAdmin() {
 
           {!cargando && !errorCarga && pestana === 'usuarios' && (
             <div className="mod-lista">
-              {usuariosVisibles.map((usuario) => {
-                const esPropio = usuario.id === user?.id;
-                return (
-                  <article className="pd-tarjeta mod-item" key={usuario.id}>
-                    <div className="mod-item-cabecera">
-                      <div>
-                        <h2>{usuario.name}</h2>
-                        <p className="mod-meta">{usuario.email} · Registro: {fecha(usuario.created_at)}</p>
-                      </div>
-                      <div className="mod-etiquetas">
-                        <span className="mod-etiqueta">{ETIQUETA_TIPO_CUENTA[usuario.account_type] ?? usuario.account_type}</span>
-                        <span className={`mod-etiqueta ${usuario.is_active ? 'mod-etiqueta-ok' : 'mod-etiqueta-peligro'}`}>{usuario.is_active ? 'Activo' : 'Desactivado'}</span>
-                      </div>
+              {usuariosVisibles.map((usuario) => (
+                <article className="pd-tarjeta mod-item" key={usuario.id}>
+                  <div className="mod-item-cabecera">
+                    <div>
+                      <h2>
+                        {usuario.name}{' '}
+                        <span className="mod-meta" style={{ fontWeight: 500 }}>
+                          (ID #{usuario.id})
+                        </span>
+                      </h2>
+                      <p className="mod-meta">
+                        {usuario.email} · Registro: {fecha(usuario.created_at)}
+                      </p>
                     </div>
-                    <div className="mod-acciones">
-                      {usuario.is_active ? (
-                        <button
-                          type="button"
-                          className="mod-boton-peligro"
-                          disabled={esPropio}
-                          title={esPropio ? 'No puedes desactivar tu propia cuenta' : undefined}
-                          onClick={() => abrirDialogo({ tipo: 'desactivar', id: usuario.id, objetivo: usuario.name })}
-                        >
-                          Desactivar usuario
-                        </button>
-                      ) : (
-                        <button type="button" className="pd-boton-oscuro" onClick={() => abrirDialogo({ tipo: 'activar', id: usuario.id, objetivo: usuario.name })}>Activar usuario</button>
-                      )}
+                    <div className="mod-etiquetas">
+                      <span className="mod-etiqueta">
+                        {ETIQUETA_TIPO_CUENTA[usuario.account_type] ?? usuario.account_type}
+                      </span>
+                      <span
+                        className={`mod-etiqueta ${
+                          usuario.is_active ? 'mod-etiqueta-ok' : 'mod-etiqueta-peligro'
+                        }`}
+                      >
+                        {usuario.is_active ? 'Activo' : 'Desactivado'}
+                      </span>
                     </div>
-                  </article>
-                );
-              })}
+                  </div>
+                  <div className="mod-acciones">
+                    {usuario.is_active ? (
+                      <button
+                        type="button"
+                        className="mod-boton-peligro"
+                        onClick={() =>
+                          abrirDialogo({
+                            tipo: 'desactivar',
+                            id: usuario.id,
+                            objetivo: `${usuario.name} (${usuario.email})`,
+                          })
+                        }
+                      >
+                        Desactivar usuario
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="pd-boton-oscuro"
+                        onClick={() =>
+                          abrirDialogo({
+                            tipo: 'activar',
+                            id: usuario.id,
+                            objetivo: `${usuario.name} (${usuario.email})`,
+                          })
+                        }
+                      >
+                        Activar usuario
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </section>
 
-        <footer className="pd-footer"><span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span><span>Privacidad · Ayuda</span></footer>
+        <footer className="pd-footer">
+          <span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span>
+          <span>Privacidad · Ayuda</span>
+        </footer>
       </main>
 
       {pendiente && configPendiente && (
-        <div className="mod-overlay" onMouseDown={(evento) => { if (evento.target === evento.currentTarget && !procesando) cerrarDialogo(); }}>
-          <div className="mod-dialogo" role="dialog" aria-modal="true" aria-labelledby="mod-dialogo-titulo">
+        <div
+          className="mod-overlay"
+          onMouseDown={(evento) => {
+            if (evento.target === evento.currentTarget && !procesando) cerrarDialogo();
+          }}
+        >
+          <div
+            className="mod-dialogo"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-dialogo-titulo"
+          >
             <h2 id="mod-dialogo-titulo">{configPendiente.titulo}</h2>
             <p>{configPendiente.texto(pendiente.objetivo)}</p>
             {configPendiente.requiereMotivo && (
@@ -490,19 +799,48 @@ export default function ModeracionAdmin() {
                   rows={3}
                   maxLength={1000}
                   value={motivo}
-                  onChange={(evento) => { setMotivo(evento.target.value); setErrorMotivo(''); }}
+                  onChange={(evento) => {
+                    setMotivo(evento.target.value);
+                    setErrorMotivo('');
+                  }}
                   aria-invalid={Boolean(errorMotivo)}
                   aria-describedby={errorMotivo ? 'mod-motivo-error' : undefined}
                 />
-                {errorMotivo && <p className="pd-error" id="mod-motivo-error">{errorMotivo}</p>}
+                {errorMotivo && (
+                  <p className="pd-error" id="mod-motivo-error">
+                    {errorMotivo}
+                  </p>
+                )}
               </div>
             )}
             <div className="pd-acciones">
-              <button type="button" className="pd-boton-claro" autoFocus disabled={procesando} onClick={cerrarDialogo}>Cancelar</button>
+              <button
+                type="button"
+                className="pd-boton-claro"
+                autoFocus
+                disabled={procesando}
+                onClick={cerrarDialogo}
+              >
+                Cancelar
+              </button>
               {configPendiente.peligro ? (
-                <button type="button" className="mod-boton-peligro" disabled={procesando} onClick={() => void confirmar()}>{procesando ? 'Guardando…' : configPendiente.confirmar}</button>
+                <button
+                  type="button"
+                  className="mod-boton-peligro"
+                  disabled={procesando}
+                  onClick={() => void confirmar()}
+                >
+                  {procesando ? 'Guardando…' : configPendiente.confirmar}
+                </button>
               ) : (
-                <button type="button" className="pd-boton-oscuro" disabled={procesando} onClick={() => void confirmar()}>{procesando ? 'Guardando…' : configPendiente.confirmar}</button>
+                <button
+                  type="button"
+                  className="pd-boton-oscuro"
+                  disabled={procesando}
+                  onClick={() => void confirmar()}
+                >
+                  {procesando ? 'Guardando…' : configPendiente.confirmar}
+                </button>
               )}
             </div>
           </div>

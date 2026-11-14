@@ -26,6 +26,43 @@ class AdminPublicationModerationController extends Controller
         );
     }
 
+    public function index(Request $request): JsonResponse
+    {
+        $this->authorizePlatformAdmin($request);
+
+        $projectQuery = Project::query();
+        if (method_exists(Project::class, 'organization')) {
+            $projectQuery->with('organization');
+        }
+
+        $projects = $projectQuery->get()->map(fn (Project $p) => [
+            'id' => $p->id,
+            'type' => 'proyecto',
+            'title' => $p->title ?? "Proyecto #{$p->id}",
+            'author_name' => $p->organization?->name ?? $p->location ?? 'ProyectaTec',
+            'is_hidden' => (bool) $p->is_hidden,
+            'created_at' => optional($p->created_at)->toISOString() ?? now()->toISOString(),
+        ]);
+
+        $needs = CommunityNeed::query()->get()->map(fn (CommunityNeed $n) => [
+            'id' => $n->id,
+            'type' => 'necesidad',
+            'title' => $n->title ?? "Necesidad #{$n->id}",
+            'author_name' => $n->location ?? 'Comunidad',
+            'is_hidden' => (bool) $n->is_hidden,
+            'created_at' => optional($n->created_at)->toISOString() ?? now()->toISOString(),
+        ]);
+
+        $publications = $projects
+            ->concat($needs)
+            ->sortByDesc(fn (array $item) => [$item['created_at'], $item['id']])
+            ->values();
+
+        return response()->json([
+            'publications' => $publications,
+        ]);
+    }
+
     public function updateProjectVisibility(
         Request $request,
         Project $project
@@ -39,14 +76,25 @@ class AdminPublicationModerationController extends Controller
         $project->is_hidden = (bool) $data['is_hidden'];
         $project->save();
 
+        if (method_exists($project, 'organization')) {
+            $project->loadMissing('organization');
+        }
+
         return response()->json([
             'message' => $project->is_hidden
                 ? 'Proyecto ocultado correctamente.'
                 : 'Proyecto restaurado correctamente.',
             'project' => [
                 'id' => $project->id,
-                'is_hidden' => $project->is_hidden,
+                'title' => $project->title ?? "Proyecto #{$project->id}",
+                'location' => $project->location,
+                'organization' => $project->organization ? [
+                    'id' => $project->organization->id,
+                    'name' => $project->organization->name,
+                ] : null,
+                'is_hidden' => (bool) $project->is_hidden,
                 'status' => $project->status,
+                'created_at' => optional($project->created_at)->toISOString() ?? now()->toISOString(),
             ],
         ]);
     }
@@ -70,8 +118,11 @@ class AdminPublicationModerationController extends Controller
                 : 'Necesidad comunitaria restaurada correctamente.',
             'community_need' => [
                 'id' => $communityNeed->id,
-                'is_hidden' => $communityNeed->is_hidden,
+                'title' => $communityNeed->title ?? "Necesidad #{$communityNeed->id}",
+                'location' => $communityNeed->location,
+                'is_hidden' => (bool) $communityNeed->is_hidden,
                 'status' => $communityNeed->status,
+                'created_at' => optional($communityNeed->created_at)->toISOString() ?? now()->toISOString(),
             ],
         ]);
     }
