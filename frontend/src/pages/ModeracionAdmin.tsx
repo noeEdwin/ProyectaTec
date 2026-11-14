@@ -93,16 +93,29 @@ const CONFIG_ACCION: Record<TipoAccion, {
 
 const ETIQUETA_TIPO_CUENTA: Record<string, string> = {
   estudiante: 'Estudiante',
+  student: 'Estudiante',
   academico: 'Personal académico',
+  docente: 'Personal académico',
   empleado_organizacion: 'Empleado de organización',
   residente_oaxaca: 'Persona de Oaxaca',
   organizacion: 'Organización',
+  organization: 'Organización',
+  empresa: 'Empresa',
+  institucion_educativa: 'Institución educativa',
+  sector_social: 'Sector social',
 };
 
 const ETIQUETA_ESTADO_REPORTE: Record<EstadoReporte, string> = {
   pending: 'Pendiente',
   reviewed: 'Revisado',
   discarded: 'Descartado',
+};
+
+const ETIQUETA_MOTIVO_REPORTE: Record<string, string> = {
+  inappropriate: 'Contenido inapropiado',
+  spam: 'Spam',
+  misinformation: 'Información engañosa',
+  other: 'Otro',
 };
 
 const fecha = (valor: string) =>
@@ -250,7 +263,9 @@ export default function ModeracionAdmin() {
           );
           setMensaje({
             tipo: 'exito',
-            texto: `${config.titulo}: ${actualizado.name} (${actualizado.email}) ahora está ${actualizado.is_active ? 'activo' : 'desactivado'}.`,
+            texto: actualizado.is_active
+              ? `Cuenta activada: ${actualizado.name} (${actualizado.email}) ya puede iniciar sesión.`
+              : `Cuenta desactivada: ${actualizado.name} (${actualizado.email}) ya no podrá iniciar sesión.`,
           });
           break;
         }
@@ -523,7 +538,8 @@ export default function ModeracionAdmin() {
                         </span>
                       </div>
                       <p>
-                        <strong>Motivo:</strong> {reporte.reason}
+                        <strong>Motivo:</strong>{' '}
+                        {ETIQUETA_MOTIVO_REPORTE[reporte.reason] ?? reporte.reason}
                       </p>
                       {reporte.details && <p>{reporte.details}</p>}
                       {reporte.decision_notes && (

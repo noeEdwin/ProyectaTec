@@ -15,7 +15,7 @@ export function useCategorias() {
         if (activo) setCategorias(data);
       })
       .catch(() => {
-        if (activo) setError('No se pudieron cargar los sectores. Recarga la página.');
+        if (activo) setError('No se pudieron cargar las categorías. Recarga la página.');
       })
       .finally(() => {
         if (activo) setCargando(false);

@@ -1,19 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { obtenerDetallePublicacion } from '../api/publicacionesService';
+import {
+  obtenerDetallePublicacion,
+  reportarPublicacion,
+} from '../api/publicacionesService';
+import { useAuth } from '../context/auth-context';
 import '../styles/catalogoComponentes.css';
 
 interface DetalleData {
   id: number;
   titulo: string;
   organizacion: string;
-  sector: string;
+  categoria: string;
   ubicacion: string;
   modalidad: string;
   descripcion: string;
   tipo: 'project' | 'community_need';
 }
+
+type MotivoReporte = 'inappropriate' | 'spam' | 'misinformation' | 'other';
 
 const MODALIDADES: Record<string, string> = {
   presencial: 'Presencial',
@@ -21,12 +27,30 @@ const MODALIDADES: Record<string, string> = {
   remota: 'Remota',
 };
 
+const MOTIVOS_REPORTE: Array<{ value: MotivoReporte; label: string }> = [
+  { value: 'inappropriate', label: 'Contenido inapropiado' },
+  { value: 'spam', label: 'Spam o publicidad' },
+  { value: 'misinformation', label: 'Información engañosa' },
+  { value: 'other', label: 'Otro motivo' },
+];
+
 export default function DetallePublicacion() {
   const { tipo, id } = useParams<{ tipo: string; id: string }>();
+  const { user } = useAuth();
+
   const [publicacion, setPublicacion] = useState<DetalleData | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avisoVinculacion, setAvisoVinculacion] = useState(false);
+
+  const [mostrandoReporte, setMostrandoReporte] = useState(false);
+  const [motivoReporte, setMotivoReporte] = useState<MotivoReporte>('inappropriate');
+  const [detallesReporte, setDetallesReporte] = useState('');
+  const [enviandoReporte, setEnviandoReporte] = useState(false);
+  const [estadoReporte, setEstadoReporte] = useState<{
+    tipo: 'ok' | 'error';
+    texto: string;
+  } | null>(null);
 
   useEffect(() => {
     async function cargarDetalle() {
@@ -46,7 +70,7 @@ export default function DetallePublicacion() {
           id: item.id,
           titulo: item.title ?? 'Publicación sin título',
           organizacion: item.organization?.name || (esProyecto ? 'Iniciativa ProyectaTec' : 'Comunidad de Oaxaca'),
-          sector: item.category?.name || `Sector ${item.category_id}`,
+          categoria: item.category?.name || 'Sin categoría',
           ubicacion: item.location || 'Oaxaca',
           modalidad: item.modality ? (MODALIDADES[item.modality] ?? item.modality) : '',
           descripcion: item.description || 'Sin descripción detallada.',
@@ -71,6 +95,49 @@ export default function DetallePublicacion() {
       void cargarDetalle();
     }
   }, [id, tipo]);
+
+  async function enviarReporte(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if (!publicacion || enviandoReporte) return;
+
+    const detalles = detallesReporte.trim();
+    if (motivoReporte === 'other' && !detalles) {
+      setEstadoReporte({
+        tipo: 'error',
+        texto: 'Describe brevemente el motivo cuando eliges "Otro motivo".',
+      });
+      return;
+    }
+
+    setEnviandoReporte(true);
+    setEstadoReporte(null);
+
+    try {
+      await reportarPublicacion({
+        tipo: publicacion.tipo,
+        id: publicacion.id,
+        reason: motivoReporte,
+        details: detalles || undefined,
+      });
+      setMostrandoReporte(false);
+      setDetallesReporte('');
+      setEstadoReporte({
+        tipo: 'ok',
+        texto: 'Reporte enviado. El equipo de moderación lo revisará.',
+      });
+    } catch (err) {
+      let texto = 'No se pudo enviar el reporte. Inténtalo de nuevo.';
+      if (axios.isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(err)) {
+        const primerError = err.response?.data?.errors
+          ? Object.values(err.response.data.errors).flat()[0]
+          : undefined;
+        texto = primerError || err.response?.data?.message || texto;
+      }
+      setEstadoReporte({ tipo: 'error', texto });
+    } finally {
+      setEnviandoReporte(false);
+    }
+  }
 
   if (cargando) {
     return (
@@ -103,7 +170,7 @@ export default function DetallePublicacion() {
         <div className="dp-cabecera-tipo">
           <span className={`ic-tipo ${claseTipo}`}>{etiquetaTipo}</span>
         </div>
-        <p className="dp-subtitulo">{publicacion.organizacion} · {publicacion.sector} · {publicacion.ubicacion}</p>
+        <p className="dp-subtitulo">{publicacion.organizacion} · {publicacion.categoria} · {publicacion.ubicacion}</p>
 
         <div className="dp-grid">
           <section className="dp-tarjeta" aria-label="Información de la publicación">
@@ -113,7 +180,7 @@ export default function DetallePublicacion() {
             <div className="dp-bloque">
               <h3>Información general</h3>
               <dl className="dp-datos">
-                <div><dt>Sector</dt><dd>{publicacion.sector}</dd></div>
+                <div><dt>Categoría</dt><dd>{publicacion.categoria}</dd></div>
                 <div><dt>Ubicación</dt><dd>{publicacion.ubicacion}</dd></div>
                 {publicacion.modalidad && <div><dt>Modalidad</dt><dd>{publicacion.modalidad}</dd></div>}
               </dl>
@@ -141,6 +208,86 @@ export default function DetallePublicacion() {
                 Las solicitudes de vinculación estarán disponibles próximamente.
               </p>
             )}
+
+            <div className="dp-reporte-bloque">
+              {user ? (
+                <>
+                  {!mostrandoReporte ? (
+                    <button
+                      type="button"
+                      className="dp-boton-reporte"
+                      onClick={() => {
+                        setMostrandoReporte(true);
+                        setEstadoReporte(null);
+                      }}
+                    >
+                      Reportar publicación
+                    </button>
+                  ) : (
+                    <form className="dp-reporte-form" onSubmit={enviarReporte}>
+                      <label htmlFor="dp-reporte-motivo">
+                        Motivo del reporte
+                        <select
+                          id="dp-reporte-motivo"
+                          value={motivoReporte}
+                          onChange={(e) => setMotivoReporte(e.target.value as MotivoReporte)}
+                        >
+                          {MOTIVOS_REPORTE.map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label htmlFor="dp-reporte-detalles">
+                        Detalles {motivoReporte === 'other' ? '(obligatorio)' : '(opcional)'}
+                        <textarea
+                          id="dp-reporte-detalles"
+                          rows={3}
+                          maxLength={1000}
+                          placeholder="Describe brevemente el problema detectado..."
+                          value={detallesReporte}
+                          onChange={(e) => setDetallesReporte(e.target.value)}
+                        />
+                      </label>
+
+                      <div className="dp-reporte-acciones">
+                        <button
+                          type="button"
+                          className="dp-reporte-cancelar"
+                          disabled={enviandoReporte}
+                          onClick={() => setMostrandoReporte(false)}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="dp-reporte-enviar"
+                          disabled={enviandoReporte}
+                        >
+                          {enviandoReporte ? 'Enviando…' : 'Enviar reporte'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {estadoReporte && (
+                    <p
+                      className={estadoReporte.tipo === 'ok' ? 'dp-reporte-ok' : 'dp-reporte-error'}
+                      role={estadoReporte.tipo === 'ok' ? 'status' : 'alert'}
+                    >
+                      {estadoReporte.texto}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <Link className="ic-enlace" to="/acceso">
+                  Inicia sesión para reportar esta publicación
+                </Link>
+              )}
+            </div>
+
             <Link className="dp-enlace-volver" to="/iniciativas">Volver al catálogo →</Link>
           </aside>
         </div>

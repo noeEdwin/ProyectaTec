@@ -35,7 +35,6 @@ export default function EditarPublicacion() {
   const parametrosValidos = tipo !== null && Number.isInteger(idNumero) && idNumero > 0;
 
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
 
   useEffect(() => {
     if (!parametrosValidos || !tipo) return;
@@ -79,44 +78,29 @@ export default function EditarPublicacion() {
   }
 
   async function guardar(payload: PublicacionPayload) {
-    setErrorEnvio(null);
     try {
       await actualizarPublicacion(tipo as TipoPublicacion, idNumero, payload);
       navigate(RUTA_PUBLICACIONES);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const status = err.response?.status;
-        if (status === 401) {
-          navigate('/acceso');
-          return;
-        }
-        if (status === 403) {
-          setErrorEnvio('No tienes permisos para modificar esta publicación.');
-          return;
-        }
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        navigate('/acceso');
+        return;
       }
-      // Se relanza el error para que PublicacionForm resalte los inputs con error 422
+      // Se relanza el error para que PublicacionForm muestre una sola alerta (403, 422 o red)
       throw err;
     }
   }
 
   return (
-    <>
-      {errorEnvio && (
-        <div style={{ maxWidth: '800px', margin: '1rem auto 0', padding: '0.875rem 1.25rem', background: '#fee2e2', color: '#b91c1c', borderRadius: '10px', fontSize: '14px' }} role="alert">
-          {errorEnvio}
-        </div>
-      )}
-      <PublicacionForm
-        modo="editar"
-        categorias={categorias}
-        cargandoCategorias={cargando}
-        errorCategorias={error}
-        valoresIniciales={estado.valores}
-        onSubmit={guardar}
-        onCancel={() => navigate(RUTA_PUBLICACIONES)}
-      />
-    </>
+    <PublicacionForm
+      modo="editar"
+      categorias={categorias}
+      cargandoCategorias={cargando}
+      errorCategorias={error}
+      valoresIniciales={estado.valores}
+      onSubmit={guardar}
+      onCancel={() => navigate(RUTA_PUBLICACIONES)}
+    />
   );
 }
 

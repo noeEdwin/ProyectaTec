@@ -21,7 +21,7 @@ export function validarPublicacion(v: PublicacionFormValues): PublicacionErrors 
   }
 
   if (!v.category_id) {
-    e.category_id = 'Selecciona un sector.';
+    e.category_id = 'Selecciona una categoría.';
   }
 
   if (!descripcion) {

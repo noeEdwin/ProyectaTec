@@ -58,6 +58,18 @@
 .dp-aviso { margin-top:14px !important; margin-bottom:0 !important; padding:10px 12px; border-radius:10px; background:#edf5f6; color:#0f4c5c !important; font-size:13px !important; }
 .dp-enlace-volver { display:block; margin-top:20px; text-align:right; color:#0f4c5c; font-size:13px; font-weight:700; text-decoration:none; }
 .dp-enlace-volver:hover { text-decoration:underline; }
+.dp-reporte-bloque { margin-top:20px; padding-top:18px; border-top:1px solid #e2e8f0; }
+.dp-boton-reporte { width:100%; background:#fff; color:#991b1b; border:1px solid #fecaca; border-radius:40px; padding:10px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.dp-boton-reporte:hover { background:#fef2f2; }
+.dp-reporte-form { display:grid; gap:10px; margin-top:12px; }
+.dp-reporte-form label { display:grid; gap:4px; font-size:12px; font-weight:600; color:#334155; }
+.dp-reporte-form select,.dp-reporte-form textarea { width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cbd5e1; border-radius:10px; font:inherit; font-size:13px; color:#111827; background:#fff; }
+.dp-reporte-acciones { display:flex; gap:8px; justify-content:flex-end; }
+.dp-reporte-cancelar { background:#fff; color:#475569; border:1px solid #cbd5e1; border-radius:40px; padding:8px 14px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+.dp-reporte-enviar { background:#991b1b; color:#fff; border:0; border-radius:40px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+.dp-reporte-enviar:disabled { opacity:.6; cursor:not-allowed; }
+.dp-reporte-ok { margin-top:10px !important; margin-bottom:0 !important; padding:10px 12px; border-radius:10px; background:#e8f5f1; color:#146a57 !important; font-size:13px !important; }
+.dp-reporte-error { margin-top:10px !important; margin-bottom:0 !important; padding:10px 12px; border-radius:10px; background:#fef2f2; color:#991b1b !important; font-size:13px !important; }
 .dp-banner { margin-top:24px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; background:#fff; border:1px solid #e2e8f0; border-radius:17px; padding:20px 28px; font-weight:700; font-size:15px; }
 .dp-estado { color:#64748b; padding:28px 0; }
 .dp-error { color:#991b1b; margin:0 0 14px; }

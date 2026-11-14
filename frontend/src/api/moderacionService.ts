@@ -1,5 +1,6 @@
 import axios from 'axios';
 import api from './axios';
+import { limpiarCacheBusquedas } from './publicacionesService';
 import type {
   EstadoReporte,
   ListaReportes,
@@ -129,6 +130,8 @@ export async function cambiarVisibilidadPublicacion(
     project?: BackendPublication;
     community_need?: BackendPublication;
   }>(ruta, { is_hidden: oculta });
+
+  limpiarCacheBusquedas();
 
   const item = data.project ?? data.community_need;
 

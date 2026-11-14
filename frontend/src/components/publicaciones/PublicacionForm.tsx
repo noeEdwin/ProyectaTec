@@ -49,8 +49,9 @@ function enfocar(campo: string) {
 
 // Convierte el error de la API en mensajes por campo (formato 422 de Laravel).
 function erroresDeApi(err: unknown): PublicacionErrors {
-  if (axios.isAxiosError<{ errors?: Record<string, string[]> }>(err)) {
+  if (axios.isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(err)) {
     const status = err.response?.status;
+    const apiMessage = err.response?.data?.message;
 
     if (status === 422) {
       const resultado: Record<string, string> = {};
@@ -61,7 +62,13 @@ function erroresDeApi(err: unknown): PublicacionErrors {
       return { general: 'Revisa los datos e inténtalo de nuevo.' };
     }
     if (status === 401) return { general: 'Tu sesión expiró. Inicia sesión nuevamente.' };
-    if (status === 403) return { general: 'No tienes permisos para realizar esta acción.' };
+    if (status === 403) {
+      const mensajeEspanol =
+        apiMessage && apiMessage !== 'This action is unauthorized.'
+          ? apiMessage
+          : 'No tienes permisos para publicar o modificar esta iniciativa. Si perteneces a una organización, verifica que ya esté aprobada.';
+      return { general: mensajeEspanol };
+    }
   }
   return { general: 'No fue posible guardar la publicación. Inténtalo nuevamente.' };
 }
@@ -256,10 +263,10 @@ export default function PublicacionForm({
                       <MensajeError id="pub-title-error" texto={errores.title} />
                     </div>
 
-                    {/* Sector y modalidad */}
+                    {/* Categoría y modalidad */}
                     <div className={`pub-fila${esProyecto ? '' : ' pub-fila-simple'}`}>
                       <div className="pub-campo">
-                        <label htmlFor="pub-category_id">Sector</label>
+                        <label htmlFor="pub-category_id">Categoría</label>
                         <select
                           id="pub-category_id"
                           value={valores.category_id}
@@ -275,8 +282,8 @@ export default function PublicacionForm({
                         >
                           <option value="" disabled>
                             {cargandoCategorias
-                              ? 'Cargando sectores...'
-                              : 'Selecciona el sector de la iniciativa'}
+                              ? 'Cargando categorías...'
+                              : 'Selecciona la categoría de la iniciativa'}
                           </option>
                           {listaCategorias.map((c) => (
                             <option key={c.id} value={String(c.id)}>
@@ -429,7 +436,7 @@ export default function PublicacionForm({
                     <dd>{valores.title.trim()}</dd>
                   </div>
                   <div>
-                    <dt>Sector</dt>
+                    <dt>Categoría</dt>
                     <dd>{categoriaSeleccionada?.name ?? '—'}</dd>
                   </div>
                   {esProyecto && (

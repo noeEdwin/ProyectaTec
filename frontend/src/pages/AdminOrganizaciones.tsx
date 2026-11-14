@@ -11,6 +11,26 @@ import {
 import { useAuth } from '../context/auth-context';
 import '../styles/perfilEspacio.css';
 
+const ETIQUETA_TIPO_ORG: Record<string, string> = {
+  empresa: 'Empresa',
+  institucion_educativa: 'Institución educativa',
+  sector_social: 'Sector social',
+};
+
+const ETIQUETA_CAMPO_AFILIACION: Record<string, string> = {
+  institution: 'Institución',
+  campus: 'Campus o plantel',
+  field_of_study: 'Carrera o programa',
+  semester: 'Semestre',
+  organization_id: 'Organización (ID)',
+  organization_name: 'Organización',
+  organization_position: 'Cargo o puesto',
+  organization_area: 'Área',
+};
+
+const formatearFecha = (valor: string) =>
+  new Date(valor).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+
 export default function AdminOrganizaciones() {
   const { user } = useAuth();
   const [organizations, setOrganizations] = useState<PendingOrganization[]>([]);
@@ -18,6 +38,7 @@ export default function AdminOrganizaciones() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
@@ -49,9 +70,15 @@ export default function AdminOrganizaciones() {
     }
     setBusyId(id);
     setError('');
+    setStatusMessage('');
     try {
       await reviewOrganization(id, status, reasons[`organization-${id}`]?.trim());
       setOrganizations((current) => current.filter((item) => item.id !== id));
+      setStatusMessage(
+        status === 'approved'
+          ? 'Organización aprobada correctamente.'
+          : 'Solicitud de organización rechazada.',
+      );
     } catch {
       setError('No se pudo guardar la decisión. Vuelve a intentarlo.');
     } finally {
@@ -66,9 +93,15 @@ export default function AdminOrganizaciones() {
     }
     setBusyId(id);
     setError('');
+    setStatusMessage('');
     try {
       await reviewAffiliation(id, decision, reasons[`profile-${id}`]?.trim());
       setAffiliations((current) => current.filter((item) => item.id !== id));
+      setStatusMessage(
+        decision === 'approved'
+          ? 'Cambio de afiliación aprobado correctamente.'
+          : 'Cambio de afiliación rechazado.',
+      );
     } catch {
       setError('No se pudo guardar la revisión de afiliación. Vuelve a intentarlo.');
     } finally {
@@ -89,6 +122,7 @@ export default function AdminOrganizaciones() {
           <p>Revisa la información registrada antes de publicar una organización en ProyectaTec.</p>
         </header>
         {error && <p className="pd-error" role="alert">{error}</p>}
+        {statusMessage && <p className="pd-vacio" role="status" style={{ color: '#146a57', background: '#e8f5f1', border: '1px solid #bfe3d8', padding: '12px 16px', borderRadius: 12 }}>{statusMessage}</p>}
         {loading ? <p className="pd-vacio" aria-live="polite">Cargando solicitudes…</p> : (
           <>
           <section className="pd-columna-derecha" aria-labelledby="pending-organizations-title">
@@ -99,13 +133,13 @@ export default function AdminOrganizaciones() {
             {organizations.map((organization) => (
               <article className="pd-tarjeta" key={organization.id}>
                 <div className="pd-fila-titulo">
-                  <div><span className="pd-eyebrow">{organization.organization_type} · {organization.sector || 'Sector no indicado'}</span><h2>{organization.name}</h2></div>
+                  <div><span className="pd-eyebrow">{ETIQUETA_TIPO_ORG[organization.organization_type] ?? organization.organization_type} · {organization.sector || 'Sector no indicado'}</span><h2>{organization.name}</h2></div>
                   <span className="pd-boton-deshabilitado">Pendiente</span>
                 </div>
                 <p>{organization.location || 'Ubicación no indicada'}</p>
                 <p>Razón social: {organization.legal_name || 'No indicada'} · Sitio web: {organization.website || 'No indicado'}</p>
                 <p>{organization.email || 'Sin correo de contacto'} · {organization.phone || 'Sin teléfono'}</p>
-                <p className="pd-enlace-falso">Solicitada: {new Date(organization.created_at).toLocaleDateString()}</p>
+                <p className="pd-enlace-falso">Solicitada: {formatearFecha(organization.created_at)}</p>
                 <div className="pd-campo"><label htmlFor={`organization-reason-${organization.id}`}>Motivo si rechazas esta organización</label><textarea id={`organization-reason-${organization.id}`} maxLength={1000} value={reasons[`organization-${organization.id}`] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [`organization-${organization.id}`]: event.target.value }))} /></div>
                 <div className="pd-acciones">
                   <button className="pd-boton-claro" type="button" disabled={busyId === organization.id} onClick={() => void review(organization.id, 'rejected')}>Rechazar</button>
@@ -123,7 +157,7 @@ export default function AdminOrganizaciones() {
               <article className="pd-tarjeta" key={request.id}>
                 <div className="pd-fila-titulo"><div><h2>{request.user_name}</h2><p>{request.user_email} · {request.account_type}</p></div><span className="pd-boton-deshabilitado">Pendiente</span></div>
                 <dl>{Object.entries(request.pending_affiliation).map(([field, value]) => (
-                  <div className="pd-info-detalle" key={field}><dt>{field.replaceAll('_', ' ')}</dt><dd>{value || '—'}</dd></div>
+                  <div className="pd-info-detalle" key={field}><dt>{ETIQUETA_CAMPO_AFILIACION[field] ?? field.replaceAll('_', ' ')}</dt><dd>{value || '—'}</dd></div>
                 ))}</dl>
                 <div className="pd-campo"><label htmlFor={`profile-reason-${request.id}`}>Motivo si rechazas este cambio</label><textarea id={`profile-reason-${request.id}`} maxLength={1000} value={reasons[`profile-${request.id}`] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [`profile-${request.id}`]: event.target.value }))} /></div>
                 <div className="pd-acciones">
