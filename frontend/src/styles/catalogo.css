@@ -15,6 +15,33 @@
   flex-wrap: wrap;
 }
 
+.catalogo-buscador {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 17px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.catalogo-buscador:focus-within {
+  border-color: #0f4c5c;
+  box-shadow: 0 0 0 3px rgba(15, 76, 92, 0.12);
+}
+
+.catalogo-buscador input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  padding: 10px 0;
+  color: #111827;
+  background: transparent;
+  font: inherit;
+}
+
 @media (max-width: 760px) {
   .catalogo-page {
     padding: 32px 20px;

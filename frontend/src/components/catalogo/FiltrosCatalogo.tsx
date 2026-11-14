@@ -1,4 +1,3 @@
-
 import { useState, type FormEvent } from 'react';
 import type { Categoria } from '../../types/publicacion';
 import { SECTORES } from '../../utils/camposPerfil';
@@ -8,8 +7,9 @@ type Props = {
   categoriaId: string;
   sector: string;
   categorias: Categoria[];
-  onBuscar: (texto: string, sector: string) => void;
+  onBuscar: (texto: string) => void;
   onCategoriaId: (id: string) => void;
+  onSector: (sector: string) => void;
   onLimpiar: () => void;
 };
 
@@ -20,33 +20,32 @@ export default function FiltrosCatalogo({
   categorias,
   onBuscar,
   onCategoriaId,
+  onSector,
   onLimpiar,
 }: Props) {
   const [texto, setTexto] = useState(busqueda);
-  const [sectorSeleccionado, setSectorSeleccionado] = useState(sector);
 
   const hayFiltrosAplicados =
-    busqueda.trim() !== '' ||
-    categoriaId !== '' ||
-    sector.trim() !== '';
+    busqueda.trim() !== '' || categoriaId !== '' || sector.trim() !== '';
 
-  const hayCambiosSinAplicar =
-    texto !== busqueda ||
-    sectorSeleccionado !== sector;
+  const hayCambiosSinAplicar = texto.trim() !== busqueda.trim();
 
   function buscar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    onBuscar(texto.trim(), sectorSeleccionado);
+    onBuscar(texto.trim());
+  }
+
+  function cambiarTexto(valor: string) {
+    setTexto(valor);
+    if (valor.trim() === '' && busqueda.trim() !== '') {
+      onBuscar('');
+    }
   }
 
   function limpiar() {
     setTexto('');
-    setSectorSeleccionado('');
     onLimpiar();
   }
-
-  // Los botones utilizan categorías reales, nunca nombres inventados.
-  const categoriasRapidas = categorias.slice(0, 6);
 
   const estiloBoton = (activo: boolean) => ({
     border: activo ? '1px solid #0f4c5c' : '1px solid #e2e8f0',
@@ -55,30 +54,24 @@ export default function FiltrosCatalogo({
     padding: '9px 18px',
     borderRadius: 25,
     cursor: 'pointer',
+    fontWeight: activo ? 600 : 500,
+    fontSize: 13,
   });
 
   const estiloSelector = {
-    padding: 11,
+    padding: '10px 12px',
     border: '1px solid #e2e8f0',
     borderRadius: 10,
     background: '#fff',
     color: '#111827',
     width: '100%',
+    fontSize: 13,
   };
 
   return (
     <div className="catalogo-controles">
       <form onSubmit={buscar} role="search">
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '7px 8px 7px 17px',
-            border: '1px solid #e2e8f0',
-            borderRadius: 12,
-          }}
-        >
+        <div className="catalogo-buscador">
           <span aria-hidden="true" style={{ color: '#94a3b8' }}>
             ⌕
           </span>
@@ -91,15 +84,7 @@ export default function FiltrosCatalogo({
             placeholder="Buscar proyectos y necesidades por título o descripción..."
             value={texto}
             maxLength={255}
-            onChange={(evento) => setTexto(evento.target.value)}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              border: 'none',
-              outlineOffset: 3,
-              padding: '10px 0',
-              color: '#111827',
-            }}
+            onChange={(evento) => cambiarTexto(evento.target.value)}
           />
 
           <button
@@ -111,6 +96,8 @@ export default function FiltrosCatalogo({
               borderRadius: 25,
               padding: '10px 22px',
               cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 13,
             }}
           >
             Buscar
@@ -120,7 +107,7 @@ export default function FiltrosCatalogo({
         <div
           className="catalogo-filtros"
           role="group"
-          aria-label="Filtros rápidos por categoría"
+          aria-label="Filtrar por categoría"
           style={{
             display: 'flex',
             flexWrap: 'wrap',
@@ -137,7 +124,7 @@ export default function FiltrosCatalogo({
             Todos
           </button>
 
-          {categoriasRapidas.map((categoria) => {
+          {categorias.map((categoria) => {
             const id = String(categoria.id);
             const seleccionado = categoriaId === id;
 
@@ -160,69 +147,34 @@ export default function FiltrosCatalogo({
             display: 'flex',
             flexWrap: 'wrap',
             alignItems: 'end',
-            gap: 16,
-            marginTop: 20,
+            gap: 14,
+            marginTop: 18,
           }}
         >
-          <label
-            htmlFor="catalogo-categoria"
-            style={{
-              display: 'grid',
-              gap: 6,
-              flex: '1 1 220px',
-            }}
-          >
-            <span style={{ fontSize: 13, color: '#64748b' }}>
-              Categoría
-            </span>
-
-            <select
-              id="catalogo-categoria"
-              value={categoriaId}
-              onChange={(evento) =>
-                onCategoriaId(evento.target.value)
-              }
-              style={estiloSelector}
-            >
-              <option value="">Todas las categorías</option>
-
-              {categorias.map((categoria) => (
-                <option
-                  key={categoria.id}
-                  value={String(categoria.id)}
-                >
-                  {categoria.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label
             htmlFor="catalogo-sector"
             style={{
               display: 'grid',
               gap: 6,
-              flex: '1 1 220px',
+              flex: '1 1 260px',
+              maxWidth: 360,
             }}
           >
-            <span style={{ fontSize: 13, color: '#64748b' }}>
-              Sector de organización
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+              Sector de organización (solo proyectos)
             </span>
 
             <select
               id="catalogo-sector"
-              value={sectorSeleccionado}
-              onChange={(evento) =>
-                setSectorSeleccionado(evento.target.value)
-              }
+              value={sector}
+              onChange={(evento) => onSector(evento.target.value)}
               style={estiloSelector}
             >
               <option value="">Todos los sectores</option>
 
-              {sector &&
-                !SECTORES.some((opcion) => opcion === sector) && (
-                  <option value={sector}>{sector}</option>
-                )}
+              {sector && !SECTORES.some((opcion) => opcion === sector) && (
+                <option value={sector}>{sector}</option>
+              )}
 
               {SECTORES.map((opcion) => (
                 <option key={opcion} value={opcion}>
@@ -230,34 +182,23 @@ export default function FiltrosCatalogo({
                 </option>
               ))}
             </select>
-
-            <small style={{ color: '#64748b' }}>
-              Se aplica a proyectos de organizaciones.
-              Pulsa Buscar para aplicar el sector.
-            </small>
           </label>
 
           <button
             type="button"
             onClick={limpiar}
-            disabled={
-              !hayFiltrosAplicados &&
-              !hayCambiosSinAplicar &&
-              texto.trim() === '' &&
-              sectorSeleccionado === ''
-            }
+            disabled={!hayFiltrosAplicados && !hayCambiosSinAplicar && texto.trim() === ''}
             style={{
               border: '1px solid #e2e8f0',
               borderRadius: 25,
               background: '#fff',
               color: '#0f4c5c',
-              padding: '11px 18px',
+              padding: '10px 18px',
               cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
               opacity:
-                hayFiltrosAplicados ||
-                hayCambiosSinAplicar ||
-                texto.trim() !== '' ||
-                sectorSeleccionado !== ''
+                hayFiltrosAplicados || hayCambiosSinAplicar || texto.trim() !== ''
                   ? 1
                   : 0.5,
             }}

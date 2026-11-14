@@ -74,6 +74,11 @@ const cacheBusquedas = new Map<
 >();
 const CACHE_TTL_MS = 30_000;
 
+/** Invalida resultados en caché cuando cambia la visibilidad de una publicación. */
+export function limpiarCacheBusquedas(): void {
+  cacheBusquedas.clear();
+}
+
 function esTipoProyecto(tipo?: string): boolean {
   return tipo === 'proyecto' || tipo === 'project';
 }

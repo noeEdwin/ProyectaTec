@@ -288,7 +288,7 @@ export default function Catalogo() {
         style={{ marginBottom: 38 }}
       >
         <FiltrosCatalogo
-          key={JSON.stringify([qParam, sectorParam])}
+          key={qParam}
           busqueda={qParam}
           categoriaId={
             categoryIdParam > 0
@@ -297,15 +297,19 @@ export default function Catalogo() {
           }
           sector={sectorParam}
           categorias={categorias}
-          onBuscar={(texto, sector) =>
+          onBuscar={(texto) =>
             actualizarFiltros({
               q: texto,
-              sector,
             })
           }
           onCategoriaId={(id) =>
             actualizarFiltros({
               category_id: id,
+            })
+          }
+          onSector={(sector) =>
+            actualizarFiltros({
+              sector,
             })
           }
           onLimpiar={limpiarFiltros}
