@@ -16,10 +16,25 @@ export default function IniciativaCard({ iniciativa, variante = 'tarjeta' }: Pro
   if (variante === 'fila') {
     return (
       <article className="ic-fila">
-        <div className="ic-fila-texto">
-          <span className={claseTipo}>{etiqueta}</span>
-          <h3>{iniciativa.titulo}</h3>
-          <p>{iniciativa.organizacion} · {iniciativa.categoria}</p>
+        <div className="ic-fila-contenido">
+          {iniciativa.coverImageUrl && (
+            <img src={iniciativa.coverImageUrl} alt="" className="ic-fila-thumb" />
+          )}
+          <div className="ic-fila-texto">
+            <span className={claseTipo}>{etiqueta}</span>
+            <h3>{iniciativa.titulo}</h3>
+            <p>
+              {iniciativa.organizacionId ? (
+                <Link to={`/organizaciones/${iniciativa.organizacionId}`} className="ic-org-enlace">
+                  {iniciativa.organizacion}
+                </Link>
+              ) : (
+                iniciativa.organizacion
+              )}{' '}
+              · {iniciativa.categoria}
+              {iniciativa.requirementsCount > 0 && ` · ${iniciativa.requirementsCount} ${iniciativa.requirementsCount === 1 ? 'requerimiento' : 'requerimientos'}`}
+            </p>
+          </div>
         </div>
         <Link to={detalle} className="ic-enlace">{textoEnlace} <span aria-hidden="true">→</span></Link>
       </article>
@@ -28,13 +43,29 @@ export default function IniciativaCard({ iniciativa, variante = 'tarjeta' }: Pro
   return (
     <article className="ic-tarjeta">
       <div>
+        {iniciativa.coverImageUrl && (
+          <img src={iniciativa.coverImageUrl} alt={iniciativa.titulo} className="ic-portada" />
+        )}
         <span className={claseTipo}>{etiqueta}</span>
         <div className="ic-meta">
           <span className="ic-categoria">{iniciativa.categoria}</span>
           <span className={['Abierta', 'Activa', 'En curso'].includes(iniciativa.estado) ? 'ic-estado ic-estado-activo' : 'ic-estado'}>{iniciativa.estado}</span>
         </div>
         <h3>{iniciativa.titulo}</h3>
-        <p>{iniciativa.organizacion}</p>
+        <p>
+          {iniciativa.organizacionId ? (
+            <Link to={`/organizaciones/${iniciativa.organizacionId}`} className="ic-org-enlace">
+              {iniciativa.organizacion}
+            </Link>
+          ) : (
+            iniciativa.organizacion
+          )}
+        </p>
+        {iniciativa.requirementsCount > 0 && (
+          <span className="ic-reqs-pill">
+            {iniciativa.requirementsCount} {iniciativa.requirementsCount === 1 ? 'requerimiento' : 'requerimientos'}
+          </span>
+        )}
       </div>
       <div className="ic-pie"><Link to={detalle} className="ic-enlace">{textoEnlace} <span aria-hidden="true">→</span></Link></div>
     </article>

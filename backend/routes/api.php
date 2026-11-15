@@ -9,6 +9,7 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
+use App\Http\Controllers\PublicationMediaController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Http\Middleware\EnsureActiveUser;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/organizations', [OrganizationController::class, 'publicIndex']);
 Route::get('/organizations/catalog', [OrganizationController::class, 'catalog']);
 // Consultar un perfil público por su identificador
 Route::get('/profiles/{profile}', [ProfileController::class, 'showPublic'])
@@ -78,6 +80,10 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
         '/admin/users',
         [AdminUserModerationController::class, 'index']
     );
+    Route::get(
+        '/admin/users/{user}',
+        [AdminUserModerationController::class, 'show']
+    )->whereNumber('user');
     Route::patch(
         '/admin/users/{user}/status',
         [AdminUserModerationController::class, 'updateStatus']
@@ -88,6 +94,10 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
         '/admin/publications',
         [AdminPublicationModerationController::class, 'index']
     );
+    Route::get(
+        '/admin/publications/{type}/{id}',
+        [AdminPublicationModerationController::class, 'show']
+    )->whereIn('type', ['proyecto', 'necesidad'])->whereNumber('id');
     Route::patch(
         '/admin/projects/{project}/visibility',
         [AdminPublicationModerationController::class, 'updateProjectVisibility']
@@ -100,6 +110,9 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
     Route::get('/me/publications', [MyPublicationController::class, 'index']);
     Route::get('/me/publications/{type}/{id}', [MyPublicationController::class, 'show'])
         ->whereNumber('id');
+    Route::post('/publications/{type}/{id}/media', [PublicationMediaController::class, 'update'])
+        ->whereIn('type', ['proyecto', 'project', 'necesidad', 'community_need'])
+        ->whereNumber('id');
     Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
     Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);
@@ -108,9 +121,21 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
     Route::patch('/me/profile', [ProfileController::class, 'update']);
     Route::post('/me/profile/avatar', [ProfileController::class, 'uploadAvatar']);
     Route::get('/me/organizations', [OrganizationController::class, 'indexOwn']);
+    Route::get('/me/organization-role-requests', [OrganizationController::class, 'myRoleRequests']);
     Route::get('/admin/organizations/pending', [OrganizationController::class, 'pendingApprovals']);
+    Route::post('/admin/organizations', [OrganizationController::class, 'adminCreate']);
     Route::patch('/admin/organizations/{organization}/approval', [OrganizationController::class, 'reviewApproval'])
         ->whereNumber('organization');
+    Route::post('/organizations/{organization}/role-request', [OrganizationController::class, 'requestRole'])
+        ->whereNumber('organization');
+    Route::get('/organizations/{organization}/member-requests', [OrganizationController::class, 'memberRequests'])
+        ->whereNumber('organization');
+    Route::patch('/organizations/{organization}/member-requests/{membership}', [OrganizationController::class, 'reviewMemberRequest'])
+        ->whereNumber('organization')
+        ->whereNumber('membership');
+    Route::patch('/organizations/{organization}/affiliation-requests/{profile}', [OrganizationController::class, 'reviewAffiliationRequest'])
+        ->whereNumber('organization')
+        ->whereNumber('profile');
     Route::get('/admin/profiles/affiliations/pending', [ProfileController::class, 'pendingAffiliations']);
     Route::patch('/admin/profiles/{profile}/affiliation', [ProfileController::class, 'reviewAffiliation'])
         ->whereNumber('profile');
@@ -168,6 +193,7 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
             'id', 'name', 'email', 'account_type',
         ]) + [
             'can_manage_platform' => in_array(strtolower($user->email), $adminEmails, true),
+            'has_pending_institution_approval' => $user->hasPendingNewInstitution(),
         ]);
     });
 });

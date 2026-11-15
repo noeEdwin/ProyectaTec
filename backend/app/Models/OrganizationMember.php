@@ -11,6 +11,9 @@ class OrganizationMember extends Model
         'organization_id',
         'user_id',
         'role',
+        'requested_role',
+        'request_note',
+        'rejection_reason',
         'status',
         'joined_at',
     ];

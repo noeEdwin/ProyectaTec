@@ -12,9 +12,26 @@ use Illuminate\Validation\ValidationException;
 
 class CommunityNeedController extends Controller
 {
+    private function normalizeRequirements(array $requirements): array
+    {
+        return array_values(array_map(fn (array $item) => [
+            'title' => trim((string) $item['title']),
+            'description' => isset($item['description']) && trim((string) $item['description']) !== ''
+                ? trim((string) $item['description'])
+                : null,
+            'required_profile' => isset($item['required_profile']) && trim((string) $item['required_profile']) !== ''
+                ? trim((string) $item['required_profile'])
+                : null,
+            'openings' => (int) ($item['openings'] ?? 1),
+        ], $requirements));
+    }
+
     public function store(StoreCommunityNeedRequest $request): JsonResponse
     {
         $data = $request->validated();
+        if (array_key_exists('requirements', $data) && is_array($data['requirements'])) {
+            $data['requirements'] = $this->normalizeRequirements($data['requirements']);
+        }
         $data['created_by'] = $request->user()->id;
         $communityNeed = CommunityNeed::create($data);
 
@@ -27,6 +44,10 @@ class CommunityNeedController extends Controller
 
         if ($data === []) {
             throw ValidationException::withMessages(['community_need' => ['Envía al menos un campo editable.']]);
+        }
+
+        if (array_key_exists('requirements', $data) && is_array($data['requirements'])) {
+            $data['requirements'] = $this->normalizeRequirements($data['requirements']);
         }
 
         $allowed = match ($communityNeed->status) {

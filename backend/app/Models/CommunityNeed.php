@@ -14,13 +14,19 @@ class CommunityNeed extends Model
         'description',
         'location',
         'status',
+        'cover_image_path',
+        'gallery_paths',
+        'requirements',
     ];
+
     protected function casts(): array
-{
-    return [
-        'is_hidden' => 'boolean',
-    ];
-}
+    {
+        return [
+            'is_hidden' => 'boolean',
+            'gallery_paths' => 'array',
+            'requirements' => 'array',
+        ];
+    }
 
 
     public function creator(): BelongsTo

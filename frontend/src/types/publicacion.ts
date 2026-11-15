@@ -36,17 +36,44 @@ export const LIMITES = {
   titulo: { min: 5, max: 150 },
   descripcion: { min: 20, max: 2000 },
   ubicacion: { max: 255 },
+  requerimientoTitulo: { min: 3, max: 255 },
+  maxRequerimientos: 10,
+  maxGaleria: 5,
+  maxImagenBytes: 3 * 1024 * 1024,
 } as const;
+
+export type RequerimientoItem = {
+  id?: number;
+  title: string;
+  description: string;
+  required_profile: string;
+  openings: number;
+};
+
+export type PublicacionMediaItem = {
+  path: string;
+  url: string;
+};
+
+export type PublicacionMediaSelection = {
+  coverFile?: File | null;
+  removeCover?: boolean;
+  keepGallery?: string[];
+  galleryFiles?: File[];
+};
 
 export type PublicacionFormValues = {
   tipo: TipoPublicacion;
   title: string;
   category_id: string;
-  modality: string; 
+  modality: string;
   location: string;
-  starts_at: string; 
+  starts_at: string;
   ends_at: string;
   description: string;
+  requirements: RequerimientoItem[];
+  existingCoverUrl: string | null;
+  existingGallery: PublicacionMediaItem[];
 };
 
 export const VALORES_INICIALES: PublicacionFormValues = {
@@ -58,6 +85,17 @@ export const VALORES_INICIALES: PublicacionFormValues = {
   starts_at: '',
   ends_at: '',
   description: '',
+  requirements: [],
+  existingCoverUrl: null,
+  existingGallery: [],
+};
+
+export type RequerimientoPayload = {
+  id?: number;
+  title: string;
+  description: string | null;
+  required_profile: string | null;
+  openings: number;
 };
 
 export type PublicacionPayload =
@@ -70,6 +108,7 @@ export type PublicacionPayload =
       location: string | null;
       starts_at: string | null;
       ends_at: string | null;
+      needs: RequerimientoPayload[];
     }
   | {
       type: 'community_need';
@@ -77,8 +116,9 @@ export type PublicacionPayload =
       description: string;
       category_id: number;
       location: string | null;
+      requirements: RequerimientoPayload[];
     };
 
 export type PublicacionErrors = Partial<
-  Record<keyof PublicacionFormValues | 'general', string>
+  Record<keyof PublicacionFormValues | 'general' | 'media', string>
 >;

@@ -27,6 +27,10 @@ class AuthController extends Controller
                 'student', 'docente', 'empresa', 'institucion_educativa', 'sector_social', 'organization',
             ])],
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
+            'request_new_institution' => ['sometimes', 'boolean'],
+            'institution_website' => ['nullable', 'url:http,https', 'max:255'],
+            'institution_location' => ['nullable', 'string', 'max:255'],
+            'institution_email' => ['nullable', 'email', 'max:255'],
             'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'interest_areas' => ['sometimes', 'array', 'max:6'],
@@ -73,7 +77,25 @@ class AuthController extends Controller
             $validated['organization_name'] = Organization::findOrFail($validated['organization_id'])->name;
         }
 
-        $user = DB::transaction(function () use ($validated) {
+        $requestedNewInstitution = null;
+        $isAcademicOrStudent = in_array($validated['account_type'], ['estudiante', 'academico', 'student', 'docente'], true);
+        if ($isAcademicOrStudent && ! empty($validated['request_new_institution']) && filled($validated['institution'] ?? null)) {
+            [$institutionOrg, $isApproved] = Organization::resolveOrRequestInstitution(
+                $validated['institution'],
+                [
+                    'website' => $validated['institution_website'] ?? null,
+                    'location' => $validated['institution_location'] ?? ($validated['location'] ?? null),
+                    'email' => $validated['institution_email'] ?? null,
+                ]
+            );
+            if ($isApproved) {
+                $validated['institution'] = $institutionOrg->name;
+            } else {
+                $requestedNewInstitution = $institutionOrg;
+            }
+        }
+
+        $user = DB::transaction(function () use ($validated, $requestedNewInstitution) {
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -84,7 +106,12 @@ class AuthController extends Controller
             Profile::create([
                 'user_id' => $user->id,
                 'display_name' => $user->name,
-                'institution' => $validated['institution'] ?? null,
+                'institution' => $requestedNewInstitution ? null : ($validated['institution'] ?? null),
+                'affiliation_status' => $requestedNewInstitution ? 'pending' : 'current',
+                'pending_affiliation' => $requestedNewInstitution ? [
+                    'institution' => $requestedNewInstitution->name,
+                    'pending_institution_id' => $requestedNewInstitution->id,
+                ] : null,
                 'campus' => $validated['campus'] ?? null,
                 'field_of_study' => $validated['field_of_study'] ?? null,
                 'interest_areas' => $validated['interest_areas'] ?? [],

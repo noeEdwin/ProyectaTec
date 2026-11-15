@@ -116,4 +116,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(ProjectFile::class, 'uploaded_by');
     }
+
+    public function hasPendingNewInstitution(): bool
+    {
+        $profile = $this->profile;
+        if (! $profile || $profile->affiliation_status !== 'pending') {
+            return false;
+        }
+
+        $pending = $profile->pending_affiliation ?? [];
+
+        return ! empty($pending['pending_institution_id']);
+    }
 }

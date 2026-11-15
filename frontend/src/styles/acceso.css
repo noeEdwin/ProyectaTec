@@ -272,6 +272,58 @@
   opacity: 0.7;
 }
 
+.acceso-demo {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid #cfe3e6;
+  border-radius: 14px;
+  background: #f2f8f8;
+  color: #173c46;
+}
+
+.acceso-demo strong {
+  display: block;
+  font-size: 14px;
+}
+
+.acceso-demo p {
+  margin: 6px 0 12px;
+  color: #50666c;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.acceso-demo code {
+  font-size: 11px;
+}
+
+.acceso-demo div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acceso-demo button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #c5dadd;
+  border-radius: 999px;
+  background: #fff;
+  color: #173c46;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.acceso-demo button:hover,
+.acceso-demo button:focus-visible {
+  border-color: #1d4e5b;
+  outline: 2px solid #1d4e5b;
+  outline-offset: 2px;
+}
+
 .acceso-hero {
   min-height: 728px;
   padding: 58px 42px 45px;

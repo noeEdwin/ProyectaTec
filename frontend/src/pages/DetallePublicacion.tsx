@@ -4,6 +4,7 @@ import axios from 'axios';
 import {
   obtenerDetallePublicacion,
   reportarPublicacion,
+  type RequerimientoPublicacion,
 } from '../api/publicacionesService';
 import { useAuth } from '../context/auth-context';
 import '../styles/catalogoComponentes.css';
@@ -12,11 +13,15 @@ interface DetalleData {
   id: number;
   titulo: string;
   organizacion: string;
+  organizacionId: number | null;
   categoria: string;
   ubicacion: string;
   modalidad: string;
   descripcion: string;
   tipo: 'project' | 'community_need';
+  coverImageUrl: string | null;
+  galleryUrls: string[];
+  requirements: RequerimientoPublicacion[];
 }
 
 type MotivoReporte = 'inappropriate' | 'spam' | 'misinformation' | 'other';
@@ -42,6 +47,7 @@ export default function DetallePublicacion() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [avisoVinculacion, setAvisoVinculacion] = useState(false);
+  const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
   const [mostrandoReporte, setMostrandoReporte] = useState(false);
   const [motivoReporte, setMotivoReporte] = useState<MotivoReporte>('inappropriate');
@@ -65,16 +71,21 @@ export default function DetallePublicacion() {
         }
         const esProyecto = tipo === 'project' || tipo === 'proyecto';
         const item = await obtenerDetallePublicacion(tipo, Number(id));
+        const requirements = esProyecto ? (item.needs ?? []) : (item.requirements ?? []);
 
         setPublicacion({
           id: item.id,
           titulo: item.title ?? 'Publicación sin título',
           organizacion: item.organization?.name || (esProyecto ? 'Iniciativa ProyectaTec' : 'Comunidad de Oaxaca'),
+          organizacionId: item.organization?.id ?? null,
           categoria: item.category?.name || 'Sin categoría',
           ubicacion: item.location || 'Oaxaca',
           modalidad: item.modality ? (MODALIDADES[item.modality] ?? item.modality) : '',
           descripcion: item.description || 'Sin descripción detallada.',
           tipo: esProyecto ? 'project' : 'community_need',
+          coverImageUrl: item.cover_image_url ?? null,
+          galleryUrls: Array.isArray(item.gallery_urls) ? item.gallery_urls : [],
+          requirements: Array.isArray(requirements) ? requirements : [],
         });
       } catch (err) {
         if (err instanceof Error && !axios.isAxiosError(err)) {
@@ -170,12 +181,69 @@ export default function DetallePublicacion() {
         <div className="dp-cabecera-tipo">
           <span className={`ic-tipo ${claseTipo}`}>{etiquetaTipo}</span>
         </div>
-        <p className="dp-subtitulo">{publicacion.organizacion} · {publicacion.categoria} · {publicacion.ubicacion}</p>
+        <p className="dp-subtitulo">
+          {publicacion.organizacionId ? (
+            <Link to={`/organizaciones/${publicacion.organizacionId}`} className="ic-org-enlace">
+              {publicacion.organizacion}
+            </Link>
+          ) : (
+            publicacion.organizacion
+          )}{' '}
+          · {publicacion.categoria} · {publicacion.ubicacion}
+        </p>
 
         <div className="dp-grid">
           <section className="dp-tarjeta" aria-label="Información de la publicación">
+            {publicacion.coverImageUrl && (
+              <img
+                src={publicacion.coverImageUrl}
+                alt={`Portada de ${publicacion.titulo}`}
+                className="dp-portada"
+              />
+            )}
             <h2>{esProyecto ? 'Sobre el proyecto' : 'Sobre la necesidad'}</h2>
             <p>{publicacion.descripcion}</p>
+
+            {publicacion.requirements.length > 0 && (
+              <div className="dp-bloque">
+                <h3>Requerimientos / vacantes ({publicacion.requirements.length})</h3>
+                <ul className="dp-reqs">
+                  {publicacion.requirements.map((req, idx) => (
+                    <li key={req.id ?? `req-${idx}`} className="dp-req-card">
+                      <div className="dp-req-top">
+                        <strong>{req.title}</strong>
+                        <span>
+                          {req.openings} {req.openings === 1 ? 'vacante' : 'vacantes'}
+                        </span>
+                      </div>
+                      {req.required_profile && (
+                        <small>Perfil sugerido: {req.required_profile}</small>
+                      )}
+                      {req.description && <p>{req.description}</p>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {publicacion.galleryUrls.length > 0 && (
+              <div className="dp-bloque">
+                <h3>Galería de imágenes ({publicacion.galleryUrls.length})</h3>
+                <div className="dp-galeria">
+                  {publicacion.galleryUrls.map((url, idx) => (
+                    <button
+                      type="button"
+                      key={`${url}-${idx}`}
+                      className="dp-galeria-btn"
+                      onClick={() => setImagenAmpliada(url)}
+                      aria-label={`Ampliar imagen ${idx + 1} de ${publicacion.titulo}`}
+                    >
+                      <img src={url} alt={`${publicacion.titulo} - imagen ${idx + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="dp-bloque">
               <h3>Información general</h3>
@@ -183,6 +251,16 @@ export default function DetallePublicacion() {
                 <div><dt>Categoría</dt><dd>{publicacion.categoria}</dd></div>
                 <div><dt>Ubicación</dt><dd>{publicacion.ubicacion}</dd></div>
                 {publicacion.modalidad && <div><dt>Modalidad</dt><dd>{publicacion.modalidad}</dd></div>}
+                {publicacion.organizacionId && (
+                  <div>
+                    <dt>Organización</dt>
+                    <dd>
+                      <Link to={`/organizaciones/${publicacion.organizacionId}`} className="ic-org-enlace">
+                        {publicacion.organizacion} →
+                      </Link>
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 
@@ -299,6 +377,27 @@ export default function DetallePublicacion() {
 
         <footer className="dp-footer">© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</footer>
       </div>
+      {imagenAmpliada && (
+        <div
+          className="dp-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista ampliada de imagen"
+          onClick={() => setImagenAmpliada(null)}
+        >
+          <div className="dp-lightbox-contenido" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="dp-lightbox-cerrar"
+              onClick={() => setImagenAmpliada(null)}
+              aria-label="Cerrar imagen"
+            >
+              ×
+            </button>
+            <img src={imagenAmpliada} alt={`Vista ampliada de ${publicacion.titulo}`} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }

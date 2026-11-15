@@ -8,7 +8,10 @@ export type Iniciativa = {
   categoria: string;
   estado: string;
   organizacion: string;
+  organizacionId: number | null;
   ubicacion: string;
+  coverImageUrl: string | null;
+  requirementsCount: number;
 };
 
 export function adaptarIniciativa(item: PublicacionListado): Iniciativa {
@@ -21,6 +24,7 @@ export function adaptarIniciativa(item: PublicacionListado): Iniciativa {
     draft: 'Borrador',
     withdrawn: 'Retirada',
   };
+  const reqs = item.type === 'proyecto' ? item.needs : item.requirements;
   return {
     id: item.id,
     tipo: item.type,
@@ -30,7 +34,10 @@ export function adaptarIniciativa(item: PublicacionListado): Iniciativa {
     organizacion: item.organization?.name ?? item.location ?? (
       item.type === 'necesidad' ? 'Comunidad de Oaxaca' : 'Iniciativa ProyectaTec'
     ),
+    organizacionId: item.organization?.id ?? null,
     ubicacion: item.location ?? '',
+    coverImageUrl: item.cover_image_url ?? null,
+    requirementsCount: Array.isArray(reqs) ? reqs.length : 0,
   };
 }
 

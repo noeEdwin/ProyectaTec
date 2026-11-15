@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/auth-context';
 import { listarMisPublicaciones } from '../api/publicacionesService';
 import type { MiPublicacion } from '../api/publicacionesService';
 import '../styles/publicaciones.css';
@@ -15,6 +16,7 @@ const estadoLegible: Record<string, string> = {
 };
 
 export default function MisPublicaciones() {
+  const { user } = useAuth();
   const [publications, setPublications] = useState<MiPublicacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,8 +60,20 @@ export default function MisPublicaciones() {
 
         <div className="pub-mis-toolbar">
           <span>{loading ? 'Cargando…' : `${publications.length} ${publications.length === 1 ? 'publicación' : 'publicaciones'}`}</span>
-          <Link className="pub-boton pub-boton-primario" to="/publicaciones/nueva">Crear publicación</Link>
+          {user?.has_pending_institution_approval ? (
+            <span className="pub-estado-bloqueado" role="status" style={{ fontSize: 13, color: '#9a3412', fontWeight: 600 }}>
+              Publicación bloqueada hasta que aprueben tu institución
+            </span>
+          ) : (
+            <Link className="pub-boton pub-boton-primario" to="/publicaciones/nueva">Crear publicación</Link>
+          )}
         </div>
+
+        {user?.has_pending_institution_approval && (
+          <div className="pub-alerta" role="status" style={{ background: '#fff7ed', color: '#9a3412', borderColor: '#fed7aa' }}>
+            Tu solicitud para dar de alta una nueva institución está pendiente de aprobación por administración. Podrás crear iniciativas cuando sea verificada.
+          </div>
+        )}
 
         {error && <div className="pub-alerta" role="alert">{error} <button type="button" onClick={() => void cargar()}>Reintentar</button></div>}
         {loading && <p className="pub-mis-estado" role="status">Cargando tus publicaciones…</p>}

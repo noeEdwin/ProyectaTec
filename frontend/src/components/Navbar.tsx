@@ -53,6 +53,9 @@ export default function Navbar() {
           <NavLink to="/iniciativas" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             Iniciativas
           </NavLink>
+          <NavLink to="/organizaciones" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            Organizaciones
+          </NavLink>
           {user && <NavLink to="/mis-publicaciones" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>Mis publicaciones</NavLink>}
         </div>
 

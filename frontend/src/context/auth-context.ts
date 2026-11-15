@@ -6,6 +6,7 @@ export type AuthUser = {
   email: string;
   account_type: string;
   can_manage_platform?: boolean;
+  has_pending_institution_approval?: boolean;
 };
 
 export type LoginCredentials = {

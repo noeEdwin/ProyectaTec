@@ -14,6 +14,7 @@ import Perfil from './pages/Perfil';
 
 import MiPerfil from './pages/MiPerfil';
 import PerfilPublico from './pages/perfilPublico';
+import Organizaciones from './pages/Organizaciones';
 import OrganizacionPublica from './pages/OrganizacionPublica';
 import EditarPerfilOrganizacion from './pages/EditarPerfilOrganizacion';
 import AdminOrganizaciones from './pages/AdminOrganizaciones';
@@ -43,6 +44,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
               <Route path="/perfil-publico" element={<PerfilPublico />} />
+              <Route path="/organizaciones" element={<Organizaciones />} />
               <Route path="/organizaciones/:id" element={<OrganizacionPublica />} />
 
               {/* Detalle de iniciativa: pública, con el menú de MainLayout */}

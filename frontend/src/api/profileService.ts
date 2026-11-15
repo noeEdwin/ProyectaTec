@@ -27,6 +27,12 @@ export interface UserProfile {
   affiliation_status?: string;
   affiliation_rejection_reason?: string | null;
   pending_affiliation?: Record<string, string | number | null> | null;
+  has_pending_institution_approval?: boolean;
+  request_new_institution?: boolean;
+  institution_website?: string;
+  institution_location?: string;
+  institution_email?: string;
+  affiliation_reason?: string;
 }
 
 export type OrganizationCatalogItem = {
@@ -69,16 +75,42 @@ export type OrganizationProfileUpdate = Pick<OrganizationAccess, 'name'> & {
   website?: string | null;
 };
 
+export type OrganizationPublicProject = {
+  id: number;
+  title: string;
+  description: string;
+  status: string;
+  modality: string | null;
+  location: string | null;
+  cover_image_url?: string | null;
+  created_at: string | null;
+  category?: { id: number; name: string } | null;
+};
+
+export type OrganizationPublicDirectoryItem = {
+  id: number;
+  name: string;
+  organization_type: string;
+  sector: string | null;
+  description: string | null;
+  location: string | null;
+  image_url: string | null;
+  projects_count: number;
+};
+
 export type OrganizationPublicProfile = {
   id: number;
   is_organization: true;
   name: string;
+  organization_type?: string;
+  sector?: string | null;
   website?: string | null;
   description: string | null;
   location: string | null;
   image: string | null;
   image_url: string | null;
   classification: string;
+  projects?: OrganizationPublicProject[];
   contact?: { email: string | null; phone: string | null };
 };
 
@@ -92,7 +124,31 @@ export type PendingOrganization = {
   email: string | null;
   phone: string | null;
   location: string | null;
+  description?: string | null;
+  public_fields?: string[];
+  logo_url?: string | null;
+  members_count?: number;
+  applicant?: {
+    id: number;
+    name: string;
+    email: string;
+    account_type: string;
+  } | null;
   created_at: string;
+};
+
+export type PendingOwnershipRequest = {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  organization_type: string;
+  organization_location: string | null;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  account_type: string;
+  request_note: string | null;
+  created_at: string | null;
 };
 
 export type PendingAffiliation = {
@@ -100,8 +156,56 @@ export type PendingAffiliation = {
   user_name: string;
   user_email: string;
   account_type: string;
+  current_institution?: string | null;
+  current_organization_name?: string | null;
   pending_affiliation: Record<string, string | number | null>;
   updated_at: string;
+};
+
+export type OrganizationRoleRequest = {
+  id: number;
+  organization_id: number;
+  organization_name: string;
+  role: string;
+  requested_role: string | null;
+  status: string;
+  request_note: string | null;
+  rejection_reason: string | null;
+  updated_at: string | null;
+};
+
+export type OrganizationMemberRequest = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  account_type: string;
+  role: string;
+  requested_role: string;
+  status: string;
+  request_note: string | null;
+  updated_at: string | null;
+};
+
+export type OrganizationActiveMember = {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  role: string;
+  joined_at: string | null;
+};
+
+export type AdminCreateOrganizationPayload = {
+  name: string;
+  organization_type?: 'empresa' | 'institucion_educativa' | 'sector_social';
+  sector?: string;
+  location?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  legal_name?: string;
+  description?: string;
 };
 
 // Obtener el perfil editable del usuario autenticado, incluyendo valores iniciales
@@ -140,6 +244,19 @@ export const updateOrganizationProfile = async (
   await api.patch(`/organizations/${id}`, data);
 };
 
+export const getPublicOrganizations = async (params?: {
+  q?: string;
+  type?: string;
+}): Promise<OrganizationPublicDirectoryItem[]> => {
+  const response = await api.get<{ organizations: OrganizationPublicDirectoryItem[] }>('/organizations', {
+    params: {
+      ...(params?.q?.trim() ? { q: params.q.trim() } : {}),
+      ...(params?.type?.trim() ? { type: params.type.trim() } : {}),
+    },
+  });
+  return response.data.organizations;
+};
+
 export const getPublicOrganizationProfile = async (id: number): Promise<OrganizationPublicProfile> => {
   const response = await api.get<{ organization: OrganizationPublicProfile }>(`/organizations/${id}`);
   return response.data.organization;
@@ -148,6 +265,20 @@ export const getPublicOrganizationProfile = async (id: number): Promise<Organiza
 export const getPendingOrganizations = async (): Promise<PendingOrganization[]> => {
   const response = await api.get<{ organizations: PendingOrganization[] }>('/admin/organizations/pending');
   return response.data.organizations;
+};
+
+export const getPendingAdminOrganizationQueue = async (): Promise<{
+  organizations: PendingOrganization[];
+  ownership_requests: PendingOwnershipRequest[];
+}> => {
+  const response = await api.get<{
+    organizations: PendingOrganization[];
+    ownership_requests?: PendingOwnershipRequest[];
+  }>('/admin/organizations/pending');
+  return {
+    organizations: response.data.organizations ?? [],
+    ownership_requests: response.data.ownership_requests ?? [],
+  };
 };
 
 export const reviewOrganization = async (id: number, approval_status: 'approved' | 'rejected', rejection_reason?: string): Promise<void> => {
@@ -165,4 +296,54 @@ export const getPendingAffiliations = async (): Promise<PendingAffiliation[]> =>
 
 export const reviewAffiliation = async (id: number, decision: 'approved' | 'rejected', reason?: string): Promise<void> => {
   await api.patch(`/admin/profiles/${id}/affiliation`, { decision, reason });
+};
+
+export const adminCreateOrganization = async (payload: AdminCreateOrganizationPayload): Promise<{ id: number; name: string }> => {
+  const response = await api.post<{ organization: { id: number; name: string } }>('/admin/organizations', payload);
+  return response.data.organization;
+};
+
+export const getMyOrganizationRoleRequests = async (): Promise<OrganizationRoleRequest[]> => {
+  const response = await api.get<{ role_requests: OrganizationRoleRequest[] }>('/me/organization-role-requests');
+  return response.data.role_requests;
+};
+
+export const requestOrganizationRole = async (
+  organizationId: number,
+  payload: { role: 'member' | 'admin'; note?: string },
+): Promise<void> => {
+  await api.post(`/organizations/${organizationId}/role-request`, payload);
+};
+
+export const getOrganizationMemberRequests = async (
+  organizationId: number,
+): Promise<{
+  requests: OrganizationMemberRequest[];
+  members: OrganizationActiveMember[];
+  affiliation_requests: PendingAffiliation[];
+}> => {
+  const response = await api.get<{
+    requests: OrganizationMemberRequest[];
+    members: OrganizationActiveMember[];
+    affiliation_requests: PendingAffiliation[];
+  }>(`/organizations/${organizationId}/member-requests`);
+  return response.data;
+};
+
+export const reviewOrganizationMemberRequest = async (
+  organizationId: number,
+  membershipId: number,
+  decision: 'approved' | 'rejected',
+  reason?: string,
+): Promise<void> => {
+  await api.patch(`/organizations/${organizationId}/member-requests/${membershipId}`, { decision, reason });
+};
+
+export const reviewOrganizationAffiliationRequest = async (
+  organizationId: number,
+  profileId: number,
+  decision: 'approved' | 'rejected',
+  reason?: string,
+): Promise<void> => {
+  await api.patch(`/organizations/${organizationId}/affiliation-requests/${profileId}`, { decision, reason });
 };

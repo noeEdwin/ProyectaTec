@@ -41,6 +41,9 @@ export type RegistroPayload = {
   locality?: string;
   public_fields?: string[];
   organization_public_fields?: string[];
+  request_new_institution?: boolean;
+  institution_website?: string;
+  institution_location?: string;
 };
 
 type RegistroProps = {
@@ -112,6 +115,9 @@ export default function Registro({ onRegister }: RegistroProps) {
     if (tipoCuenta === 'organizacion' && perfil.organization_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(perfil.organization_email)) {
       errors.organization_email = 'Ingresa un correo de contacto válido.';
     }
+    if (institutionManual && perfil.institution_website && !/^https?:\/\/.+/i.test(perfil.institution_website.trim())) {
+      errors.institution_website = 'El sitio web debe iniciar con https:// o http://.';
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -160,7 +166,11 @@ export default function Registro({ onRegister }: RegistroProps) {
     validateProfileFields(nuevosErrores);
 
     if (Object.keys(nuevosErrores).length > 0) {
+      nuevosErrores.general = 'Revisa los campos marcados arriba antes de crear tu cuenta.';
       setErrores(nuevosErrores);
+      window.setTimeout(() => {
+        document.querySelector('.registro-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 0);
       return;
     }
 
@@ -172,6 +182,9 @@ export default function Registro({ onRegister }: RegistroProps) {
       password_confirmation: confirmacion,
       ...perfil,
       organization_id: perfil.organization_id ? Number(perfil.organization_id) : undefined,
+      request_new_institution: institutionManual ? true : undefined,
+      institution_website: institutionManual && perfil.institution_website ? perfil.institution_website : undefined,
+      institution_location: institutionManual && perfil.institution_location ? perfil.institution_location : undefined,
       public_fields: publicFields,
       organization_public_fields: organizationPublicFields,
       interest_areas: tipoCuenta === 'organizacion' ? [] : interestAreas,
@@ -200,6 +213,7 @@ export default function Registro({ onRegister }: RegistroProps) {
         const fieldErrors = Object.fromEntries(
           Object.entries(apiErrors).map(([key, messages]) => [key, messages[0]]),
         ) as RegistroErrors;
+        const firstServerMessage = Object.values(apiErrors).flat()[0];
         setErrores({
           name: apiErrors.name ? apiErrors.name[0] : undefined,
           password: apiErrors.password ? apiErrors.password[0] : undefined,
@@ -207,7 +221,11 @@ export default function Registro({ onRegister }: RegistroProps) {
           password_confirmation: apiErrors.password_confirmation ? apiErrors.password_confirmation[0] : undefined,
           ...fieldErrors,
           email: traducirErrorCorreo(apiErrors.email?.[0]),
+          general: firstServerMessage || 'Revisa los campos marcados arriba antes de continuar.',
         });
+        window.setTimeout(() => {
+          document.querySelector('.registro-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
       } else {
         setErrores({
           general:
@@ -275,8 +293,29 @@ export default function Registro({ onRegister }: RegistroProps) {
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'registro-institution-error' : undefined}
             />
-            <button type="button" className="registro-login-link" onClick={() => { setInstitutionManual(false); setProfileField('institution', ''); }}>
-              Elegir de la lista
+            <input
+              type="text"
+              value={perfil.institution_location ?? ''}
+              onChange={(event) => setProfileField('institution_location', event.target.value)}
+              placeholder="Ubicación o municipio de la institución (opcional)"
+              maxLength={255}
+              style={{ marginTop: 8 }}
+            />
+            {errores.institution_location && <p className="registro-error">{errores.institution_location}</p>}
+            <input
+              type="url"
+              value={perfil.institution_website ?? ''}
+              onChange={(event) => setProfileField('institution_website', event.target.value)}
+              placeholder="Sitio web oficial (opcional, https://...)"
+              maxLength={255}
+              style={{ marginTop: 8 }}
+            />
+            {errores.institution_website && <p className="registro-error">{errores.institution_website}</p>}
+            <p style={{ margin: '8px 0 2px', fontSize: 12, color: '#9a3412', lineHeight: 1.5 }}>
+              Se enviará la solicitud al administrador de ProyectaTec. No podrás publicar iniciativas ni administrar la institución hasta que sea aprobada.
+            </p>
+            <button type="button" className="registro-secondary-btn" onClick={() => { setInstitutionManual(false); setProfileField('institution', ''); setProfileField('institution_location', ''); setProfileField('institution_website', ''); }}>
+              ← Elegir de la lista
             </button>
           </>
         )}
@@ -324,8 +363,8 @@ export default function Registro({ onRegister }: RegistroProps) {
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'registro-organization_name-error' : undefined}
             />
-            <button type="button" className="registro-login-link" onClick={() => { setOrganizationManual(false); setProfileField('organization_name', ''); setProfileField('organization_id', ''); }}>
-              Elegir de la lista
+            <button type="button" className="registro-secondary-btn" onClick={() => { setOrganizationManual(false); setProfileField('organization_name', ''); setProfileField('organization_id', ''); }}>
+              ← Elegir de la lista
             </button>
           </>
         )}
@@ -378,12 +417,13 @@ export default function Registro({ onRegister }: RegistroProps) {
           {renderInstitutionField()}
           <div className="registro-field">
             <label htmlFor="registro-academic_role">Actividad académica</label>
-            <select id="registro-academic_role" value={perfil.academic_role ?? ''} onChange={(event) => setProfileField('academic_role', event.target.value)} required>
+            <select id="registro-academic_role" value={perfil.academic_role ?? ''} onChange={(event) => setProfileField('academic_role', event.target.value)} required aria-invalid={Boolean(errores.academic_role)}>
               <option value="">Selecciona una opción</option>
               <option value="docente">Docente</option>
               <option value="investigador">Investigador/a</option>
               <option value="ambos">Docente e investigador/a</option>
             </select>
+            {errores.academic_role && <p className="registro-error">{errores.academic_role}</p>}
           </div>
           {renderProfileInput('organization_area', 'Área, departamento o campo de investigación (opcional)', '', 'text', false)}
           {renderProfileInput('organization_position', 'Cargo o función (opcional)', '', 'text', false)}
@@ -406,12 +446,13 @@ export default function Registro({ onRegister }: RegistroProps) {
           {renderProfileInput('website', 'Sitio web (URL)', 'https://ejemplo.org', 'url')}
           <div className="registro-field">
             <label htmlFor="registro-organization_type">Tipo de organización</label>
-            <select id="registro-organization_type" value={perfil.organization_type ?? ''} onChange={(event) => setProfileField('organization_type', event.target.value)} required>
+            <select id="registro-organization_type" value={perfil.organization_type ?? ''} onChange={(event) => setProfileField('organization_type', event.target.value)} required aria-invalid={Boolean(errores.organization_type)}>
               <option value="">Selecciona el tipo</option>
               <option value="empresa">Empresa</option>
               <option value="institucion_educativa">Institución educativa</option>
               <option value="sector_social">Sector social</option>
             </select>
+            {errores.organization_type && <p className="registro-error">{errores.organization_type}</p>}
           </div>
           <div className="registro-field">
             <label htmlFor="registro-organization_sector">Sector o actividad</label>

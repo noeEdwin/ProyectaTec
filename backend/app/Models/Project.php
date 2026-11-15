@@ -31,6 +31,8 @@ class Project extends Model
         'location',
         'starts_at',
         'ends_at',
+        'cover_image_path',
+        'gallery_paths',
     ];
 
     protected function casts(): array
@@ -39,6 +41,7 @@ class Project extends Model
             'is_hidden' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'gallery_paths' => 'array',
         ];
     }
 

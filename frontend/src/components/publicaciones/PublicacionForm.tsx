@@ -11,7 +11,10 @@ import type {
   Categoria,
   PublicacionErrors,
   PublicacionFormValues,
+  PublicacionMediaItem,
+  PublicacionMediaSelection,
   PublicacionPayload,
+  RequerimientoItem,
 } from '../../types/publicacion';
 import {
   construirPayload,
@@ -26,9 +29,21 @@ type Props = {
   errorCategorias?: string | null;
   valoresIniciales?: Partial<PublicacionFormValues>;
   /** Conexión con la API de publicaciones (ver api/publicacionesService.ts). */
-  onSubmit: (payload: PublicacionPayload) => Promise<void>;
+  onSubmit: (payload: PublicacionPayload, media?: PublicacionMediaSelection) => Promise<void>;
   onCancel: () => void;
 };
+
+const TIPOS_IMAGEN_PERMITIDOS = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function validarArchivoImagen(file: File): string | null {
+  if (!TIPOS_IMAGEN_PERMITIDOS.has(file.type)) {
+    return `El archivo "${file.name}" debe ser JPG, PNG o WEBP.`;
+  }
+  if (file.size > LIMITES.maxImagenBytes) {
+    return `El archivo "${file.name}" supera el límite de 3 MB.`;
+  }
+  return null;
+}
 
 // Orden en que aparecen los campos
 const ORDEN_CAMPOS: (keyof PublicacionFormValues)[] = [
@@ -39,6 +54,7 @@ const ORDEN_CAMPOS: (keyof PublicacionFormValues)[] = [
   'starts_at',
   'ends_at',
   'description',
+  'requirements',
 ];
 
 const CAMPOS_API = new Set<string>(ORDEN_CAMPOS);
@@ -94,14 +110,34 @@ export default function PublicacionForm({
   const [valores, setValores] = useState<PublicacionFormValues>(() => ({
     ...VALORES_INICIALES,
     ...valoresIniciales,
+    requirements: valoresIniciales?.requirements ?? [],
+    existingCoverUrl: valoresIniciales?.existingCoverUrl ?? null,
+    existingGallery: valoresIniciales?.existingGallery ?? [],
   }));
   const [errores, setErrores] = useState<PublicacionErrors>({});
   const [intentado, setIntentado] = useState(false);
   const [vista, setVista] = useState<'formulario' | 'previa'>('formulario');
   const [enviando, setEnviando] = useState(false);
 
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [removeCover, setRemoveCover] = useState(false);
+  const [keptGallery, setKeptGallery] = useState<PublicacionMediaItem[]>(
+    () => valoresIniciales?.existingGallery ?? [],
+  );
+  const [newGalleryFiles, setNewGalleryFiles] = useState<Array<{ file: File; previewUrl: string }>>([]);
+  const [errorMedia, setErrorMedia] = useState<string | null>(null);
+  const createdUrlsRef = useRef<string[]>([]);
+
   const previaRef = useRef<HTMLHeadingElement | null>(null);
   const descripcionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const urls = createdUrlsRef.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const editando = modo === 'editar';
   const esProyecto = valores.tipo === 'proyecto';
@@ -131,6 +167,93 @@ export default function PublicacionForm({
     if (intentado) setErrores(validarPublicacion(siguientes));
   }
 
+  function agregarRequerimiento() {
+    if (valores.requirements.length >= LIMITES.maxRequerimientos) return;
+    const nuevo: RequerimientoItem = {
+      title: '',
+      description: '',
+      required_profile: '',
+      openings: 1,
+    };
+    cambiar('requirements', [...valores.requirements, nuevo]);
+  }
+
+  function actualizarRequerimiento(index: number, patch: Partial<RequerimientoItem>) {
+    const siguientes = valores.requirements.map((item, idx) =>
+      idx === index ? { ...item, ...patch } : item,
+    );
+    cambiar('requirements', siguientes);
+  }
+
+  function quitarRequerimiento(index: number) {
+    const siguientes = valores.requirements.filter((_, idx) => idx !== index);
+    cambiar('requirements', siguientes);
+  }
+
+  function seleccionarPortada(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    const err = validarArchivoImagen(file);
+    if (err) {
+      setErrorMedia(err);
+      return;
+    }
+    setErrorMedia(null);
+    const preview = URL.createObjectURL(file);
+    createdUrlsRef.current.push(preview);
+    setCoverFile(file);
+    setCoverPreviewUrl(preview);
+    setRemoveCover(false);
+  }
+
+  function quitarPortada() {
+    setCoverFile(null);
+    setCoverPreviewUrl(null);
+    setRemoveCover(true);
+    setErrorMedia(null);
+  }
+
+  function agregarGaleria(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const disponibles = LIMITES.maxGaleria - (keptGallery.length + newGalleryFiles.length);
+    if (disponibles <= 0) {
+      setErrorMedia(`La galería admite un máximo de ${LIMITES.maxGaleria} imágenes.`);
+      return;
+    }
+
+    const seleccion = Array.from(files);
+    if (seleccion.length > disponibles) {
+      setErrorMedia(`Solo puedes agregar ${disponibles} imagen(es) más (máximo ${LIMITES.maxGaleria}).`);
+    } else {
+      setErrorMedia(null);
+    }
+
+    const validas: Array<{ file: File; previewUrl: string }> = [];
+    for (const file of seleccion.slice(0, disponibles)) {
+      const err = validarArchivoImagen(file);
+      if (err) {
+        setErrorMedia(err);
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      createdUrlsRef.current.push(previewUrl);
+      validas.push({ file, previewUrl });
+    }
+    if (validas.length > 0) {
+      setNewGalleryFiles((prev) => [...prev, ...validas]);
+    }
+  }
+
+  function quitarImagenExistente(path: string) {
+    setKeptGallery((prev) => prev.filter((item) => item.path !== path));
+    setErrorMedia(null);
+  }
+
+  function quitarNuevaImagen(index: number) {
+    setNewGalleryFiles((prev) => prev.filter((_, idx) => idx !== index));
+    setErrorMedia(null);
+  }
+
   function irAVistaPrevia(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIntentado(true);
@@ -139,8 +262,8 @@ export default function PublicacionForm({
     setErrores(nuevos);
 
     const primero = ORDEN_CAMPOS.find((campo) => nuevos[campo]);
-    if (primero) {
-      enfocar(primero);
+    if (Object.keys(nuevos).length > 0 || errorMedia) {
+      if (primero) enfocar(primero);
       return;
     }
     setVista('previa');
@@ -151,8 +274,15 @@ export default function PublicacionForm({
     setEnviando(true);
     setErrores({});
 
+    const mediaSelection: PublicacionMediaSelection = {
+      coverFile,
+      removeCover,
+      keepGallery: keptGallery.map((item) => item.path),
+      galleryFiles: newGalleryFiles.map((item) => item.file),
+    };
+
     try {
-      await onSubmit(construirPayload(valores));
+      await onSubmit(construirPayload(valores), mediaSelection);
     } catch (err: unknown) {
       const deApi = erroresDeApi(err);
       setErrores(deApi);
@@ -163,6 +293,17 @@ export default function PublicacionForm({
       setEnviando(false);
     }
   }
+
+  const portadaActivaUrl = coverFile
+    ? coverPreviewUrl
+    : removeCover
+      ? null
+      : valores.existingCoverUrl;
+  const galeriaPreviewUrls = [
+    ...keptGallery.map((item) => item.url),
+    ...newGalleryFiles.map((item) => item.previewUrl),
+  ];
+  const totalGaleria = galeriaPreviewUrls.length;
 
   const categoriaSeleccionada = listaCategorias.find(
     (c) => String(c.id) === valores.category_id,
@@ -401,6 +542,214 @@ export default function PublicacionForm({
                         </span>
                       </div>
                     </div>
+
+                    {/* Imagen de portada y galería */}
+                    <div className="pub-seccion-extra">
+                      <div className="pub-extra-header">
+                        <div>
+                          <h3>Imágenes de la publicación</h3>
+                          <p>
+                            Agrega una foto principal (portada o perfil del proyecto) y hasta {LIMITES.maxGaleria}{' '}
+                            imágenes de galería (JPG, PNG o WEBP, máx. 3 MB c/u).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pub-media-grid">
+                        <div className="pub-media-bloque">
+                          <label htmlFor="pub-cover-input">
+                            Foto de portada / perfil <span className="pub-opcional">(opcional)</span>
+                          </label>
+                          <div className="pub-portada-box">
+                            {portadaActivaUrl ? (
+                              <div className="pub-portada-preview">
+                                <img src={portadaActivaUrl} alt="Vista previa de portada" />
+                                <button
+                                  type="button"
+                                  className="pub-media-quitar"
+                                  onClick={quitarPortada}
+                                  aria-label="Quitar foto de portada"
+                                >
+                                  Quitar
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="pub-portada-vacia">Sin foto de portada</div>
+                            )}
+                            <input
+                              id="pub-cover-input"
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              onChange={(e) => {
+                                seleccionarPortada(e.target.files);
+                                e.target.value = '';
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pub-media-bloque">
+                          <label htmlFor="pub-gallery-input">
+                            Galería ({totalGaleria}/{LIMITES.maxGaleria}){' '}
+                            <span className="pub-opcional">(opcional)</span>
+                          </label>
+                          <input
+                            id="pub-gallery-input"
+                            type="file"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp"
+                            disabled={totalGaleria >= LIMITES.maxGaleria}
+                            onChange={(e) => {
+                              agregarGaleria(e.target.files);
+                              e.target.value = '';
+                            }}
+                          />
+                          {totalGaleria > 0 && (
+                            <div className="pub-galeria-grid">
+                              {keptGallery.map((item) => (
+                                <div className="pub-galeria-item" key={item.path}>
+                                  <img src={item.url} alt="Imagen guardada en galería" />
+                                  <button
+                                    type="button"
+                                    onClick={() => quitarImagenExistente(item.path)}
+                                    aria-label="Eliminar imagen de galería"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                              {newGalleryFiles.map((item, idx) => (
+                                <div className="pub-galeria-item" key={`${item.file.name}-${idx}`}>
+                                  <img src={item.previewUrl} alt={`Nueva imagen ${idx + 1}`} />
+                                  <button
+                                    type="button"
+                                    onClick={() => quitarNuevaImagen(idx)}
+                                    aria-label={`Eliminar imagen ${item.file.name}`}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {errorMedia && (
+                        <p className="pub-error" role="alert">
+                          {errorMedia}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Múltiples requerimientos / vacantes */}
+                    <div className="pub-seccion-extra" id="pub-requirements" tabIndex={-1}>
+                      <div className="pub-extra-header">
+                        <div>
+                          <h3>
+                            Requerimientos y perfiles buscados{' '}
+                            <span className="pub-opcional">(opcional, máx. {LIMITES.maxRequerimientos})</span>
+                          </h3>
+                          <p>
+                            Detalla los distintos apoyos, vacantes o perfiles que necesitas para esta{' '}
+                            {esProyecto ? 'iniciativa' : 'necesidad comunitaria'}.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="pub-boton pub-boton-secundario pub-boton-compacto"
+                          onClick={agregarRequerimiento}
+                          disabled={valores.requirements.length >= LIMITES.maxRequerimientos}
+                        >
+                          + Agregar requerimiento
+                        </button>
+                      </div>
+
+                      {valores.requirements.length === 0 ? (
+                        <p className="pub-texto">
+                          Aún no agregas requerimientos específicos. Puedes sumar uno o varios perfiles con el botón superior.
+                        </p>
+                      ) : (
+                        <div className="pub-reqs-lista">
+                          {valores.requirements.map((req, index) => (
+                            <div className="pub-req-item" key={req.id ?? `req-${index}`}>
+                              <div className="pub-req-top">
+                                <strong>Requerimiento #{index + 1}</strong>
+                                <button
+                                  type="button"
+                                  className="pub-req-quitar"
+                                  onClick={() => quitarRequerimiento(index)}
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                              <div className="pub-fila">
+                                <div className="pub-campo">
+                                  <label htmlFor={`pub-req-title-${index}`}>Título / rol buscado</label>
+                                  <input
+                                    id={`pub-req-title-${index}`}
+                                    type="text"
+                                    maxLength={LIMITES.requerimientoTitulo.max}
+                                    placeholder="Ej. Desarrollador web o brigadista ambiental"
+                                    value={req.title}
+                                    onChange={(e) =>
+                                      actualizarRequerimiento(index, { title: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="pub-campo">
+                                  <label htmlFor={`pub-req-openings-${index}`}>Vacantes</label>
+                                  <input
+                                    id={`pub-req-openings-${index}`}
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    value={req.openings}
+                                    onChange={(e) =>
+                                      actualizarRequerimiento(index, {
+                                        openings: Math.max(1, Number(e.target.value) || 1),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                              <div className="pub-fila">
+                                <div className="pub-campo">
+                                  <label htmlFor={`pub-req-profile-${index}`}>
+                                    Perfil o carrera deseada <span className="pub-opcional">(opcional)</span>
+                                  </label>
+                                  <input
+                                    id={`pub-req-profile-${index}`}
+                                    type="text"
+                                    maxLength={255}
+                                    placeholder="Ej. Ing. en Sistemas, Arquitectura, Voluntariado"
+                                    value={req.required_profile}
+                                    onChange={(e) =>
+                                      actualizarRequerimiento(index, { required_profile: e.target.value })
+                                    }
+                                  />
+                                </div>
+                                <div className="pub-campo">
+                                  <label htmlFor={`pub-req-desc-${index}`}>
+                                    Actividades o detalle <span className="pub-opcional">(opcional)</span>
+                                  </label>
+                                  <input
+                                    id={`pub-req-desc-${index}`}
+                                    type="text"
+                                    maxLength={1000}
+                                    placeholder="Breve descripción de lo que realizará"
+                                    value={req.description}
+                                    onChange={(e) =>
+                                      actualizarRequerimiento(index, { description: e.target.value })
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <MensajeError id="pub-requirements-error" texto={errores.requirements} />
+                    </div>
                   </div>
 
                   <div className="pub-acciones">
@@ -463,6 +812,44 @@ export default function PublicacionForm({
                     <dt>Descripción</dt>
                     <dd className="pub-resumen-texto">{valores.description.trim()}</dd>
                   </div>
+                  {(portadaActivaUrl || galeriaPreviewUrls.length > 0) && (
+                    <div>
+                      <dt>Imágenes</dt>
+                      <dd>
+                        {portadaActivaUrl && (
+                          <div className="pub-previa-portada">
+                            <img src={portadaActivaUrl} alt="Portada de la publicación" />
+                          </div>
+                        )}
+                        {galeriaPreviewUrls.length > 0 && (
+                          <div className="pub-galeria-grid" style={{ marginTop: 8 }}>
+                            {galeriaPreviewUrls.map((url, idx) => (
+                              <div className="pub-galeria-item" key={`prev-gal-${idx}`}>
+                                <img src={url} alt={`Galería ${idx + 1}`} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </dd>
+                    </div>
+                  )}
+                  {valores.requirements.length > 0 && (
+                    <div>
+                      <dt>Requerimientos ({valores.requirements.length})</dt>
+                      <dd>
+                        <ul className="pub-previa-reqs">
+                          {valores.requirements.map((req, idx) => (
+                            <li key={`prev-req-${idx}`}>
+                              <strong>{req.title.trim()}</strong> ({req.openings}{' '}
+                              {req.openings === 1 ? 'vacante' : 'vacantes'})
+                              {req.required_profile.trim() ? ` · Perfil: ${req.required_profile.trim()}` : ''}
+                              {req.description.trim() ? ` — ${req.description.trim()}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
 
                 <div className="pub-acciones">

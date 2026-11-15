@@ -27,6 +27,7 @@ class ProfileResource extends JsonResource
             'expected_graduation' => $this->expected_graduation,
             'academic_role' => $this->academic_role,
             'organization_name' => $this->organization_name,
+            'organization_id' => $this->organization_id,
             'organization_area' => $this->organization_area,
             'organization_position' => $this->organization_position,
             'municipality' => $this->municipality,
@@ -36,6 +37,7 @@ class ProfileResource extends JsonResource
             'pending_affiliation' => $this->pending_affiliation ?? null,
             'affiliation_history' => $this->affiliation_history ?? [],
             'affiliation_rejection_reason' => $this->affiliation_rejection_reason,
+            'has_pending_institution_approval' => $this->whenLoaded('user', fn () => $this->user->hasPendingNewInstitution(), false),
             'image' => $this->avatar_path,
             'image_url' => $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null,
             // Datos que viven en la tabla users (si la relación está cargada)

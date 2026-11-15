@@ -40,9 +40,26 @@ export function validarPublicacion(v: PublicacionFormValues): PublicacionErrors 
     if (v.modality && !MODALIDADES.some((m) => m.value === v.modality)) {
       e.modality = 'Selecciona una modalidad válida.';
     }
-    
+
     if (v.starts_at && v.ends_at && v.ends_at < v.starts_at) {
       e.ends_at = 'La fecha de fin no puede ser anterior a la de inicio.';
+    }
+  }
+
+  if (v.requirements.length > LIMITES.maxRequerimientos) {
+    e.requirements = `Puedes agregar como máximo ${LIMITES.maxRequerimientos} requerimientos.`;
+  } else {
+    for (let i = 0; i < v.requirements.length; i += 1) {
+      const req = v.requirements[i];
+      const reqTitle = req.title.trim();
+      if (reqTitle.length < LIMITES.requerimientoTitulo.min) {
+        e.requirements = `El requerimiento #${i + 1} debe tener un título de al menos ${LIMITES.requerimientoTitulo.min} caracteres (o elimínalo).`;
+        break;
+      }
+      if (!Number.isInteger(req.openings) || req.openings < 1 || req.openings > 100) {
+        e.requirements = `Las vacantes del requerimiento #${i + 1} deben estar entre 1 y 100.`;
+        break;
+      }
     }
   }
 
@@ -57,6 +74,14 @@ export function construirPayload(v: PublicacionFormValues): PublicacionPayload {
     location: v.location.trim() || null,
   };
 
+  const requirements = v.requirements.map((item) => ({
+    ...(item.id ? { id: item.id } : {}),
+    title: item.title.trim(),
+    description: item.description.trim() || null,
+    required_profile: item.required_profile.trim() || null,
+    openings: Math.max(1, Math.min(100, Math.trunc(Number(item.openings) || 1))),
+  }));
+
   if (v.tipo === 'proyecto') {
     return {
       type: 'project',
@@ -64,10 +89,11 @@ export function construirPayload(v: PublicacionFormValues): PublicacionPayload {
       modality: (v.modality || null) as Modalidad | null,
       starts_at: v.starts_at || null,
       ends_at: v.ends_at || null,
+      needs: requirements,
     };
   }
 
-  return { type: 'community_need', ...base };
+  return { type: 'community_need', ...base, requirements };
 }
 
 

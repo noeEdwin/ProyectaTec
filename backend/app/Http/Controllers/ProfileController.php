@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ProfileResource;
+use App\Models\Organization;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -175,6 +176,11 @@ class ProfileController extends Controller
             'display_name' => 'required|string|max:255',
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
+            'request_new_institution' => ['sometimes', 'boolean'],
+            'institution_website' => ['nullable', 'url:http,https', 'max:255'],
+            'institution_location' => ['nullable', 'string', 'max:255'],
+            'institution_email' => ['nullable', 'email', 'max:255'],
+            'affiliation_reason' => ['nullable', 'string', 'max:500'],
             'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'interest_areas' => ['sometimes', 'array', 'max:6'],
@@ -216,7 +222,36 @@ class ProfileController extends Controller
                 ->filter()->implode(', ');
         }
 
-        $profile = DB::transaction(function () use ($user, $validated) {
+        $affiliationReason = trim((string) ($validated['affiliation_reason'] ?? ''));
+        $requestNewInstitution = ! empty($validated['request_new_institution']);
+        $institutionMeta = [
+            'website' => $validated['institution_website'] ?? null,
+            'location' => $validated['institution_location'] ?? ($validated['location'] ?? null),
+            'email' => $validated['institution_email'] ?? null,
+        ];
+        unset(
+            $validated['request_new_institution'],
+            $validated['institution_website'],
+            $validated['institution_location'],
+            $validated['institution_email'],
+            $validated['affiliation_reason']
+        );
+
+        $requestedPendingInstitution = null;
+        if ($requestNewInstitution && filled($validated['institution'] ?? null)) {
+            [$institutionOrg, $isApproved] = Organization::resolveOrRequestInstitution(
+                $validated['institution'],
+                $institutionMeta
+            );
+            if ($isApproved) {
+                $validated['institution'] = $institutionOrg->name;
+            } else {
+                $requestedPendingInstitution = $institutionOrg;
+                unset($validated['institution']);
+            }
+        }
+
+        $profile = DB::transaction(function () use ($user, $validated, $requestedPendingInstitution, $affiliationReason) {
             $email = $validated['email'] ?? null;
             unset($validated['email']);
             $user->name = $validated['display_name'];
@@ -230,9 +265,20 @@ class ProfileController extends Controller
                 $accountType = $validated['account_type'] ?? null;
                 unset($validated['account_type']);
                 $newProfile = Profile::create(['user_id' => $user->id] + $validated);
+                $newPending = [];
                 if ($accountType !== null && $this->canonicalAccountType($accountType) !== $this->canonicalAccountType($user->account_type)) {
+                    $newPending['account_type'] = $accountType;
+                }
+                if ($requestedPendingInstitution !== null) {
+                    $newPending['institution'] = $requestedPendingInstitution->name;
+                    $newPending['pending_institution_id'] = $requestedPendingInstitution->id;
+                }
+                if ($newPending !== []) {
+                    if ($affiliationReason !== '') {
+                        $newPending['reason'] = $affiliationReason;
+                    }
                     $newProfile->update([
-                        'pending_affiliation' => ['account_type' => $accountType],
+                        'pending_affiliation' => $newPending,
                         'affiliation_status' => 'pending',
                     ]);
                 }
@@ -261,11 +307,39 @@ class ProfileController extends Controller
                     unset($validated[$field]);
                 }
             }
+            if ($requestedPendingInstitution !== null) {
+                $pendingAffiliation['institution'] = $requestedPendingInstitution->name;
+                $pendingAffiliation['pending_institution_id'] = $requestedPendingInstitution->id;
+            }
             if ($typeChanged) {
                 $pendingAffiliation['account_type'] = $accountType;
             }
+            if ($pendingAffiliation !== [] && $affiliationReason !== '') {
+                $pendingAffiliation['reason'] = $affiliationReason;
+            }
 
             if ($pendingAffiliation !== []) {
+                if (empty($pendingAffiliation['pending_institution_id'])) {
+                    $ownerOrg = null;
+                    $orgIdCandidate = $pendingAffiliation['organization_id'] ?? $currentProfile->organization_id;
+                    if (! empty($orgIdCandidate)) {
+                        $ownerOrg = Organization::find($orgIdCandidate);
+                    } else {
+                        $instName = $pendingAffiliation['institution'] ?? $validated['institution'] ?? $currentProfile->institution;
+                        if (filled($instName)) {
+                            $ownerOrg = Organization::query()
+                                ->where('approval_status', 'approved')
+                                ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $instName))])
+                                ->first();
+                        }
+                    }
+
+                    if ($ownerOrg && $ownerOrg->memberships()->where('role', 'admin')->where('status', 'active')->exists()) {
+                        $pendingAffiliation['target_organization_id'] = $ownerOrg->id;
+                        $pendingAffiliation['target_organization_name'] = $ownerOrg->name;
+                    }
+                }
+
                 $currentProfile->pending_affiliation = $pendingAffiliation;
                 $currentProfile->affiliation_status = 'pending';
                 $currentProfile->affiliation_rejection_reason = null;
@@ -294,20 +368,39 @@ class ProfileController extends Controller
     {
         abort_unless($this->isPlatformAdmin($request->user()), 403);
 
+        $pendingOrgIds = Organization::query()
+            ->where('approval_status', 'pending')
+            ->pluck('id')
+            ->all();
+
+        $profiles = Profile::query()
+            ->with('user:id,name,email,account_type')
+            ->where('affiliation_status', 'pending')
+            ->orderBy('updated_at')
+            ->get()
+            ->filter(function (Profile $profile) use ($pendingOrgIds): bool {
+                $pending = $profile->pending_affiliation ?? [];
+                if (! empty($pending['target_organization_id'])) {
+                    return false;
+                }
+                $pendingInstitutionId = $pending['pending_institution_id'] ?? null;
+
+                return $pendingInstitutionId === null || ! in_array((int) $pendingInstitutionId, $pendingOrgIds, true);
+            })
+            ->values()
+            ->map(fn (Profile $profile) => [
+                'id' => $profile->id,
+                'user_name' => $profile->user->name,
+                'user_email' => $profile->user->email,
+                'account_type' => $profile->user->account_type,
+                'current_institution' => $profile->institution,
+                'current_organization_name' => $profile->organization_name,
+                'pending_affiliation' => $profile->pending_affiliation,
+                'updated_at' => $profile->updated_at,
+            ]);
+
         return response()->json([
-            'profiles' => Profile::query()
-                ->with('user:id,name,email,account_type')
-                ->where('affiliation_status', 'pending')
-                ->orderBy('updated_at')
-                ->get()
-                ->map(fn (Profile $profile) => [
-                    'id' => $profile->id,
-                    'user_name' => $profile->user->name,
-                    'user_email' => $profile->user->email,
-                    'account_type' => $profile->user->account_type,
-                    'pending_affiliation' => $profile->pending_affiliation,
-                    'updated_at' => $profile->updated_at,
-                ]),
+            'profiles' => $profiles,
         ]);
     }
 
@@ -321,9 +414,25 @@ class ProfileController extends Controller
 
         abort_unless($profile->affiliation_status === 'pending' && filled($profile->pending_affiliation), 409);
 
-        DB::transaction(function () use ($profile, $data) {
+        self::applyAffiliationDecision($profile, $data['decision'], $data['reason'] ?? null);
+
+        return response()->json([
+            'profile' => (new ProfileResource($profile->fresh()->load('user')))->resolve($request),
+            'decision' => $data['decision'],
+        ]);
+    }
+
+    public static function applyAffiliationDecision(Profile $profile, string $decision, ?string $reason = null): void
+    {
+        DB::transaction(function () use ($profile, $decision, $reason) {
             $pending = $profile->pending_affiliation ?? [];
-            $before = $profile->only(array_keys(array_diff_key($pending, ['account_type' => true])));
+            $before = $profile->only(array_keys(array_diff_key($pending, [
+                'account_type' => true,
+                'reason' => true,
+                'pending_institution_id' => true,
+                'target_organization_id' => true,
+                'target_organization_name' => true,
+            ])));
             if (array_key_exists('account_type', $pending)) {
                 $before['account_type'] = $profile->user->account_type;
             }
@@ -331,14 +440,20 @@ class ProfileController extends Controller
             $history[] = [
                 'before' => $before,
                 'requested' => $pending,
-                'decision' => $data['decision'],
-                'reason' => $data['reason'] ?? null,
+                'decision' => $decision,
+                'reason' => $reason,
                 'reviewed_at' => now()->toISOString(),
             ];
             $profile->affiliation_history = $history;
-            if ($data['decision'] === 'approved') {
+            if ($decision === 'approved') {
                 $accountType = $pending['account_type'] ?? null;
-                unset($pending['account_type']);
+                unset(
+                    $pending['account_type'],
+                    $pending['reason'],
+                    $pending['pending_institution_id'],
+                    $pending['target_organization_id'],
+                    $pending['target_organization_name']
+                );
                 $oldOrganizationId = $profile->organization_id;
                 $newOrganizationId = array_key_exists('organization_id', $pending)
                     ? $pending['organization_id']
@@ -373,16 +488,11 @@ class ProfileController extends Controller
                 }
             } else {
                 $profile->affiliation_status = 'rejected';
-                $profile->affiliation_rejection_reason = $data['reason'];
+                $profile->affiliation_rejection_reason = $reason;
             }
             $profile->pending_affiliation = null;
             $profile->save();
         });
-
-        return response()->json([
-            'profile' => (new ProfileResource($profile->fresh()->load('user')))->resolve($request),
-            'decision' => $data['decision'],
-        ]);
     }
 
     private function isPlatformAdmin(User $user): bool

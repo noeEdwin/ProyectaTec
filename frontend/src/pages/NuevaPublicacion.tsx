@@ -3,14 +3,14 @@ import PublicacionForm from '../components/publicaciones/PublicacionForm';
 import { crearPublicacion } from '../api/publicacionesService';
 import { useCategorias } from '../hooks/useCategorias';
 import { RUTA_PUBLICACIONES } from '../types/publicacion';
-import type { PublicacionPayload } from '../types/publicacion';
+import type { PublicacionMediaSelection, PublicacionPayload } from '../types/publicacion';
 
 export default function NuevaPublicacion() {
   const navigate = useNavigate();
   const { categorias, cargando, error } = useCategorias();
 
-  async function guardar(payload: PublicacionPayload) {
-    await crearPublicacion(payload);
+  async function guardar(payload: PublicacionPayload, media?: PublicacionMediaSelection) {
+    await crearPublicacion(payload, media);
     navigate(RUTA_PUBLICACIONES);
   }
 

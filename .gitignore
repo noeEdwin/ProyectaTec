@@ -1,8 +1,11 @@
 # Configuración local y credenciales
 .env
 .env.*
+.env.prod
 !.env.example
+!.env.prod.example
 auth.json
+\[3.13.5\]*.pdf
 
 # Dependencias y archivos generados
 **/vendor/
@@ -22,3 +25,4 @@ AGENTS.md
 CLAUDE.md
 docs/
 AUTH_VALIDACION_SPRINT3.md
+imagenes-prueba/

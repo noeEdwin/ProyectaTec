@@ -29,6 +29,12 @@ class UpdateProjectRequest extends FormRequest
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'starts_at' => ['sometimes', 'nullable', 'date'],
             'ends_at' => ['sometimes', 'nullable', 'date'],
+            'needs' => ['sometimes', 'array', 'max:10'],
+            'needs.*.id' => ['sometimes', 'nullable', 'integer'],
+            'needs.*.title' => ['required', 'string', 'min:3', 'max:255'],
+            'needs.*.description' => ['nullable', 'string', 'max:1000'],
+            'needs.*.required_profile' => ['nullable', 'string', 'max:255'],
+            'needs.*.openings' => ['required', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

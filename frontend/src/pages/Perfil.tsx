@@ -2,7 +2,18 @@ import { useCallback, useState, useEffect } from 'react';
 import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { getMyProfile, getOrganizationCatalog, updateMyProfile, type OrganizationCatalogItem, type UserProfile } from '../api/profileService';
+import {
+  getMyOrganizationRoleRequests,
+  getMyOrganizations,
+  getMyProfile,
+  getOrganizationCatalog,
+  requestOrganizationRole,
+  updateMyProfile,
+  type OrganizationAccess,
+  type OrganizationCatalogItem,
+  type OrganizationRoleRequest,
+  type UserProfile,
+} from '../api/profileService';
 import { useAuth } from '../context/auth-context';
 import { traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
@@ -18,11 +29,13 @@ type ApiErrorResponse = {
 };
 
 const accountTypeOptions = [
-  { value: 'estudiante', label: 'Estudiante' },
-  { value: 'academico', label: 'Personal académico (docente o investigador)' },
-  { value: 'empleado_organizacion', label: 'Empleado de una organización' },
-  { value: 'residente_oaxaca', label: 'Persona de Oaxaca' },
+  { value: 'estudiante', label: 'Estudiante', group: 'academico', approvalHint: 'Cambio de institución o paso a docente requiere aprobación del titular de la institución o administración.' },
+  { value: 'academico', label: 'Personal académico (docente o investigador)', group: 'academico', approvalHint: 'Requiere aprobación del titular de tu institución (si tiene representante) o de ProyectaTec.' },
+  { value: 'empleado_organizacion', label: 'Empleado de una organización', group: 'organizacion', approvalHint: 'La vinculación y el ascenso a administrador requieren aprobación del dueño de la organización.' },
+  { value: 'residente_oaxaca', label: 'Persona de Oaxaca', group: 'comunidad', approvalHint: 'Perfil ciudadano directo.' },
 ];
+
+type AccountTypeFilter = 'all' | 'academico' | 'organizacion' | 'comunidad';
 
 const estiloLabel: CSSProperties = { display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' };
 const estiloInput: CSSProperties = {
@@ -91,6 +104,17 @@ export default function Perfil() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
   const [catalog, setCatalog] = useState<OrganizationCatalogItem[]>([]);
+  const [initialAccountType, setInitialAccountType] = useState<string>('estudiante');
+  const [accountTypeFilter, setAccountTypeFilter] = useState<AccountTypeFilter>('all');
+  const [affiliationReason, setAffiliationReason] = useState<string>('');
+  const [institutionManual, setInstitutionManual] = useState<boolean>(false);
+  const [institutionLocation, setInstitutionLocation] = useState<string>('');
+  const [institutionWebsite, setInstitutionWebsite] = useState<string>('');
+  const [myOrganizations, setMyOrganizations] = useState<OrganizationAccess[]>([]);
+  const [roleRequests, setRoleRequests] = useState<OrganizationRoleRequest[]>([]);
+  const [roleNote, setRoleNote] = useState<string>('');
+  const [roleRequestBusy, setRoleRequestBusy] = useState<boolean>(false);
+  const [roleRequestFeedback, setRoleRequestFeedback] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     void getOrganizationCatalog().then(setCatalog).catch(() => setCatalog([]));
@@ -136,6 +160,8 @@ export default function Perfil() {
         navigate('/mi-perfil?tipo=organizacion', { replace: true });
         return;
       }
+      const normalizedType = normalizeAccountType(data.account_type || user?.account_type);
+      setInitialAccountType(normalizedType);
       setProfile({
         display_name: data.display_name || user?.name || '',
         description: data.description || '',
@@ -144,7 +170,7 @@ export default function Perfil() {
         institution: data.institution || '',
         field_of_study: data.field_of_study || '',
         interest_areas: data.interest_areas || [],
-        account_type: normalizeAccountType(data.account_type || user?.account_type),
+        account_type: normalizedType,
         email: data.email || user?.email || '',
         campus: data.campus || '',
         semester: data.semester || '',
@@ -161,7 +187,12 @@ export default function Perfil() {
         affiliation_status: data.affiliation_status || 'current',
         affiliation_rejection_reason: data.affiliation_rejection_reason || null,
         pending_affiliation: data.pending_affiliation || null,
+        has_pending_institution_approval: data.has_pending_institution_approval || false,
       });
+      void Promise.all([
+        getMyOrganizations().then(setMyOrganizations).catch(() => setMyOrganizations([])),
+        getMyOrganizationRoleRequests().then(setRoleRequests).catch(() => setRoleRequests([])),
+      ]);
     } catch (error: unknown) {
       // Si el perfil no existe en PostgreSQL (404), inicializamos el formulario como perfil nuevo
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -216,6 +247,10 @@ export default function Perfil() {
       const mensaje = validarCampo(clave, String(profile[clave as keyof UserProfile] ?? ''));
       if (mensaje) erroresLocales[clave] = [mensaje];
     }
+    const accountTypeChanged = (profile.account_type ?? '') !== initialAccountType;
+    if (accountTypeChanged && profile.account_type === 'academico' && !affiliationReason.trim()) {
+      erroresLocales.affiliation_reason = ['Explica brevemente el motivo o cargo para solicitar el cambio a Personal académico.'];
+    }
     if (Object.keys(erroresLocales).length > 0) {
       setValidationErrors(erroresLocales);
       setErrorMessage('Por favor corrige los campos indicados.');
@@ -239,6 +274,10 @@ export default function Perfil() {
           ? ubicacionOaxaca(profile.municipality ?? '', profile.locality ?? '')
           : profile.location,
         institution: profile.institution,
+        request_new_institution: institutionManual ? true : undefined,
+        institution_location: institutionManual && institutionLocation.trim() ? institutionLocation.trim() : undefined,
+        institution_website: institutionManual && institutionWebsite.trim() ? institutionWebsite.trim() : undefined,
+        affiliation_reason: affiliationReason.trim() || undefined,
         field_of_study: profile.field_of_study,
         interest_areas: profile.interest_areas,
         campus: profile.campus,
@@ -256,8 +295,17 @@ export default function Perfil() {
       });
       if (res) {
         setProfile((current) => ({ ...current, ...res }));
+        if (res.account_type) {
+          setInitialAccountType(normalizeAccountType(res.account_type));
+        }
+        setAffiliationReason('');
+        if (res.affiliation_status === 'pending') {
+          setInstitutionManual(false);
+          setInstitutionLocation('');
+          setInstitutionWebsite('');
+        }
         setSuccessMessage(res.affiliation_status === 'pending'
-          ? 'La solicitud de cambio de institución u organización quedó pendiente de revisión. Los datos actuales siguen activos.'
+          ? 'La solicitud de cambio de institución, rol u organización quedó pendiente de revisión. Los datos actuales siguen activos.'
           : '¡Perfil guardado exitosamente!');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -268,6 +316,120 @@ export default function Perfil() {
       setSaving(false);
     }
   };
+
+  const institucionesVerificadas = catalog.filter((item) => item.organization_type === 'institucion_educativa');
+  const filteredAccountTypeOptions = accountTypeOptions.filter(
+    (option) => accountTypeFilter === 'all' || option.group === accountTypeFilter || option.value === profile.account_type,
+  );
+  const activeAccountMeta = accountTypeOptions.find((option) => option.value === profile.account_type);
+  const accountTypeChanged = (profile.account_type ?? '') !== initialAccountType;
+  const matchedOrgId = profile.organization_id
+    ?? catalog.find((item) => item.name === profile.organization_name)?.id
+    ?? null;
+  const currentOrgMembership = matchedOrgId
+    ? myOrganizations.find((org) => org.id === matchedOrgId) ?? null
+    : myOrganizations[0] ?? null;
+  const currentRoleRequest = roleRequests.find((req) => (matchedOrgId ? req.organization_id === matchedOrgId : true)) ?? null;
+
+  async function handleRequestAdminRole(targetOrgId: number) {
+    const trimmedNote = roleNote.trim();
+    if (!trimmedNote) {
+      setRoleRequestFeedback({ type: 'error', text: 'Explica tu cargo o motivo para solicitar el rol de administrador.' });
+      return;
+    }
+    setRoleRequestBusy(true);
+    setRoleRequestFeedback(null);
+    try {
+      await requestOrganizationRole(targetOrgId, { role: 'admin', note: trimmedNote });
+      setRoleNote('');
+      setRoleRequests(await getMyOrganizationRoleRequests());
+      setRoleRequestFeedback({ type: 'ok', text: 'Solicitud de ascenso enviada al responsable de la organización.' });
+    } catch (err: unknown) {
+      const apiMsg = axios.isAxiosError<{ message?: string }>(err) ? err.response?.data?.message : undefined;
+      setRoleRequestFeedback({ type: 'error', text: apiMsg || 'No se pudo enviar la solicitud de rango.' });
+    } finally {
+      setRoleRequestBusy(false);
+    }
+  }
+
+  function renderInstitutionSelect(label: string) {
+    const opciones = opcionesConActual(institucionesVerificadas.map((item) => item.name), profile.institution || '');
+    return (
+      <Campo id="profile-institution" label={label} error={errorDe('institution')}>
+        {!institutionManual ? (
+          <>
+            <select
+              id="profile-institution"
+              value={profile.institution || ''}
+              onChange={(event) => {
+                if (event.target.value === '__other__') {
+                  setInstitutionManual(true);
+                  setField('institution', '');
+                } else {
+                  setField('institution', event.target.value);
+                }
+              }}
+              required
+              style={estiloInput}
+            >
+              <option value="">Selecciona una institución verificada</option>
+              {opciones.map((nombreInst) => <option key={nombreInst} value={nombreInst}>{nombreInst}</option>)}
+              <option value="__other__">No aparece en la lista (solicitar alta al administrador)</option>
+            </select>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <input
+              id="profile-institution"
+              value={profile.institution || ''}
+              onChange={(e) => setField('institution', e.target.value)}
+              placeholder="Nombre oficial de la institución"
+              required
+              maxLength={255}
+              style={estiloInput}
+            />
+            <input
+              type="text"
+              value={institutionLocation}
+              onChange={(e) => setInstitutionLocation(e.target.value)}
+              placeholder="Ubicación o municipio (opcional)"
+              maxLength={255}
+              style={estiloInput}
+            />
+            <input
+              type="url"
+              value={institutionWebsite}
+              onChange={(e) => setInstitutionWebsite(e.target.value)}
+              placeholder="Sitio web oficial (opcional, https://...)"
+              maxLength={255}
+              style={estiloInput}
+            />
+            <p style={{ margin: 0, fontSize: '12px', color: '#9a3412' }}>
+              Esta solicitud llegará al administrador. No podrás publicar iniciativas ni administrar esa institución hasta que sea aprobada.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setInstitutionManual(false); setInstitutionLocation(''); setInstitutionWebsite(''); }}
+              style={{
+                alignSelf: 'flex-start',
+                marginTop: '4px',
+                padding: '8px 16px',
+                borderRadius: '999px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#0f4c5c',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 700,
+              }}
+            >
+              ← Elegir de las instituciones verificadas
+            </button>
+          </div>
+        )}
+      </Campo>
+    );
+  }
 
   if (loading) {
     return (
@@ -369,30 +531,61 @@ export default function Perfil() {
               )}
             </div>
 
-            {/* Tipo de cuenta */}
-            <div>
-              <label htmlFor="profile-account-type" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Tipo de cuenta
-              </label>
-              <select
-                id="profile-account-type"
-                value={profile.account_type || ''}
-                onChange={(e) => setProfile({ ...profile, account_type: e.target.value })}
-                style={{
-                  width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
-                  border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                {accountTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
+            {/* Filtro y Tipo de cuenta */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label htmlFor="profile-account-filter" style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: '#334155', marginBottom: '6px' }}>
+                  Filtrar cambios de tipo de cuenta
+                </label>
+                <select
+                  id="profile-account-filter"
+                  value={accountTypeFilter}
+                  onChange={(e) => setAccountTypeFilter(e.target.value as AccountTypeFilter)}
+                  style={estiloInput}
+                >
+                  <option value="all">Todos los tipos de perfil</option>
+                  <option value="academico">Académico / Institucional (requiere aprobación de administración)</option>
+                  <option value="organizacion">Organización / Rango (requiere aprobación de organización)</option>
+                  <option value="comunidad">Comunidad (Persona de Oaxaca)</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="profile-account-type" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
+                  Tipo de cuenta
+                </label>
+                <select
+                  id="profile-account-type"
+                  value={profile.account_type || ''}
+                  onChange={(e) => setProfile({ ...profile, account_type: e.target.value })}
+                  style={estiloInput}
+                >
+                  {filteredAccountTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                {activeAccountMeta && (
+                  <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#475569' }}>
+                    {activeAccountMeta.approvalHint}
+                  </p>
+                )}
+              </div>
+
+              {accountTypeChanged && (
+                <Campo id="profile-affiliation-reason" label="Motivo o cargo que respalda el cambio de cuenta" error={errorDe('affiliation_reason')}>
+                  <textarea
+                    id="profile-affiliation-reason"
+                    rows={2}
+                    maxLength={500}
+                    value={affiliationReason}
+                    onChange={(e) => setAffiliationReason(e.target.value)}
+                    placeholder="Ej. Egresado incorporado como docente, cambio de puesto en organización, etc."
+                    style={{ ...estiloInput, resize: 'vertical' }}
+                  />
+                </Campo>
+              )}
             </div>
 
             {profile.account_type === 'estudiante' && <>
-              <Campo id="profile-institution" label="Institución educativa" error={errorDe('institution')}>
-                <input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setField('institution', e.target.value)} required maxLength={255} style={estiloInput} />
-                <datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist>
-              </Campo>
+              {renderInstitutionSelect('Institución educativa')}
               <Campo id="profile-campus" label="Campus o plantel" error={errorDe('campus')}>
                 <input id="profile-campus" value={profile.campus || ''} onChange={(e) => setField('campus', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
@@ -415,10 +608,7 @@ export default function Perfil() {
             </>}
 
             {profile.account_type === 'academico' && <>
-              <Campo id="profile-institution" label="Institución" error={errorDe('institution')}>
-                <input id="profile-institution" list="profile-institution-list" value={profile.institution || ''} onChange={(e) => setField('institution', e.target.value)} required maxLength={255} style={estiloInput} />
-                <datalist id="profile-institution-list">{catalog.filter((item) => item.organization_type === 'institucion_educativa').map((item) => <option key={item.id} value={item.name} />)}</datalist>
-              </Campo>
+              {renderInstitutionSelect('Institución')}
               <Campo id="profile-academic-role" label="Actividad académica" error={errorDe('academic_role')}>
                 <select id="profile-academic-role" value={profile.academic_role || ''} onChange={(e) => setField('academic_role', e.target.value)} required style={estiloInput}>
                   <option value="">Selecciona</option>
@@ -447,6 +637,53 @@ export default function Perfil() {
               <Campo id="profile-organization-position" label="Cargo o puesto" error={errorDe('organization_position')}>
                 <input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setField('organization_position', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
+
+              {matchedOrgId && (
+                <div style={{ padding: '1rem', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <strong style={{ display: 'block', fontSize: '14px', color: '#0f172a', marginBottom: '4px' }}>
+                    Rango dentro de la organización
+                  </strong>
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#475569' }}>
+                    Rol actual: <strong>{currentOrgMembership?.role === 'admin' ? 'Administrador de la organización' : currentOrgMembership ? 'Colaborador' : 'Sin membresía activa aún'}</strong>
+                  </p>
+                  {currentRoleRequest && (
+                    <p role="status" style={{ margin: '0 0 8px', fontSize: '12px', color: currentRoleRequest.status === 'rejected' ? '#991b1b' : '#9a3412' }}>
+                      {currentRoleRequest.status === 'rejected'
+                        ? `Última solicitud rechazada (${currentRoleRequest.organization_name}): ${currentRoleRequest.rejection_reason || 'Sin motivo especificado'}.`
+                        : `Solicitud en revisión para ${currentRoleRequest.organization_name}: ${currentRoleRequest.requested_role === 'admin' ? 'Administrador' : 'Colaborador'}.`}
+                    </p>
+                  )}
+                  {roleRequestFeedback && (
+                    <p role="status" style={{ margin: '0 0 8px', fontSize: '12px', color: roleRequestFeedback.type === 'ok' ? '#15803d' : '#b91c1c' }}>
+                      {roleRequestFeedback.text}
+                    </p>
+                  )}
+                  {currentOrgMembership?.role !== 'admin' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={roleNote}
+                        onChange={(e) => setRoleNote(e.target.value)}
+                        placeholder="Indica tu cargo o motivo para solicitar ser administrador"
+                        maxLength={500}
+                        style={estiloInput}
+                      />
+                      <button
+                        type="button"
+                        disabled={roleRequestBusy}
+                        onClick={() => void handleRequestAdminRole(matchedOrgId)}
+                        style={{
+                          alignSelf: 'flex-start', padding: '0.5rem 1rem', borderRadius: '999px',
+                          background: '#0f766e', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 600,
+                          cursor: roleRequestBusy ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {roleRequestBusy ? 'Enviando...' : 'Solicitar ascenso a Administrador'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </>}
 
             {esResidente && <>
@@ -461,7 +698,13 @@ export default function Perfil() {
               </Campo>
             </>}
 
-            {profile.affiliation_status === 'pending' && (
+            {profile.has_pending_institution_approval && (
+              <p role="status" style={{ background: '#fff7ed', color: '#9a3412', padding: '0.875rem 1rem', borderRadius: '10px', border: '1px solid #fed7aa' }}>
+                Solicitaste dar de alta una nueva institución. Hasta que administración la apruebe, no podrás publicar iniciativas ni administrar esa institución.
+              </p>
+            )}
+
+            {profile.affiliation_status === 'pending' && !profile.has_pending_institution_approval && (
               <p role="status" style={{ background: '#fff7ed', color: '#9a3412', padding: '0.875rem 1rem', borderRadius: '10px' }}>
                 Tu cambio de institución, organización o tipo de cuenta está pendiente de revisión. Tu información anterior sigue activa.
               </p>

@@ -320,6 +320,33 @@
   padding-right: 10px;
 }
 
+.registro-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--registro-teal);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.registro-secondary-btn:hover,
+.registro-secondary-btn:focus-visible {
+  border-color: var(--registro-teal);
+  background: #f2f8f8;
+  outline: none;
+}
+
 .registro-notice {
   margin: 12px 0;
   padding: 12px 14px;

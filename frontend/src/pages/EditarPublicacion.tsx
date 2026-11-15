@@ -10,6 +10,7 @@ import { useCategorias } from '../hooks/useCategorias';
 import { RUTA_PUBLICACIONES } from '../types/publicacion';
 import type {
   PublicacionFormValues,
+  PublicacionMediaSelection,
   PublicacionPayload,
   TipoPublicacion,
 } from '../types/publicacion';
@@ -77,9 +78,9 @@ export default function EditarPublicacion() {
     return <Mensaje texto={estado.mensaje} alerta />;
   }
 
-  async function guardar(payload: PublicacionPayload) {
+  async function guardar(payload: PublicacionPayload, media?: PublicacionMediaSelection) {
     try {
-      await actualizarPublicacion(tipo as TipoPublicacion, idNumero, payload);
+      await actualizarPublicacion(tipo as TipoPublicacion, idNumero, payload, media);
       navigate(RUTA_PUBLICACIONES);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {

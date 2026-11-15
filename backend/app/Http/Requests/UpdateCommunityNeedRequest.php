@@ -27,6 +27,11 @@ class UpdateCommunityNeedRequest extends FormRequest
             'description' => ['sometimes', 'required', 'string'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'required', Rule::in(['draft', 'open', 'closed', 'withdrawn'])],
+            'requirements' => ['sometimes', 'array', 'max:10'],
+            'requirements.*.title' => ['required', 'string', 'min:3', 'max:255'],
+            'requirements.*.description' => ['nullable', 'string', 'max:1000'],
+            'requirements.*.required_profile' => ['nullable', 'string', 'max:255'],
+            'requirements.*.openings' => ['required', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

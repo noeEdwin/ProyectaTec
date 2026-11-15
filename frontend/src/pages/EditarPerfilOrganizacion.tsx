@@ -4,9 +4,15 @@ import axios from 'axios';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   getMyOrganizations,
+  getOrganizationMemberRequests,
   resubmitOrganization,
+  reviewOrganizationAffiliationRequest,
+  reviewOrganizationMemberRequest,
   updateOrganizationProfile,
   type OrganizationAccess,
+  type OrganizationActiveMember,
+  type OrganizationMemberRequest,
+  type PendingAffiliation,
 } from '../api/profileService';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
 import {
@@ -39,6 +45,13 @@ export default function EditarPerfilOrganizacion() {
   });
   const [municipio, setMunicipio] = useState('');
   const [colonia, setColonia] = useState('');
+  const [memberRequests, setMemberRequests] = useState<OrganizationMemberRequest[]>([]);
+  const [affiliationRequests, setAffiliationRequests] = useState<PendingAffiliation[]>([]);
+  const [activeMembers, setActiveMembers] = useState<OrganizationActiveMember[]>([]);
+  const [memberReasons, setMemberReasons] = useState<Record<number, string>>({});
+  const [affiliationReasons, setAffiliationReasons] = useState<Record<number, string>>({});
+  const [memberBusyId, setMemberBusyId] = useState<number | null>(null);
+  const [affiliationBusyId, setAffiliationBusyId] = useState<number | null>(null);
 
   function mostrarAviso(tipo: Aviso['tipo'], texto: string) {
     setAviso({ tipo, texto });
@@ -71,7 +84,18 @@ export default function EditarPerfilOrganizacion() {
         const ubicacion = separarUbicacionOaxaca(current.location ?? '', MUNICIPIOS_OAXACA);
         setMunicipio(ubicacion.municipio);
         setColonia(ubicacion.colonia);
-        if (!current.can_update) setAviso({ tipo: 'error', texto: 'Tu membresía no tiene permiso para editar esta organización.' });
+        if (!current.can_update) {
+          setAviso({ tipo: 'error', texto: 'Tu membresía no tiene permiso para editar esta organización.' });
+        } else {
+          void getOrganizationMemberRequests(current.id)
+            .then((data) => {
+              if (!active) return;
+              setMemberRequests(data.requests);
+              setAffiliationRequests(data.affiliation_requests ?? []);
+              setActiveMembers(data.members);
+            })
+            .catch(() => {});
+        }
       })
       .catch((error: unknown) => {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -323,6 +347,194 @@ export default function EditarPerfilOrganizacion() {
                 : 'Solo una persona administradora con membresía activa puede editar esta organización.'}
             </p>
             <p className="pd-ayuda">Tipo de cuenta: {organization?.organization_type ?? '—'} · Rol: {organization?.role ?? '—'}</p>
+
+            {organization?.can_update && (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e2e8f0' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>Solicitudes de miembros y rangos ({memberRequests.length})</h3>
+                {memberRequests.length === 0 ? (
+                  <p className="pd-ayuda">No hay solicitudes pendientes de ingreso o ascenso a administrador.</p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {memberRequests.map((req) => (
+                      <div key={req.id} style={{ padding: 12, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <strong>{req.user_name}</strong>
+                        <p style={{ margin: '2px 0 6px', fontSize: 12, color: '#475569' }}>{req.user_email}</p>
+                        <p style={{ margin: '0 0 6px', fontSize: 13 }}>
+                          Solicita: <strong>{req.requested_role === 'admin' ? 'Administrador de la organización' : 'Colaborador'}</strong>
+                        </p>
+                        {req.request_note && (
+                          <p style={{ margin: '0 0 8px', fontSize: 12, color: '#334155' }}>Motivo: {req.request_note}</p>
+                        )}
+                        <input
+                          type="text"
+                          placeholder="Motivo si rechazas"
+                          value={memberReasons[req.id] ?? ''}
+                          onChange={(event) => setMemberReasons((cur) => ({ ...cur, [req.id]: event.target.value }))}
+                          style={{ width: '100%', padding: '6px 10px', marginBottom: 8, borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="pd-boton-claro"
+                            disabled={memberBusyId === req.id}
+                            onClick={async () => {
+                              const reason = (memberReasons[req.id] ?? '').trim();
+                              if (!reason) {
+                                mostrarAviso('error', 'Indica el motivo si vas a rechazar la solicitud.');
+                                return;
+                              }
+                              setMemberBusyId(req.id);
+                              try {
+                                await reviewOrganizationMemberRequest(organization.id, req.id, 'rejected', reason);
+                                const data = await getOrganizationMemberRequests(organization.id);
+                                setMemberRequests(data.requests);
+                                setAffiliationRequests(data.affiliation_requests ?? []);
+                                setActiveMembers(data.members);
+                                mostrarAviso('exito', 'Solicitud rechazada.');
+                              } catch {
+                                mostrarAviso('error', 'No se pudo procesar el rechazo.');
+                              } finally {
+                                setMemberBusyId(null);
+                              }
+                            }}
+                          >
+                            Rechazar
+                          </button>
+                          <button
+                            type="button"
+                            className="pd-boton-oscuro"
+                            disabled={memberBusyId === req.id}
+                            onClick={async () => {
+                              setMemberBusyId(req.id);
+                              try {
+                                await reviewOrganizationMemberRequest(organization.id, req.id, 'approved');
+                                const data = await getOrganizationMemberRequests(organization.id);
+                                setMemberRequests(data.requests);
+                                setAffiliationRequests(data.affiliation_requests ?? []);
+                                setActiveMembers(data.members);
+                                mostrarAviso('exito', 'Solicitud aprobada correctamente.');
+                              } catch {
+                                mostrarAviso('error', 'No se pudo aprobar la solicitud.');
+                              } finally {
+                                setMemberBusyId(null);
+                              }
+                            }}
+                          >
+                            Aprobar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
+                  <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>Cambios de rol o afiliación ({affiliationRequests.length})</h3>
+                  {affiliationRequests.length === 0 ? (
+                    <p className="pd-ayuda">No hay cambios de tipo de cuenta o afiliación pendientes de revisión.</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {affiliationRequests.map((req) => {
+                        const targetType = String(req.pending_affiliation.account_type ?? '');
+                        const targetLabel =
+                          targetType === 'academico'
+                            ? 'Personal académico (docente o investigador)'
+                            : targetType === 'estudiante'
+                              ? 'Estudiante'
+                              : targetType === 'empleado_organizacion'
+                                ? 'Empleado de organización'
+                                : targetType || 'Sin cambio';
+                        return (
+                          <div key={req.id} style={{ padding: 12, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                            <strong>{req.user_name}</strong>
+                            <p style={{ margin: '2px 0 6px', fontSize: 12, color: '#475569' }}>{req.user_email}</p>
+                            <p style={{ margin: '0 0 4px', fontSize: 13 }}>
+                              Solicita pasar a: <strong>{targetLabel}</strong>
+                            </p>
+                            {req.pending_affiliation.reason && (
+                              <p style={{ margin: '0 0 8px', fontSize: 12, color: '#334155' }}>
+                                Motivo: {String(req.pending_affiliation.reason)}
+                              </p>
+                            )}
+                            <input
+                              type="text"
+                              placeholder="Motivo si rechazas"
+                              value={affiliationReasons[req.id] ?? ''}
+                              onChange={(event) => setAffiliationReasons((cur) => ({ ...cur, [req.id]: event.target.value }))}
+                              style={{ width: '100%', padding: '6px 10px', marginBottom: 8, borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }}
+                            />
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                className="pd-boton-claro"
+                                disabled={affiliationBusyId === req.id}
+                                onClick={async () => {
+                                  const reason = (affiliationReasons[req.id] ?? '').trim();
+                                  if (!reason) {
+                                    mostrarAviso('error', 'Indica el motivo si vas a rechazar el cambio.');
+                                    return;
+                                  }
+                                  setAffiliationBusyId(req.id);
+                                  try {
+                                    await reviewOrganizationAffiliationRequest(organization.id, req.id, 'rejected', reason);
+                                    const data = await getOrganizationMemberRequests(organization.id);
+                                    setMemberRequests(data.requests);
+                                    setAffiliationRequests(data.affiliation_requests ?? []);
+                                    setActiveMembers(data.members);
+                                    mostrarAviso('exito', 'Cambio de rol/afiliación rechazado.');
+                                  } catch {
+                                    mostrarAviso('error', 'No se pudo procesar el rechazo.');
+                                  } finally {
+                                    setAffiliationBusyId(null);
+                                  }
+                                }}
+                              >
+                                Rechazar
+                              </button>
+                              <button
+                                type="button"
+                                className="pd-boton-oscuro"
+                                disabled={affiliationBusyId === req.id}
+                                onClick={async () => {
+                                  setAffiliationBusyId(req.id);
+                                  try {
+                                    await reviewOrganizationAffiliationRequest(organization.id, req.id, 'approved');
+                                    const data = await getOrganizationMemberRequests(organization.id);
+                                    setMemberRequests(data.requests);
+                                    setAffiliationRequests(data.affiliation_requests ?? []);
+                                    setActiveMembers(data.members);
+                                    mostrarAviso('exito', 'Cambio de rol/afiliación aprobado.');
+                                  } catch {
+                                    mostrarAviso('error', 'No se pudo aprobar el cambio.');
+                                  } finally {
+                                    setAffiliationBusyId(null);
+                                  }
+                                }}
+                              >
+                                Aprobar
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {activeMembers.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#334155' }}>Miembros activos ({activeMembers.length})</h4>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: '#475569', display: 'grid', gap: 4 }}>
+                      {activeMembers.map((m) => (
+                        <li key={m.id}>
+                          {m.user_name} ({m.role === 'admin' ? 'Administrador' : 'Colaborador'})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </aside>
         </div>
         <footer className="pd-footer"><span>© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</span><span>Privacidad · Ayuda</span></footer>

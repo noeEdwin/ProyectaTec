@@ -5,9 +5,11 @@ import type {
   EstadoReporte,
   ListaReportes,
   MetaPaginacion,
+  PublicacionDetalleModeracion,
   PublicacionModeracion,
   ReporteModeracion,
   TipoPublicacionModeracion,
+  UsuarioDetalleModeracion,
   UsuarioModeracion,
 } from '../types/moderacion';
 
@@ -162,4 +164,21 @@ export async function resolverReporte(
   >(`/admin/publication-reports/${id}`, body);
 
   return data.report ?? data.data ?? data;
+}
+
+export async function obtenerDetallePublicacionModeracion(
+  tipo: TipoPublicacionModeracion,
+  id: number,
+): Promise<PublicacionDetalleModeracion> {
+  const { data } = await api.get<{ publication: PublicacionDetalleModeracion }>(
+    `/admin/publications/${tipo}/${id}`,
+  );
+  return data.publication;
+}
+
+export async function obtenerDetalleUsuarioModeracion(
+  id: number,
+): Promise<UsuarioDetalleModeracion> {
+  const { data } = await api.get<{ user: UsuarioDetalleModeracion }>(`/admin/users/${id}`);
+  return data.user;
 }

@@ -9,14 +9,19 @@ import {
   listarPublicacionesModeracion,
   listarReportesModeracion,
   listarUsuariosModeracion,
+  obtenerDetallePublicacionModeracion,
+  obtenerDetalleUsuarioModeracion,
   resolverReporte,
 } from '../api/moderacionService';
+import Toast, { type ToastMessage } from '../components/Toast';
 import type {
   EstadoReporte,
   MetaPaginacion,
+  PublicacionDetalleModeracion,
   PublicacionModeracion,
   ReporteModeracion,
   TipoPublicacionModeracion,
+  UsuarioDetalleModeracion,
   UsuarioModeracion,
 } from '../types/moderacion';
 import '../styles/perfilEspacio.css';
@@ -141,11 +146,16 @@ export default function ModeracionAdmin() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
 
-  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+  const [mensaje, setMensaje] = useState<ToastMessage | null>(null);
   const [pendiente, setPendiente] = useState<AccionPendiente | null>(null);
   const [motivo, setMotivo] = useState('');
   const [errorMotivo, setErrorMotivo] = useState('');
   const [procesando, setProcesando] = useState(false);
+
+  const [detallePublicacion, setDetallePublicacion] = useState<PublicacionDetalleModeracion | null>(null);
+  const [cargandoDetallePub, setCargandoDetallePub] = useState(false);
+  const [detalleUsuario, setDetalleUsuario] = useState<UsuarioDetalleModeracion | null>(null);
+  const [cargandoDetalleUsuario, setCargandoDetalleUsuario] = useState(false);
 
   const puedeModerar = Boolean(user?.can_manage_platform);
 
@@ -180,23 +190,60 @@ export default function ModeracionAdmin() {
   }, [cargar, puedeModerar]);
 
   useEffect(() => {
-    if (!pendiente) return;
+    if (!pendiente && !detallePublicacion && !detalleUsuario) return undefined;
     const alPresionar = (evento: KeyboardEvent) => {
-      if (evento.key === 'Escape' && !procesando) cerrarDialogo();
+      if (evento.key !== 'Escape') return;
+      if (pendiente) {
+        if (!procesando) cerrarDialogo();
+      } else if (detalleUsuario) {
+        setDetalleUsuario(null);
+      } else if (detallePublicacion) {
+        setDetallePublicacion(null);
+      }
     };
     window.addEventListener('keydown', alPresionar);
     return () => window.removeEventListener('keydown', alPresionar);
-  }, [pendiente, procesando]);
+  }, [pendiente, procesando, detallePublicacion, detalleUsuario]);
+
+  async function abrirDetallePublicacion(tipo: TipoPublicacionModeracion, id: number) {
+    setCargandoDetallePub(true);
+    setDetalleUsuario(null);
+    try {
+      const detalle = await obtenerDetallePublicacionModeracion(tipo, id);
+      setDetallePublicacion(detalle);
+    } catch (err: unknown) {
+      setMensaje({
+        tipo: 'error',
+        texto: extraerMensajeErrorModeracion(err, 'No se pudo cargar el detalle completo de la publicación.'),
+      });
+    } finally {
+      setCargandoDetallePub(false);
+    }
+  }
+
+  async function abrirDetalleUsuario(id: number) {
+    setCargandoDetalleUsuario(true);
+    setDetallePublicacion(null);
+    try {
+      const detalle = await obtenerDetalleUsuarioModeracion(id);
+      setDetalleUsuario(detalle);
+    } catch (err: unknown) {
+      setMensaje({
+        tipo: 'error',
+        texto: extraerMensajeErrorModeracion(err, 'No se pudo cargar el perfil completo del usuario.'),
+      });
+    } finally {
+      setCargandoDetalleUsuario(false);
+    }
+  }
 
   function cambiarPestana(nueva: Pestana, busquedaInicial = '') {
     setPestana(nueva);
-    setMensaje(null);
     setBusqueda(busquedaInicial);
     setFiltro('todos');
   }
 
   async function irAPagina(pagina: number) {
-    setMensaje(null);
     setCargando(true);
     setErrorCarga(null);
     try {
@@ -249,6 +296,11 @@ export default function ModeracionAdmin() {
               p.type === actualizada.type && p.id === actualizada.id ? actualizada : p,
             ),
           );
+          setDetallePublicacion((cur) =>
+            cur && cur.type === actualizada.type && cur.id === actualizada.id
+              ? { ...cur, is_hidden: actualizada.is_hidden }
+              : cur,
+          );
           setMensaje({ tipo: 'exito', texto: `${config.titulo}: acción realizada correctamente.` });
           break;
         }
@@ -260,6 +312,11 @@ export default function ModeracionAdmin() {
           );
           setUsuarios((lista) =>
             lista.map((u) => (u.id === actualizado.id ? actualizado : u)),
+          );
+          setDetalleUsuario((cur) =>
+            cur && cur.id === actualizado.id
+              ? { ...cur, is_active: actualizado.is_active }
+              : cur,
           );
           setMensaje({
             tipo: 'exito',
@@ -405,17 +462,6 @@ export default function ModeracionAdmin() {
           </p>
         )}
 
-        {mensaje && (
-          <p
-            className={`mod-mensaje ${
-              mensaje.tipo === 'exito' ? 'mod-mensaje-exito' : 'mod-mensaje-error'
-            }`}
-            role={mensaje.tipo === 'exito' ? 'status' : 'alert'}
-          >
-            {mensaje.texto}
-          </p>
-        )}
-
         <div className="mod-pestanas" role="tablist" aria-label="Secciones de moderación">
           {(
             [
@@ -549,11 +595,20 @@ export default function ModeracionAdmin() {
                         </p>
                       )}
                       <div className="mod-acciones">
+                        <button
+                          type="button"
+                          className="pd-boton-claro"
+                          disabled={cargandoDetallePub}
+                          onClick={() => void abrirDetallePublicacion(objetivo.tipo, objetivo.id)}
+                        >
+                          Ver publicación
+                        </button>
                         {reporte.reporter_id !== user?.id && (
                           <button
                             type="button"
                             className="pd-boton-claro"
-                            onClick={() => cambiarPestana('usuarios', String(reporte.reporter_id))}
+                            disabled={cargandoDetalleUsuario}
+                            onClick={() => void abrirDetalleUsuario(reporte.reporter_id)}
                           >
                             Ver usuario #{reporte.reporter_id}
                           </button>
@@ -683,6 +738,14 @@ export default function ModeracionAdmin() {
                     </div>
                   </div>
                   <div className="mod-acciones">
+                    <button
+                      type="button"
+                      className="pd-boton-claro"
+                      disabled={cargandoDetallePub}
+                      onClick={() => void abrirDetallePublicacion(publicacion.type, publicacion.id)}
+                    >
+                      Ver publicación
+                    </button>
                     {publicacion.is_hidden ? (
                       <button
                         type="button"
@@ -750,6 +813,14 @@ export default function ModeracionAdmin() {
                     </div>
                   </div>
                   <div className="mod-acciones">
+                    <button
+                      type="button"
+                      className="pd-boton-claro"
+                      disabled={cargandoDetalleUsuario}
+                      onClick={() => void abrirDetalleUsuario(usuario.id)}
+                    >
+                      Ver perfil completo
+                    </button>
                     {usuario.is_active ? (
                       <button
                         type="button"
@@ -792,9 +863,434 @@ export default function ModeracionAdmin() {
         </footer>
       </main>
 
-      {pendiente && configPendiente && (
+      {detallePublicacion && (
         <div
           className="mod-overlay"
+          onMouseDown={(evento) => {
+            if (evento.target === evento.currentTarget) setDetallePublicacion(null);
+          }}
+        >
+          <div
+            className="mod-dialogo-detalle"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-pub-detalle-titulo"
+          >
+            <div className="mod-modal-cabecera">
+              <div>
+                <div className="mod-etiquetas" style={{ marginBottom: 6 }}>
+                  <span className="mod-etiqueta">
+                    {detallePublicacion.type === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria'} #{detallePublicacion.id}
+                  </span>
+                  <span className={`mod-etiqueta ${detallePublicacion.is_hidden ? 'mod-etiqueta-peligro' : 'mod-etiqueta-ok'}`}>
+                    {detallePublicacion.is_hidden ? 'Oculta en catálogo' : 'Visible'}
+                  </span>
+                  <span className="mod-etiqueta mod-etiqueta-neutra">
+                    Estado: {detallePublicacion.status}
+                  </span>
+                </div>
+                <h2 id="mod-pub-detalle-titulo">{detallePublicacion.title}</h2>
+              </div>
+              <button
+                type="button"
+                className="mod-modal-cerrar"
+                onClick={() => setDetallePublicacion(null)}
+                aria-label="Cerrar detalle de publicación"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mod-detalle-grid">
+              <div className="mod-detalle-item">
+                <span>Categoría / Sector</span>
+                <strong>
+                  {detallePublicacion.category?.name ?? 'Sin categoría'}
+                  {detallePublicacion.category?.sector ? ` · ${detallePublicacion.category.sector}` : ''}
+                </strong>
+              </div>
+              <div className="mod-detalle-item">
+                <span>Ubicación</span>
+                <strong>{detallePublicacion.location || 'No indicada'}</strong>
+              </div>
+              {detallePublicacion.modality && (
+                <div className="mod-detalle-item">
+                  <span>Modalidad</span>
+                  <strong>{detallePublicacion.modality}</strong>
+                </div>
+              )}
+              {detallePublicacion.organization && (
+                <div className="mod-detalle-item">
+                  <span>Organización vinculada</span>
+                  <strong>{detallePublicacion.organization.name}</strong>
+                </div>
+              )}
+              {detallePublicacion.created_at && (
+                <div className="mod-detalle-item">
+                  <span>Fecha de publicación</span>
+                  <strong>{fecha(detallePublicacion.created_at)}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="mod-detalle-seccion">
+              <h3>Descripción</h3>
+              {detallePublicacion.cover_image_url && (
+                <img
+                  src={detallePublicacion.cover_image_url}
+                  alt={`Portada de ${detallePublicacion.title}`}
+                  className="dp-portada"
+                  style={{ maxHeight: 220, marginBottom: 12 }}
+                />
+              )}
+              <p className="mod-detalle-texto">
+                {detallePublicacion.description || 'Sin descripción.'}
+              </p>
+              {detallePublicacion.gallery_urls && detallePublicacion.gallery_urls.length > 0 && (
+                <div className="dp-galeria" style={{ marginTop: 12 }}>
+                  {detallePublicacion.gallery_urls.map((url, idx) => (
+                    <a key={`${url}-${idx}`} href={url} target="_blank" rel="noopener noreferrer" className="dp-galeria-btn">
+                      <img src={url} alt={`Galería ${idx + 1}`} />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {detallePublicacion.author && (
+              <div className="mod-detalle-seccion">
+                <h3>Autor</h3>
+                <div className="mod-subitem">
+                  <div>
+                    <strong>{detallePublicacion.author.name} (#{detallePublicacion.author.id})</strong>
+                    <div className="pd-enlace-falso">
+                      {detallePublicacion.author.email} · {ETIQUETA_TIPO_CUENTA[detallePublicacion.author.account_type] ?? detallePublicacion.author.account_type}
+                      {detallePublicacion.author.institution ? ` · ${detallePublicacion.author.institution}` : ''}
+                      {detallePublicacion.author.organization_name ? ` · ${detallePublicacion.author.organization_name}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="pd-boton-claro"
+                    onClick={() => void abrirDetalleUsuario(detallePublicacion.author!.id)}
+                  >
+                    Ver perfil del autor
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {detallePublicacion.needs.length > 0 && (
+              <div className="mod-detalle-seccion">
+                <h3>Vacantes / requerimientos ({detallePublicacion.needs.length})</h3>
+                <div className="mod-sublista">
+                  {detallePublicacion.needs.map((need) => (
+                    <div className="mod-subitem" key={need.id}>
+                      <div>
+                        <strong>{need.title}</strong>
+                        <div className="pd-enlace-falso">
+                          {need.required_profile || need.description || 'Sin detalle'} · {need.openings} plazas
+                        </div>
+                      </div>
+                      <span className="mod-etiqueta">{need.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mod-detalle-seccion">
+              <h3>Reportes recibidos ({detallePublicacion.reports.length})</h3>
+              {detallePublicacion.reports.length === 0 ? (
+                <p className="pd-ayuda">Esta publicación no tiene reportes registrados.</p>
+              ) : (
+                <div className="mod-sublista">
+                  {detallePublicacion.reports.map((rep) => (
+                    <div className="mod-subitem" key={rep.id}>
+                      <div>
+                        <strong>{ETIQUETA_MOTIVO_REPORTE[rep.reason] ?? rep.reason}</strong>
+                        {rep.details && <div className="pd-enlace-falso">{rep.details}</div>}
+                        {rep.reporter && (
+                          <div className="pd-enlace-falso">
+                            Reportado por: {rep.reporter.name} (#{rep.reporter.id})
+                          </div>
+                        )}
+                      </div>
+                      <span className="mod-etiqueta">{ETIQUETA_ESTADO_REPORTE[rep.status]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pd-acciones" style={{ marginTop: 20 }}>
+              <button
+                type="button"
+                className="pd-boton-claro"
+                onClick={() => setDetallePublicacion(null)}
+              >
+                Cerrar
+              </button>
+              {detallePublicacion.is_hidden ? (
+                <button
+                  type="button"
+                  className="pd-boton-oscuro"
+                  onClick={() =>
+                    abrirDialogo({
+                      tipo: 'restaurar',
+                      id: detallePublicacion.id,
+                      objetivo: detallePublicacion.title,
+                      publicacionTipo: detallePublicacion.type,
+                    })
+                  }
+                >
+                  Restaurar publicación
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="mod-boton-peligro"
+                  onClick={() =>
+                    abrirDialogo({
+                      tipo: 'ocultar',
+                      id: detallePublicacion.id,
+                      objetivo: detallePublicacion.title,
+                      publicacionTipo: detallePublicacion.type,
+                    })
+                  }
+                >
+                  Ocultar publicación
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detalleUsuario && (
+        <div
+          className="mod-overlay"
+          onMouseDown={(evento) => {
+            if (evento.target === evento.currentTarget) setDetalleUsuario(null);
+          }}
+        >
+          <div
+            className="mod-dialogo-detalle"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mod-user-detalle-titulo"
+          >
+            <div className="mod-modal-cabecera">
+              <div>
+                <div className="mod-etiquetas" style={{ marginBottom: 6 }}>
+                  <span className="mod-etiqueta">
+                    {ETIQUETA_TIPO_CUENTA[detalleUsuario.account_type] ?? detalleUsuario.account_type}
+                  </span>
+                  <span className={`mod-etiqueta ${detalleUsuario.is_active ? 'mod-etiqueta-ok' : 'mod-etiqueta-peligro'}`}>
+                    {detalleUsuario.is_active ? 'Cuenta activa' : 'Desactivada'}
+                  </span>
+                  {detalleUsuario.profile?.affiliation_status && (
+                    <span className="mod-etiqueta mod-etiqueta-neutra">
+                      Afiliación: {detalleUsuario.profile.affiliation_status}
+                    </span>
+                  )}
+                </div>
+                <h2 id="mod-user-detalle-titulo">{detalleUsuario.name} (ID #{detalleUsuario.id})</h2>
+                <p className="mod-meta">{detalleUsuario.email} · Registro: {fecha(detalleUsuario.created_at)}</p>
+              </div>
+              <button
+                type="button"
+                className="mod-modal-cerrar"
+                onClick={() => setDetalleUsuario(null)}
+                aria-label="Cerrar perfil de usuario"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mod-stats-grid">
+              <div className="mod-stat">
+                <strong>{detalleUsuario.stats.projects_count}</strong>
+                <span>Proyectos</span>
+              </div>
+              <div className="mod-stat">
+                <strong>{detalleUsuario.stats.community_needs_count}</strong>
+                <span>Necesidades</span>
+              </div>
+              <div className="mod-stat">
+                <strong>{detalleUsuario.stats.reports_made_count}</strong>
+                <span>Reportes hechos</span>
+              </div>
+              <div className="mod-stat">
+                <strong>{detalleUsuario.stats.reports_received_count}</strong>
+                <span>Reportes recibidos</span>
+              </div>
+            </div>
+
+            {detalleUsuario.profile ? (
+              <>
+                <div className="mod-detalle-grid">
+                  {detalleUsuario.profile.institution && (
+                    <div className="mod-detalle-item">
+                      <span>Institución</span>
+                      <strong>{detalleUsuario.profile.institution}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.campus && (
+                    <div className="mod-detalle-item">
+                      <span>Campus / plantel</span>
+                      <strong>{detalleUsuario.profile.campus}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.field_of_study && (
+                    <div className="mod-detalle-item">
+                      <span>Carrera / área</span>
+                      <strong>{detalleUsuario.profile.field_of_study}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.semester && (
+                    <div className="mod-detalle-item">
+                      <span>Semestre</span>
+                      <strong>{detalleUsuario.profile.semester}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.student_number && (
+                    <div className="mod-detalle-item">
+                      <span>No. de control / matrícula</span>
+                      <strong>{detalleUsuario.profile.student_number}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.academic_role && (
+                    <div className="mod-detalle-item">
+                      <span>Actividad académica</span>
+                      <strong>{detalleUsuario.profile.academic_role}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.organization_name && (
+                    <div className="mod-detalle-item">
+                      <span>Organización</span>
+                      <strong>{detalleUsuario.profile.organization_name}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.organization_position && (
+                    <div className="mod-detalle-item">
+                      <span>Cargo / puesto</span>
+                      <strong>{detalleUsuario.profile.organization_position}</strong>
+                    </div>
+                  )}
+                  {(detalleUsuario.profile.municipality || detalleUsuario.profile.location) && (
+                    <div className="mod-detalle-item">
+                      <span>Ubicación / municipio</span>
+                      <strong>{detalleUsuario.profile.location || detalleUsuario.profile.municipality}</strong>
+                    </div>
+                  )}
+                  {detalleUsuario.profile.phone && (
+                    <div className="mod-detalle-item">
+                      <span>Teléfono</span>
+                      <strong>{detalleUsuario.profile.phone}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {detalleUsuario.profile.description && (
+                  <div className="mod-detalle-seccion">
+                    <h3>Biografía / descripción</h3>
+                    <p className="mod-detalle-texto">{detalleUsuario.profile.description}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="pd-ayuda">El usuario aún no ha completado su perfil extendido.</p>
+            )}
+
+            {detalleUsuario.organizations.length > 0 && (
+              <div className="mod-detalle-seccion">
+                <h3>Organizaciones vinculadas ({detalleUsuario.organizations.length})</h3>
+                <div className="mod-sublista">
+                  {detalleUsuario.organizations.map((org) => (
+                    <div className="mod-subitem" key={`${org.id}-${org.role}`}>
+                      <strong>{org.name}</strong>
+                      <span className="mod-etiqueta">
+                        {org.role === 'admin' ? 'Administrador' : 'Miembro'} · {org.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(detalleUsuario.projects.length > 0 || detalleUsuario.community_needs.length > 0) && (
+              <div className="mod-detalle-seccion">
+                <h3>Publicaciones recientes</h3>
+                <div className="mod-sublista">
+                  {[...detalleUsuario.projects, ...detalleUsuario.community_needs].map((pub) => (
+                    <div className="mod-subitem" key={`${pub.type}-${pub.id}`}>
+                      <div>
+                        <strong>{pub.title}</strong>
+                        <div className="pd-enlace-falso">
+                          {pub.type === 'proyecto' ? 'Proyecto' : 'Necesidad comunitaria'} · {pub.is_hidden ? 'Oculta' : 'Visible'}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="pd-boton-claro"
+                        onClick={() => void abrirDetallePublicacion(pub.type, pub.id)}
+                      >
+                        Ver publicación
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pd-acciones" style={{ marginTop: 20 }}>
+              <button
+                type="button"
+                className="pd-boton-claro"
+                onClick={() => setDetalleUsuario(null)}
+              >
+                Cerrar
+              </button>
+              {detalleUsuario.id !== user?.id && (
+                detalleUsuario.is_active ? (
+                  <button
+                    type="button"
+                    className="mod-boton-peligro"
+                    onClick={() =>
+                      abrirDialogo({
+                        tipo: 'desactivar',
+                        id: detalleUsuario.id,
+                        objetivo: `${detalleUsuario.name} (${detalleUsuario.email})`,
+                      })
+                    }
+                  >
+                    Desactivar usuario
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="pd-boton-oscuro"
+                    onClick={() =>
+                      abrirDialogo({
+                        tipo: 'activar',
+                        id: detalleUsuario.id,
+                        objetivo: `${detalleUsuario.name} (${detalleUsuario.email})`,
+                      })
+                    }
+                  >
+                    Activar usuario
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendiente && configPendiente && (
+        <div
+          className="mod-overlay mod-overlay-alto"
           onMouseDown={(evento) => {
             if (evento.target === evento.currentTarget && !procesando) cerrarDialogo();
           }}
@@ -862,6 +1358,8 @@ export default function ModeracionAdmin() {
           </div>
         </div>
       )}
+
+      <Toast toast={mensaje} onClose={() => setMensaje(null)} />
     </div>
   );
 }

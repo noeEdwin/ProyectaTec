@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Auth\Access\Response;
 
 class ProjectPolicy
 {
@@ -26,8 +27,12 @@ class ProjectPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user): Response|bool
     {
+        if ($user->hasPendingNewInstitution()) {
+            return Response::deny('Tu institución aún está pendiente de aprobación por administración. Podrás publicar cuando sea verificada.');
+        }
+
         if (in_array($user->account_type, ['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'], true)) {
             return $user->organizations()
                 ->wherePivot('role', 'admin')

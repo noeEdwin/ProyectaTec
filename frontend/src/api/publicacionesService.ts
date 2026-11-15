@@ -1,10 +1,22 @@
 import type {
   Categoria,
   PublicacionFormValues,
+  PublicacionMediaItem,
+  PublicacionMediaSelection,
   PublicacionPayload,
+  RequerimientoItem,
   TipoPublicacion,
 } from '../types/publicacion';
 import api from './axios';
+
+export type RequerimientoPublicacion = {
+  id?: number;
+  title: string;
+  description?: string | null;
+  required_profile?: string | null;
+  openings: number;
+  status?: string;
+};
 
 type PublicationRecord = {
   id: number;
@@ -18,6 +30,11 @@ type PublicationRecord = {
   modality?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
+  cover_image_url?: string | null;
+  gallery?: PublicacionMediaItem[];
+  gallery_urls?: string[];
+  needs?: RequerimientoPublicacion[];
+  requirements?: RequerimientoPublicacion[];
   is_hidden?: boolean;
   created_at?: string;
 };
@@ -197,8 +214,42 @@ export async function listarPublicaciones(
   return resultado.items;
 }
 
-export async function crearPublicacion(payload: PublicacionPayload): Promise<{ id: number }> {
+async function subirMediaPublicacion(
+  tipo: TipoPublicacion | string,
+  id: number,
+  media: PublicacionMediaSelection,
+): Promise<void> {
+  const formData = new FormData();
+  if (media.coverFile) {
+    formData.append('cover_image', media.coverFile);
+  }
+  if (media.removeCover) {
+    formData.append('remove_cover', '1');
+  }
+  if (media.keepGallery) {
+    formData.append('sync_gallery', '1');
+    media.keepGallery.forEach((path) => {
+      formData.append('keep_gallery[]', path);
+    });
+  }
+  if (media.galleryFiles) {
+    media.galleryFiles.forEach((file) => {
+      formData.append('gallery[]', file);
+    });
+  }
+
+  const normalizedType = esTipoProyecto(tipo) ? 'proyecto' : 'necesidad';
+  await api.post(`/publications/${normalizedType}/${id}/media`, formData);
+}
+
+export async function crearPublicacion(
+  payload: PublicacionPayload,
+  media?: PublicacionMediaSelection,
+): Promise<{ id: number }> {
   cacheBusquedas.clear();
+
+  let createdId: number;
+  const tipo: TipoPublicacion = payload.type === 'project' ? 'proyecto' : 'necesidad';
 
   if (payload.type === 'project') {
     const { data } = await api.post<{ project: { id: number } }>('/projects', {
@@ -209,19 +260,27 @@ export async function crearPublicacion(payload: PublicacionPayload): Promise<{ i
       location: payload.location,
       starts_at: payload.starts_at,
       ends_at: payload.ends_at,
+      needs: payload.needs,
       status: 'open',
     });
-    return { id: data.project.id };
+    createdId = data.project.id;
+  } else {
+    const { data } = await api.post<{ community_need: { id: number } }>('/community-needs', {
+      title: payload.title,
+      description: payload.description,
+      category_id: payload.category_id,
+      location: payload.location,
+      requirements: payload.requirements,
+      status: 'open',
+    });
+    createdId = data.community_need.id;
   }
 
-  const { data } = await api.post<{ community_need: { id: number } }>('/community-needs', {
-    title: payload.title,
-    description: payload.description,
-    category_id: payload.category_id,
-    location: payload.location,
-    status: 'open',
-  });
-  return { id: data.community_need.id };
+  if (media && (media.coverFile || (media.galleryFiles && media.galleryFiles.length > 0))) {
+    await subirMediaPublicacion(tipo, createdId, media);
+  }
+
+  return { id: createdId };
 }
 
 /** Actualiza usando PATCH, método declarado por las rutas Laravel. */
@@ -229,6 +288,7 @@ export async function actualizarPublicacion(
   tipo: TipoPublicacion | string,
   id: number,
   payload: PublicacionPayload,
+  media?: PublicacionMediaSelection,
 ): Promise<void> {
   cacheBusquedas.clear();
 
@@ -242,6 +302,7 @@ export async function actualizarPublicacion(
       location: payload.location,
       starts_at: payload.starts_at,
       ends_at: payload.ends_at,
+      needs: payload.needs,
     });
   } else {
     await api.patch(path, {
@@ -249,7 +310,12 @@ export async function actualizarPublicacion(
       description: payload.description,
       category_id: payload.category_id,
       location: payload.location,
+      requirements: payload.requirements,
     });
+  }
+
+  if (media) {
+    await subirMediaPublicacion(tipo, id, media);
   }
 }
 
@@ -268,6 +334,17 @@ export async function obtenerPublicacion(
   const normalizedType = esTipoProyecto(tipo) ? 'proyecto' : 'necesidad';
   const { data } = await api.get<Record<string, unknown>>(`/me/publications/${normalizedType}/${id}`);
   const publication = extraerPublicacion(data, normalizedType);
+  const rawReqs = normalizedType === 'proyecto'
+    ? (publication.needs ?? [])
+    : (publication.requirements ?? []);
+
+  const requirements: RequerimientoItem[] = rawReqs.map((item) => ({
+    ...(item.id ? { id: item.id } : {}),
+    title: item.title ?? '',
+    description: item.description ?? '',
+    required_profile: item.required_profile ?? '',
+    openings: Number(item.openings) || 1,
+  }));
 
   return {
     tipo: normalizedType,
@@ -278,6 +355,9 @@ export async function obtenerPublicacion(
     starts_at: publication.starts_at?.slice(0, 10) ?? '',
     ends_at: publication.ends_at?.slice(0, 10) ?? '',
     description: publication.description ?? '',
+    requirements,
+    existingCoverUrl: publication.cover_image_url ?? null,
+    existingGallery: publication.gallery ?? [],
   };
 }
 

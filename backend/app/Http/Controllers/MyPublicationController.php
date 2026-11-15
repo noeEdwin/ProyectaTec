@@ -23,7 +23,7 @@ class MyPublicationController extends Controller
                         ->where('role', 'admin')
                         ->where('status', 'active'));
             })
-            ->with('organization')
+            ->with(['organization', 'needs'])
             ->latest('updated_at')
             ->get()
             ->filter(fn (Project $project) => Gate::forUser($user)->allows('update', $project))
@@ -52,7 +52,7 @@ class MyPublicationController extends Controller
     public function show(Request $request, string $type, int $id): JsonResponse
     {
         if ($type === 'proyecto') {
-            $publication = Project::with('organization')->findOrFail($id);
+            $publication = Project::with(['organization', 'needs'])->findOrFail($id);
             Gate::authorize('update', $publication);
 
             return response()->json(['project' => new ProjectResource($publication)]);

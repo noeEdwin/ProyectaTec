@@ -52,4 +52,46 @@ class Organization extends Model
     {
         return $this->hasMany(Project::class);
     }
+
+    /**
+     * Busca una institución educativa existente (aprobada o pendiente) por nombre
+     * o crea una nueva en estado pendiente para revisión administrativa.
+     *
+     * @param  array{website?: ?string, location?: ?string, email?: ?string}  $extra
+     * @return array{0: self, 1: bool} [organización, si ya está aprobada]
+     */
+    public static function resolveOrRequestInstitution(string $name, array $extra = []): array
+    {
+        $normalized = trim($name);
+        $existing = self::query()
+            ->where('organization_type', 'institucion_educativa')
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($normalized)])
+            ->first();
+
+        if ($existing) {
+            if ($existing->approval_status === 'rejected') {
+                $existing->update([
+                    'approval_status' => 'pending',
+                    'rejection_reason' => null,
+                    'website' => $extra['website'] ?? $existing->website,
+                    'location' => $extra['location'] ?? $existing->location,
+                    'email' => $extra['email'] ?? $existing->email,
+                ]);
+            }
+
+            return [$existing, $existing->approval_status === 'approved'];
+        }
+
+        $created = self::create([
+            'name' => $normalized,
+            'organization_type' => 'institucion_educativa',
+            'sector' => 'Educación y capacitación',
+            'website' => $extra['website'] ?? null,
+            'location' => $extra['location'] ?? null,
+            'email' => $extra['email'] ?? null,
+            'approval_status' => 'pending',
+        ]);
+
+        return [$created, false];
+    }
 }

@@ -10,6 +10,7 @@ use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
@@ -17,6 +18,8 @@ class ProjectController extends Controller
     public function store(StoreProjectRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $needs = $data['needs'] ?? null;
+        unset($data['needs']);
 
         if (! empty($data['organization_id'])) {
             $isAdmin = OrganizationMember::query()
@@ -31,7 +34,28 @@ class ProjectController extends Controller
         }
 
         $data['created_by'] = $request->user()->id;
-        $project = Project::create($data);
+
+        $project = DB::transaction(function () use ($data, $needs) {
+            $project = Project::create($data);
+
+            if (is_array($needs)) {
+                foreach ($needs as $item) {
+                    $title = trim((string) $item['title']);
+                    $description = trim((string) ($item['description'] ?? ''));
+                    $requiredProfile = trim((string) ($item['required_profile'] ?? ''));
+
+                    $project->needs()->create([
+                        'title' => $title,
+                        'description' => $description !== '' ? $description : $title,
+                        'required_profile' => $requiredProfile !== '' ? $requiredProfile : null,
+                        'openings' => (int) ($item['openings'] ?? 1),
+                        'status' => 'open',
+                    ]);
+                }
+            }
+
+            return $project->load(['category:id,name', 'organization:id,name', 'needs']);
+        });
 
         return response()->json(['project' => new ProjectResource($project)], 201);
     }
@@ -43,6 +67,10 @@ class ProjectController extends Controller
         if ($data === []) {
             throw ValidationException::withMessages(['project' => ['Envía al menos un campo editable.']]);
         }
+
+        $hasNeeds = array_key_exists('needs', $data);
+        $needs = $data['needs'] ?? [];
+        unset($data['needs']);
 
         $allowed = match ($project->status) {
             'draft' => ['draft', 'open', 'withdrawn'],
@@ -64,9 +92,49 @@ class ProjectController extends Controller
             throw ValidationException::withMessages(['ends_at' => ['La fecha de fin no puede ser anterior a la de inicio.']]);
         }
 
-        $project->update($data);
+        DB::transaction(function () use ($project, $data, $hasNeeds, $needs) {
+            if ($data !== []) {
+                $project->update($data);
+            }
 
-        return response()->json(['project' => new ProjectResource($project->fresh())]);
+            if (! $hasNeeds || ! is_array($needs)) {
+                return;
+            }
+
+            $existing = $project->needs()->withCount('applications')->get()->keyBy('id');
+            $keptIds = [];
+
+            foreach ($needs as $item) {
+                $title = trim((string) $item['title']);
+                $description = trim((string) ($item['description'] ?? ''));
+                $requiredProfile = trim((string) ($item['required_profile'] ?? ''));
+                $payload = [
+                    'title' => $title,
+                    'description' => $description !== '' ? $description : $title,
+                    'required_profile' => $requiredProfile !== '' ? $requiredProfile : null,
+                    'openings' => (int) ($item['openings'] ?? 1),
+                ];
+
+                $needId = isset($item['id']) ? (int) $item['id'] : null;
+                if ($needId && $existing->has($needId)) {
+                    $existing->get($needId)->update($payload);
+                    $keptIds[] = $needId;
+                } else {
+                    $created = $project->needs()->create([...$payload, 'status' => 'open']);
+                    $keptIds[] = $created->id;
+                }
+            }
+
+            foreach ($existing as $need) {
+                if (! in_array($need->id, $keptIds, true) && $need->applications_count === 0) {
+                    $need->delete();
+                }
+            }
+        });
+
+        return response()->json([
+            'project' => new ProjectResource($project->fresh(['category:id,name', 'organization:id,name', 'needs'])),
+        ]);
     }
 
     public function index(Request $request): JsonResponse
@@ -92,7 +160,7 @@ class ProjectController extends Controller
             })
             ->when(isset($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
             ->when($sector !== '', fn ($query) => $query->whereHas('organization', fn ($organization) => $organization->where('sector', $sector)))
-            ->with(['category:id,name', 'organization:id,name'])
+            ->with(['category:id,name', 'organization:id,name', 'needs'])
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->paginate(15);
@@ -112,7 +180,7 @@ class ProjectController extends Controller
     {
         $project = Project::query()
             ->publiclyVisible()
-            ->with(['category:id,name', 'organization:id,name'])
+            ->with(['category:id,name', 'organization:id,name', 'needs'])
             ->findOrFail($project);
 
         return response()->json(['project' => new ProjectResource($project)]);
