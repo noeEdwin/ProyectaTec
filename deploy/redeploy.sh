@@ -22,5 +22,9 @@ echo "==> 3. Ejecutando migraciones y optimizando caché de Laravel..."
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T backend php artisan migrate --force
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T backend php artisan optimize
 
+echo "==> 4. Limpiando caché e imágenes Docker sin uso para conservar disco..."
+docker image prune -f >/dev/null
+docker builder prune -f --keep-storage=500mb >/dev/null
+
 echo "==> Despliegue completado."
 docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" ps

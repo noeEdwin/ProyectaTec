@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Route;
 // Rutas públicas (No requieren inicio de sesión)
 // --------------------------------------------------------------------------
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth');
 Route::get('/organizations', [OrganizationController::class, 'publicIndex']);
 Route::get('/organizations/catalog', [OrganizationController::class, 'catalog']);
 // Consultar un perfil público por su identificador

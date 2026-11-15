@@ -1,9 +1,17 @@
 name: proyectatec-prod
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 256m
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${DB_DATABASE:-proyectatec}
       POSTGRES_USER: ${DB_USERNAME:-proyectatec}
@@ -21,6 +29,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile.prod
     restart: unless-stopped
+    mem_limit: 384m
+    logging: *default-logging
     env_file:
       - .env.prod
     environment:
@@ -41,6 +51,8 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
         VITE_SHOW_DEMO_ACCOUNTS: ${VITE_SHOW_DEMO_ACCOUNTS:-false}
     restart: unless-stopped
+    mem_limit: 160m
+    logging: *default-logging
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-proyectatec.lat}
       VPS_IP: ${VPS_IP:-45.55.214.212}
