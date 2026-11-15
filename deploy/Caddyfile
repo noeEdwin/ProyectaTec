@@ -1,0 +1,37 @@
+(app_routes) {
+	encode gzip zstd
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /sanctum/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /storage/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /up {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+http://{$VPS_IP:45.55.214.212} {
+	import app_routes
+}
+
+{$APP_DOMAIN:proyectatec.lat} {
+	import app_routes
+}
+
+www.{$APP_DOMAIN:proyectatec.lat} {
+	redir https://{$APP_DOMAIN:proyectatec.lat}{uri} permanent
+}

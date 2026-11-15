@@ -34,6 +34,15 @@ export default function Acceso({ onLogin }: AccesoProps) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const cuentasDemo = [
+    { etiqueta: 'Administrador', email: 'admin.demo@proyectatec.test' },
+    { etiqueta: 'Estudiante', email: 'estudiante.demo@proyectatec.test' },
+    { etiqueta: 'Docente', email: 'docente.demo@proyectatec.test' },
+    { etiqueta: 'Empleado', email: 'empleado.demo@proyectatec.test' },
+    { etiqueta: 'Comunidad', email: 'comunidad.demo@proyectatec.test' },
+    { etiqueta: 'Organización', email: 'organizacion.demo@proyectatec.test' },
+    { etiqueta: 'Dueño ITO', email: 'ito.demo@proyectatec.test' },
+  ];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,6 +254,27 @@ export default function Acceso({ onLogin }: AccesoProps) {
               {procesando ? 'Procesando...' : 'Iniciar sesión'}
             </button>
           </form>
+          {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true') && (
+            <aside className="acceso-demo" aria-label="Cuentas de demostración">
+              <strong>Prueba con una cuenta demo</strong>
+              <p>Selecciona un perfil para llenar el acceso. Contraseña común: <code>ProyectaTecDemo2026!</code></p>
+              <div>
+                {cuentasDemo.map((cuenta) => (
+                  <button
+                    key={cuenta.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(cuenta.email);
+                      setPassword('ProyectaTecDemo2026!');
+                      setErrores({});
+                    }}
+                  >
+                    {cuenta.etiqueta}
+                  </button>
+                ))}
+              </div>
+            </aside>
+          )}
         </section>
 
         <aside className="acceso-hero">

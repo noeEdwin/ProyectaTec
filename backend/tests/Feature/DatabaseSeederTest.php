@@ -21,6 +21,19 @@ class DatabaseSeederTest extends TestCase
         $this->assertSame($firstRunCounts, $this->seededTableCounts());
     }
 
+    public function test_demo_accounts_seeder_is_idempotent(): void
+    {
+        Artisan::call('db:seed', ['--class' => 'DemoAccountsSeeder', '--force' => true]);
+        $firstRunCounts = $this->seededTableCounts();
+
+        Artisan::call('db:seed', ['--class' => 'DemoAccountsSeeder', '--force' => true]);
+
+        $this->assertSame($firstRunCounts, $this->seededTableCounts());
+        $this->assertDatabaseHas('users', ['email' => 'admin.demo@proyectatec.test']);
+        $this->assertDatabaseHas('users', ['email' => 'ito.demo@proyectatec.test']);
+        $this->assertDatabaseHas('users', ['email' => 'empleado.demo@proyectatec.test']);
+    }
+
     /** @return array<string, int> */
     private function seededTableCounts(): array
     {

@@ -1,0 +1,60 @@
+name: proyectatec-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-proyectatec}
+      POSTGRES_USER: ${DB_USERNAME:-proyectatec}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido en .env.prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-proyectatec} -d ${DB_DATABASE:-proyectatec}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+    volumes:
+      - backend_storage:/var/www/html/storage/app/public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_SHOW_DEMO_ACCOUNTS: ${VITE_SHOW_DEMO_ACCOUNTS:-false}
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-proyectatec.lat}
+      VPS_IP: ${VPS_IP:-45.55.214.212}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_storage:
+  caddy_data:
+  caddy_config:
