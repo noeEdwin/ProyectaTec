@@ -1,0 +1,23 @@
+meta {
+  name: Actualizar avance de proyecto
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/projects/{{projectId}}/updates/{{projectUpdateId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "progress": 50
+  }
+}

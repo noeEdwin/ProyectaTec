@@ -1,0 +1,31 @@
+meta {
+  name: Registrar avance de proyecto
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/projects/{{projectId}}/updates
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "title": "Primera etapa",
+    "description": "Se completó el diagnóstico.",
+    "progress": 25
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body.project_update && res.body.project_update.id) {
+    bru.setVar('projectUpdateId', String(res.body.project_update.id));
+  }
+}

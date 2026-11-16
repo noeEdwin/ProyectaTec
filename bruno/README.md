@@ -114,3 +114,23 @@ actualízala o elimínala para que no prevalezca sobre la del entorno. Recuerda 
 `projectId` también lo utiliza el **PATCH** de proyectos anterior: revisa su
 valor antes de ejecutarlo. `projectNeedId` debe pertenecer al `projectId` actual;
 si cambias de proyecto, selecciona también una necesidad correspondiente.
+
+## Avances de proyectos — actividad 3.14.2
+
+La carpeta **09 - Avances de proyectos** contiene listado, detalle, registro y
+edición. Consulta el contrato en [API de avances](../docs/API_AVANCES_PROYECTOS.md).
+Los GET son públicos para proyectos visibles; POST y PATCH requieren el `token`
+temporal de un usuario autorizado. Utilizan `baseUrl` y `projectId` existentes.
+
+Configura `projectUpdateId` en las variables de Bruno con un ID real que
+pertenezca al `projectId` elegido. Si existe una variable temporal del mismo
+nombre, prevalece sobre la del entorno: actualízala o elimínala al cambiar de
+proyecto. La solicitud POST solo actualiza el ID temporal tras una creación
+exitosa con respuesta 201. Antes de utilizar PATCH, verifica que el ID temporal
+corresponda al `projectId` seleccionado, incluso si el último POST falló. Los
+valores son ejemplos configurables, no IDs universales.
+
+**POST y PATCH escriben datos reales** en la base configurada: ejecútalos solo
+en un entorno de prueba autorizado. No guardes tokens reales ni datos privados en
+la colección. Los ejemplos de archivos y comentarios del Issue #106 no están
+incluidos.
