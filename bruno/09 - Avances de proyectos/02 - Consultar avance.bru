@@ -1,0 +1,15 @@
+meta {
+  name: Consultar avance de proyecto
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/projects/{{projectId}}/updates/{{projectUpdateId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}

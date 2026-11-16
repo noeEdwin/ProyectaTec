@@ -11,6 +11,7 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ProjectNeedController;
+use App\Http\Controllers\ProjectUpdateController;
 use App\Http\Controllers\PublicationMediaController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
@@ -38,6 +39,8 @@ Route::get('/projects', [ProjectController::class, 'index']);
 Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumber('project');
 Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])->whereNumber('project');
 Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
+Route::get('/projects/{project}/updates', [ProjectUpdateController::class, 'index'])->whereNumber('project');
+Route::get('/projects/{project}/updates/{update}', [ProjectUpdateController::class, 'show'])->whereNumber('project')->whereNumber('update');
 Route::get('/community-needs', [CommunityNeedController::class, 'index']);
 Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
 Route::get('/categories', fn () => response()->json([
@@ -114,6 +117,8 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
         ->whereIn('type', ['proyecto', 'project', 'necesidad', 'community_need'])
         ->whereNumber('id');
     Route::post('/projects/{project}/needs', [ProjectNeedController::class, 'store'])->whereNumber('project');
+    Route::post('/projects/{project}/updates', [ProjectUpdateController::class, 'store'])->whereNumber('project');
+    Route::patch('/projects/{project}/updates/{update}', [ProjectUpdateController::class, 'update'])->whereNumber('project')->whereNumber('update');
     Route::post('/community-needs', [CommunityNeedController::class, 'store']);
     Route::post('/projects', [ProjectController::class, 'store']);
     // Consultar el perfil del usuario autenticado
