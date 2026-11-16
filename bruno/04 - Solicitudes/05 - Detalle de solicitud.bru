@@ -1,0 +1,16 @@
+meta {
+  name: Detalle de solicitud
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/applications/{{applicationId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{token}}
+}
