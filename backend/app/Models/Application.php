@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Application extends Model
 {
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_ACCEPTED = 'accepted';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'project_id',
         'project_need_id',
@@ -16,6 +22,7 @@ class Application extends Model
         'message',
         'status',
         'reviewed_at',
+        'review_notes',
     ];
 
     protected function casts(): array

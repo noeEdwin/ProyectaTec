@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\AdminPublicationModerationController;
 use App\Http\Controllers\AdminUserModerationController;
+use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommunityNeedController;
 use App\Http\Controllers\MyPublicationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -13,11 +15,9 @@ use App\Http\Controllers\PublicationMediaController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Http\Middleware\EnsureActiveUser;
-use App\Models\Application;
 use App\Models\Category;
 use App\Models\Project;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 
 // --------------------------------------------------------------------------
@@ -161,22 +161,21 @@ Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () 
     Route::post('/organizations/{organization}/logo', [OrganizationController::class, 'uploadLogo'])
         ->whereNumber('organization');
 
-    // Revisar solicitudes de participación
-    Route::patch('/applications/{application}', function (Request $request, Application $application) {
-        Gate::authorize('update', $application);
+    // Solicitudes de vinculación y participación en proyectos
+    Route::post('/projects/{project}/applications', [ApplicationController::class, 'store'])
+        ->whereNumber('project');
+    Route::get('/projects/{project}/applications', [ApplicationController::class, 'indexByProject'])
+        ->whereNumber('project');
+    Route::get('/me/applications', [ApplicationController::class, 'indexOwn']);
+    Route::get('/applications/{application}', [ApplicationController::class, 'show'])
+        ->whereNumber('application');
+    Route::patch('/applications/{application}', [ApplicationController::class, 'review'])
+        ->whereNumber('application');
 
-        $data = $request->validate([
-            'status' => ['required', 'in:accepted,rejected'],
-        ]);
-
-        $application->update([
-            'status' => $data['status'],
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-        ]);
-
-        return response()->json($application);
-    });
+    // Notificaciones del usuario autenticado
+    Route::get('/me/notifications', [NotificationController::class, 'index']);
+    Route::patch('/me/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::patch('/me/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
 
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);

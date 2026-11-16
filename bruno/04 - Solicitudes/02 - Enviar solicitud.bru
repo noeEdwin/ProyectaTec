@@ -1,0 +1,24 @@
+meta {
+  name: Enviar solicitud
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/projects/{{projectId}}/applications
+  body: json
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
+
+body:json {
+  {
+    "project_need_id": null,
+    "message": "Me interesa colaborar en este proyecto."
+  }
+}
