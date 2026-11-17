@@ -179,7 +179,9 @@
   }
 
   .navbar-menu {
-    gap: 8px;
+    gap: 8px 14px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .nav-link {

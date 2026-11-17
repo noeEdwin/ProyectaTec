@@ -10,7 +10,8 @@
 .mod-contador { min-width:20px; padding:1px 7px; border-radius:99px; background:#f59e0b; color:#111827; font-size:11px; font-weight:700; text-align:center; }
 .mod-filtros { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
 .mod-filtros input,.mod-filtros select { min-height:43px; padding:10px 15px; border:1px solid var(--pd-border); border-radius:11px; background:#fff; color:var(--pd-dark); font:inherit; font-size:13px; outline:none; }
-.mod-filtros input { flex:1; min-width:220px; }
+.mod-filtros input { flex:1; min-width:min(100%, 220px); }
+.mod-filtros select { max-width:100%; }
 .mod-filtros input:focus,.mod-filtros select:focus { border-color:var(--pd-teal); box-shadow:0 0 0 3px #0f4c5c18; }
 .mod-lista { display:flex; flex-direction:column; gap:14px; }
 .mod-item { display:flex; flex-direction:column; gap:12px; }
@@ -36,7 +37,7 @@
 .mod-dialogo p { margin:0 0 16px; color:var(--pd-muted); font-size:13px; line-height:1.7; }
 .mod-dialogo .pd-acciones { margin-top:20px; }
 .mod-dialogo .pd-campo { margin-bottom:0; }
-@media(max-width:720px){ .mod-item-cabecera { flex-direction:column; } .mod-acciones { justify-content:stretch; } .mod-acciones button { flex:1; } }
+@media(max-width:720px){ .mod-filtros input, .mod-filtros select { width:100%; min-width:0; } .mod-item-cabecera { flex-direction:column; } .mod-acciones { justify-content:stretch; } .mod-acciones button { flex:1; } }
 .mod-dialogo textarea,.mod-filtros input,.mod-filtros select { box-sizing:border-box; }
 .mod-dialogo textarea { width:100%; }
 .mod-dialogo .pd-error { margin:6px 0 0; color:#b91c1c; font-size:12px; }

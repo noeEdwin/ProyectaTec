@@ -98,6 +98,7 @@ export default function PerfilPublico() {
                   top: '120%',
                   right: 0,
                   width: '260px',
+                  maxWidth: 'calc(100vw - 32px)',
                   background: '#ffffff',
                   borderRadius: '10px',
                   boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',

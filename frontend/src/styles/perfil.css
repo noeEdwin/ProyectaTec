@@ -33,3 +33,5 @@
 .perfil-footer { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-top:1px solid var(--perfil-borde); color:#94a3b8; font-size:10px; }
 @media(max-width:760px) { .perfil-contenedor{width:calc(100% - 40px)} .perfil-main{padding-top:30px} .perfil-encabezado h1{font-size:30px} .perfil-resumen{align-items:flex-start; flex-direction:column} .perfil-resumen-principal{gap:18px} .perfil-avatar{width:76px;height:76px;font-size:24px} .perfil-resumen-info h2{font-size:20px} .perfil-contacto-container{width:100%;text-align:left} .perfil-iniciativa{grid-template-columns:1fr;gap:8px} .perfil-iniciativas>h2{font-size:21px} }
 @media(max-width:420px) { .perfil-resumen-principal{flex-direction:column;align-items:flex-start} .perfil-resumen,.perfil-iniciativas{padding:18px} .perfil-footer{flex-direction:column;gap:5px} }
+.perfil-editor-grid { display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:2rem; align-items:start; }
+@media(max-width:900px) { .perfil-editor-grid { grid-template-columns:minmax(0, 1fr); } }

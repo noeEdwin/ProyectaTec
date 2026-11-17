@@ -19,6 +19,7 @@ import { traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
+import '../styles/perfil.css';
 import {
   REGLAS_CAMPO, SEMESTRES, filtrarCampo, opcionesConActual, validarCampo, ubicacionOaxaca, separarUbicacionOaxaca,
 } from '../utils/camposPerfil';
@@ -490,7 +491,7 @@ export default function Perfil() {
       )}
 
       {/* Grid de 2 Columnas (Figma Layout) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', alignItems: 'start' }}>
+      <div className="perfil-editor-grid">
 
         {/* Tarjeta Izquierda: Formulario */}
         <div style={{
