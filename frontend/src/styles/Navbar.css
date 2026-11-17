@@ -41,6 +41,29 @@
   display: flex;
   align-items: center;
   gap: clamp(20px, 4vw, 58px);
+  order: 2;
+}
+
+.navbar-right-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  order: 3;
+}
+
+.navbar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #dbe3ec;
+  background: #ffffff;
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .nav-link {
@@ -149,42 +172,67 @@
   .navbar-container {
     flex-wrap: wrap;
     gap: 12px;
-    padding: 16px 20px;
+    padding: 14px 16px;
+    min-height: 70px;
+  }
+
+  .navbar-toggle {
+    display: inline-flex;
   }
 
   .navbar-menu {
-    order: 3;
+    display: none;
+    order: 4;
     width: 100%;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .navbar-menu.open {
+    display: flex;
   }
 
   .nav-link {
-    padding: 10px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  .nav-link.active {
+    background-color: #f8fafc;
   }
 
   .nav-link.active::after {
-    bottom: 2px;
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
-  .navbar-actions {
-    width: 100%;
+  .navbar-brand {
+    font-size: 20px;
+  }
+
+  .user-dropdown-btn {
+    gap: 8px;
+  }
+
+  .user-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .user-dropdown-text {
+    font-size: 15px;
   }
 
   .btn-acceso,
   .btn-registro {
-    flex: 1;
-    padding: 0 12px;
-  }
-
-  .navbar-menu {
-    gap: 8px 14px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .nav-link {
+    min-height: 36px;
+    padding: 0 10px;
     font-size: 12px;
   }
 }
@@ -246,7 +294,8 @@
   background-color: #ffffff;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border-radius: 8px;
-  width: 180px;
+  width: 210px;
+  max-width: calc(100vw - 24px);
   padding: 8px 0;
   z-index: 50;
   border: 1px solid #E2E8F0;
