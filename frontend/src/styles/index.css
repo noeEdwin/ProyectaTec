@@ -13,3 +13,21 @@ body {
   min-height: 100vh;
   overflow-x: clip;
 }
+
+/* Estilo unificado para campos inválidos y mensajes de validación en formularios */
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+}
+
+.registro-error,
+.acceso-error,
+.pub-error,
+.pd-error {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}

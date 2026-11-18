@@ -113,4 +113,31 @@ class PasswordResetAndWelcomeTest extends TestCase
 
         $this->assertNotEmpty($oldToken);
     }
+
+    public function test_weak_passwords_are_rejected_on_register_and_reset(): void
+    {
+        $this->postJson('/api/register', [
+            'name' => 'Usuario Prueba',
+            'email' => 'debil@proyectatec.test',
+            'password' => 'sololetras',
+            'password_confirmation' => 'sololetras',
+            'account_type' => 'residente_oaxaca',
+            'municipality' => 'Oaxaca de Juárez',
+            'locality' => 'Centro',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+
+        $user = User::factory()->create(['email' => 'debil.reset@proyectatec.test']);
+        $token = Password::broker()->createToken($user);
+
+        $this->postJson('/api/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'sololetras',
+            'password_confirmation' => 'sololetras',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+    }
 }

@@ -36,8 +36,8 @@ class InstitutionAndRoleFilterTest extends TestCase
         $registration = $this->postJson('/api/register', [
             'name' => 'Alumno Nuevo',
             'email' => 'alumno-nueva-inst@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'estudiante',
             'institution' => 'Instituto Nuevo de Oaxaca',
             'request_new_institution' => true,

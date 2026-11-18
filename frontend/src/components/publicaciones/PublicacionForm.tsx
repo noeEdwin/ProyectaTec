@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
+import '../../styles/catalogoComponentes.css';
 import {
   LIMITES,
   MODALIDADES,
@@ -772,85 +773,96 @@ export default function PublicacionForm({
                   Vista previa
                 </h2>
                 <p className="pub-texto">
-                  Revisa cómo quedará tu publicación antes de {editando ? 'guardar los cambios' : 'publicarla'}.
+                  Así verán tu publicación otros usuarios antes de {editando ? 'guardar los cambios' : 'publicarla'}.
                 </p>
 
-                <dl className="pub-resumen">
-                  <div>
-                    <dt>Tipo</dt>
-                    <dd>{tipoSeleccionado?.label}</dd>
-                  </div>
-                  <div>
-                    <dt>Título</dt>
-                    <dd>{valores.title.trim()}</dd>
-                  </div>
-                  <div>
-                    <dt>Categoría</dt>
-                    <dd>{categoriaSeleccionada?.name ?? '—'}</dd>
-                  </div>
-                  {esProyecto && (
-                    <div>
-                      <dt>Modalidad</dt>
-                      <dd>{modalidadSeleccionada?.label ?? 'No indicada'}</dd>
+                <div className="dp-grid" style={{ marginTop: 16 }}>
+                  <section className="dp-tarjeta">
+                    <div className="dp-cabecera">
+                      <span className="dp-etiqueta">{tipoSeleccionado?.label ?? (esProyecto ? 'Proyecto' : 'Necesidad comunitaria')}</span>
+                      <span className="ic-estado">Abierta</span>
                     </div>
-                  )}
-                  <div>
-                    <dt>Ubicación</dt>
-                    <dd>{valores.location.trim() || 'No indicada'}</dd>
-                  </div>
-                  {esProyecto && (
-                    <div>
-                      <dt>Fechas</dt>
-                      <dd>
-                        {valores.starts_at || valores.ends_at
-                          ? `${valores.starts_at || '—'} al ${valores.ends_at || '—'}`
-                          : 'No indicadas'}
-                      </dd>
-                    </div>
-                  )}
-                  <div>
-                    <dt>Descripción</dt>
-                    <dd className="pub-resumen-texto">{valores.description.trim()}</dd>
-                  </div>
-                  {(portadaActivaUrl || galeriaPreviewUrls.length > 0) && (
-                    <div>
-                      <dt>Imágenes</dt>
-                      <dd>
-                        {portadaActivaUrl && (
-                          <div className="pub-previa-portada">
-                            <img src={portadaActivaUrl} alt="Portada de la publicación" />
-                          </div>
-                        )}
-                        {galeriaPreviewUrls.length > 0 && (
-                          <div className="pub-galeria-grid" style={{ marginTop: 8 }}>
-                            {galeriaPreviewUrls.map((url, idx) => (
-                              <div className="pub-galeria-item" key={`prev-gal-${idx}`}>
-                                <img src={url} alt={`Galería ${idx + 1}`} />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </dd>
-                    </div>
-                  )}
-                  {valores.requirements.length > 0 && (
-                    <div>
-                      <dt>Requerimientos ({valores.requirements.length})</dt>
-                      <dd>
-                        <ul className="pub-previa-reqs">
+
+                    <h1 style={{ fontSize: 'clamp(22px, 3vw, 30px)', margin: '0 0 8px', color: '#111827' }}>
+                      {valores.title.trim()}
+                    </h1>
+
+                    {portadaActivaUrl && (
+                      <img
+                        src={portadaActivaUrl}
+                        alt={`Portada de ${valores.title.trim()}`}
+                        className="dp-portada"
+                      />
+                    )}
+
+                    <h2>{esProyecto ? 'Sobre el proyecto' : 'Sobre la necesidad'}</h2>
+                    <p style={{ whiteSpace: 'pre-line' }}>{valores.description.trim()}</p>
+
+                    {valores.requirements.length > 0 && (
+                      <div className="dp-bloque">
+                        <h3>Requerimientos / vacantes ({valores.requirements.length})</h3>
+                        <ul className="dp-reqs">
                           {valores.requirements.map((req, idx) => (
-                            <li key={`prev-req-${idx}`}>
-                              <strong>{req.title.trim()}</strong> ({req.openings}{' '}
-                              {req.openings === 1 ? 'vacante' : 'vacantes'})
-                              {req.required_profile.trim() ? ` · Perfil: ${req.required_profile.trim()}` : ''}
-                              {req.description.trim() ? ` — ${req.description.trim()}` : ''}
+                            <li key={`prev-req-${idx}`} className="dp-req-card">
+                              <div className="dp-req-top">
+                                <strong>{req.title.trim()}</strong>
+                                <span>
+                                  {req.openings} {req.openings === 1 ? 'vacante' : 'vacantes'}
+                                </span>
+                              </div>
+                              {req.required_profile.trim() && (
+                                <small>Perfil sugerido: {req.required_profile.trim()}</small>
+                              )}
+                              {req.description.trim() && <p>{req.description.trim()}</p>}
                             </li>
                           ))}
                         </ul>
-                      </dd>
+                      </div>
+                    )}
+
+                    {galeriaPreviewUrls.length > 0 && (
+                      <div className="dp-bloque">
+                        <h3>Galería de imágenes ({galeriaPreviewUrls.length})</h3>
+                        <div className="dp-galeria">
+                          {galeriaPreviewUrls.map((url, idx) => (
+                            <div className="dp-galeria-btn" key={`prev-gal-${idx}`} style={{ cursor: 'default' }}>
+                              <img src={url} alt={`Galería ${idx + 1}`} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="dp-bloque">
+                      <h3>Información general</h3>
+                      <dl className="dp-datos">
+                        <div><dt>Categoría</dt><dd>{categoriaSeleccionada?.name ?? '—'}</dd></div>
+                        <div><dt>Ubicación</dt><dd>{valores.location.trim() || 'No indicada'}</dd></div>
+                        {esProyecto && (
+                          <div><dt>Modalidad</dt><dd>{modalidadSeleccionada?.label ?? 'No indicada'}</dd></div>
+                        )}
+                        {esProyecto && (valores.starts_at || valores.ends_at) && (
+                          <div>
+                            <dt>Fechas</dt>
+                            <dd>{`${valores.starts_at || '—'} al ${valores.ends_at || '—'}`}</dd>
+                          </div>
+                        )}
+                      </dl>
                     </div>
-                  )}
-                </dl>
+                  </section>
+
+                  <aside className="dp-tarjeta dp-lateral" aria-label="Vista previa lateral">
+                    <h2>{esProyecto ? '¿Te interesa participar?' : '¿Puedes colaborar?'}</h2>
+                    <p>
+                      {esProyecto
+                        ? 'Otros usuarios verán aquí la opción para enviar una solicitud de vinculación.'
+                        : 'Otros usuarios verán aquí la opción para colaborar con esta necesidad.'}
+                    </p>
+                    <button type="button" className="dp-boton" disabled style={{ opacity: 0.7, cursor: 'default' }}>
+                      Solicitar vinculación →
+                    </button>
+                  </aside>
+                </div>
 
                 <div className="pub-acciones">
                   <button

@@ -267,7 +267,38 @@
   margin-top: 7px;
   color: #b91c1c;
   font-size: 12px;
+  font-weight: 500;
   line-height: 1.5;
+}
+
+.registro-password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.registro-password-wrapper input {
+  padding-right: 74px;
+}
+
+.registro-mostrar {
+  position: absolute;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--registro-teal);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.registro-hint {
+  margin: 6px 0 0;
+  color: var(--registro-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* Acciones */

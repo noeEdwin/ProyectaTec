@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import axios from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
+import { validarContrasenaSegura } from '../utils/passwordValidation';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
 
@@ -35,8 +36,9 @@ export default function RestablecerContrasena() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('La nueva contraseña debe tener al menos 8 caracteres.');
+    const errorPassword = validarContrasenaSegura(password);
+    if (errorPassword) {
+      setError(errorPassword);
       return;
     }
 

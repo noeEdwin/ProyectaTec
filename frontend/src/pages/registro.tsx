@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
+import { validarContrasenaSegura } from '../utils/passwordValidation';
 import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/profileService';
 import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
@@ -70,6 +71,8 @@ export default function Registro({ onRegister }: RegistroProps) {
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
   const [perfil, setPerfil] = useState<Record<string, string>>(perfilVacio);
   const [publicFields, setPublicFields] = useState<string[]>([]);
   const [organizationPublicFields, setOrganizationPublicFields] = useState<string[]>([]);
@@ -148,11 +151,9 @@ export default function Registro({ onRegister }: RegistroProps) {
       nuevosErrores.email = 'Ingresa un correo electrónico válido.';
     }
 
-    if (!password) {
-      nuevosErrores.password = 'Ingresa una contraseña.';
-    } else if (password.length < 8) {
-      nuevosErrores.password =
-        'La contraseña debe tener al menos 8 caracteres.';
+    const errorPassword = validarContrasenaSegura(password);
+    if (errorPassword) {
+      nuevosErrores.password = errorPassword;
     }
 
     if (password && !confirmacion) {
@@ -703,23 +704,36 @@ export default function Registro({ onRegister }: RegistroProps) {
                     Contraseña
                   </label>
 
-                  <input
-                    id="registro-password"
-                    type="password"
-                    name="password"
-                    autoComplete="new-password"
-                    placeholder="Crear una contraseña"
-                    value={password}
-                    onChange={(event) =>
-                      setPassword(event.target.value)
-                    }
-                    aria-invalid={Boolean(errores.password)}
-                    aria-describedby={
-                      errores.password
-                        ? 'registro-password-error'
-                        : undefined
-                    }
-                  />
+                  <div className="registro-password-wrapper">
+                    <input
+                      id="registro-password"
+                      type={mostrarPassword ? 'text' : 'password'}
+                      name="password"
+                      autoComplete="new-password"
+                      placeholder="Mín. 8 caracteres, mayús., minús., número y símbolo"
+                      value={password}
+                      onChange={(event) =>
+                        setPassword(event.target.value)
+                      }
+                      aria-invalid={Boolean(errores.password)}
+                      aria-describedby={
+                        errores.password
+                          ? 'registro-password-error'
+                          : 'registro-password-hint'
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="registro-mostrar"
+                      onClick={() => setMostrarPassword((prev) => !prev)}
+                    >
+                      {mostrarPassword ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                  </div>
+
+                  <p id="registro-password-hint" className="registro-hint">
+                    Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.
+                  </p>
 
                   {errores.password && (
                     <p
@@ -740,25 +754,34 @@ export default function Registro({ onRegister }: RegistroProps) {
                       Confirmar contraseña
                     </label>
 
-                    <input
-                      id="registro-confirmacion"
-                      type="password"
-                      name="password_confirmation"
-                      autoComplete="new-password"
-                      placeholder="Repite tu contraseña"
-                      value={confirmacion}
-                      onChange={(event) =>
-                        setConfirmacion(event.target.value)
-                      }
-                      aria-invalid={Boolean(
-                        errores.password_confirmation
-                      )}
-                      aria-describedby={
-                        errores.password_confirmation
-                          ? 'registro-confirmacion-error'
-                          : undefined
-                      }
-                    />
+                    <div className="registro-password-wrapper">
+                      <input
+                        id="registro-confirmacion"
+                        type={mostrarConfirmacion ? 'text' : 'password'}
+                        name="password_confirmation"
+                        autoComplete="new-password"
+                        placeholder="Repite tu contraseña"
+                        value={confirmacion}
+                        onChange={(event) =>
+                          setConfirmacion(event.target.value)
+                        }
+                        aria-invalid={Boolean(
+                          errores.password_confirmation
+                        )}
+                        aria-describedby={
+                          errores.password_confirmation
+                            ? 'registro-confirmacion-error'
+                            : undefined
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="registro-mostrar"
+                        onClick={() => setMostrarConfirmacion((prev) => !prev)}
+                      >
+                        {mostrarConfirmacion ? 'Ocultar' : 'Mostrar'}
+                      </button>
+                    </div>
 
                     {errores.password_confirmation && (
                       <p

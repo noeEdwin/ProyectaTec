@@ -9,6 +9,7 @@ import {
   getOrganizationCatalog,
   requestOrganizationRole,
   updateMyProfile,
+  uploadMyProfileAvatar,
   type OrganizationAccess,
   type OrganizationCatalogItem,
   type OrganizationRoleRequest,
@@ -101,6 +102,8 @@ export default function Perfil() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState<boolean>(false);
+  const [avatarError, setAvatarError] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({});
@@ -504,6 +507,82 @@ export default function Perfil() {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '1.5rem' }}>
             Datos de tu perfil
           </h2>
+
+          {/* Foto de perfil */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+            padding: '1rem', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0',
+            marginBottom: '1.5rem',
+          }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', flex: 'none',
+              background: '#e0f2fe', color: '#0f4c5c', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '20px', fontWeight: 700, border: '1px solid #cbd5e1',
+            }}>
+              {profile.image_url ? (
+                <img src={profile.image_url} alt="Foto de perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (profile.display_name || user?.name || 'PT').slice(0, 2).toUpperCase()
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: '180px' }}>
+              <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Foto de perfil</p>
+              <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#64748b' }}>
+                Formatos JPG, PNG o WebP (máximo 2 MB).
+              </p>
+              <label
+                htmlFor="profile-avatar-input"
+                style={{
+                  display: 'inline-block', padding: '7px 14px', borderRadius: '999px',
+                  background: uploadingAvatar ? '#cbd5e1' : '#0f4c5c', color: '#fff',
+                  fontSize: '12px', fontWeight: 600, cursor: uploadingAvatar ? 'wait' : 'pointer',
+                }}
+              >
+                {uploadingAvatar ? 'Subiendo...' : 'Cambiar foto de perfil'}
+              </label>
+              <input
+                id="profile-avatar-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploadingAvatar}
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  setAvatarError('');
+                  setSuccessMessage(null);
+                  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                    setAvatarError('Selecciona una imagen JPG, PNG o WebP.');
+                    return;
+                  }
+                  if (file.size > 2 * 1024 * 1024) {
+                    setAvatarError('La imagen supera el límite de 2 MB.');
+                    return;
+                  }
+                  try {
+                    setUploadingAvatar(true);
+                    const result = await uploadMyProfileAvatar(file);
+                    setProfile((prev) => ({ ...prev, image_url: result.image_url ?? prev.image_url }));
+                    setSuccessMessage('Foto de perfil actualizada correctamente.');
+                  } catch (err: unknown) {
+                    if (axios.isAxiosError(err) && err.response?.data?.message) {
+                      setAvatarError(err.response.data.message);
+                    } else {
+                      setAvatarError('No se pudo subir la foto de perfil.');
+                    }
+                  } finally {
+                    setUploadingAvatar(false);
+                  }
+                }}
+              />
+              {avatarError && (
+                <span role="alert" style={{ color: '#b91c1c', fontSize: '12px', marginTop: '6px', display: 'block' }}>
+                  {avatarError}
+                </span>
+              )}
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 

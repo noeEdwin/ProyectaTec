@@ -19,8 +19,8 @@ class AuthenticationFlowTest extends TestCase
         $registration = $this->postJson('/api/register', [
             'name' => 'Usuario de prueba',
             'email' => 'flujo@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'student',
         ])->assertCreated()->assertJsonStructure(['access_token', 'token_type']);
 
@@ -30,7 +30,7 @@ class AuthenticationFlowTest extends TestCase
 
         $login = $this->postJson('/api/login', [
             'email' => 'flujo@example.com',
-            'password' => 'password123',
+            'password' => 'Password123!',
         ])->assertOk()->assertJsonStructure(['access_token', 'token_type']);
 
         $token = $login->json('access_token');
@@ -50,16 +50,16 @@ class AuthenticationFlowTest extends TestCase
         $this->postJson('/api/register', [
             'name' => 'Usuario de prueba',
             'email' => 'flujo@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'student',
         ])->assertCreated();
 
         $this->postJson('/api/register', [
             'name' => 'Duplicado',
             'email' => 'flujo@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'student',
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
 
@@ -74,8 +74,8 @@ class AuthenticationFlowTest extends TestCase
         $base = [
             'name' => 'Estudiante de prueba',
             'email' => 'estudiante-perfil@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'estudiante',
         ];
 
@@ -114,8 +114,8 @@ class AuthenticationFlowTest extends TestCase
         $this->postJson('/api/register', [
             'name' => 'Representante de prueba',
             'email' => 'representante@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'organizacion',
             'organization_name' => 'Cooperativa de prueba',
             'legal_name' => 'Cooperativa de prueba S.C.',
@@ -145,8 +145,8 @@ class AuthenticationFlowTest extends TestCase
         $this->postJson('/api/register', [
             'name' => 'Privacidad estudiante',
             'email' => 'privacidad@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'account_type' => 'estudiante',
             'institution' => 'Instituto Tecnológico de Oaxaca',
             'campus' => 'Oaxaca',
@@ -182,7 +182,7 @@ class AuthenticationFlowTest extends TestCase
 
         $data = [
             'name' => 'Empleado', 'email' => 'empleado@example.com',
-            'password' => 'password123', 'password_confirmation' => 'password123',
+            'password' => 'Password123!', 'password_confirmation' => 'Password123!',
             'account_type' => 'empleado_organizacion',
             'organization_name' => 'Nombre enviado por el navegador',
             'organization_area' => 'Producción', 'organization_position' => 'Técnico',

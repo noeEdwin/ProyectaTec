@@ -4,6 +4,8 @@ import api from './axios';
 export interface UserProfile {
   id?: number;
   display_name: string;
+  image?: string | null;
+  image_url?: string | null;
   description?: string;
   phone?: string;
   location?: string;
@@ -225,6 +227,17 @@ export const getPublicProfile = async (id: number | string): Promise<UserProfile
 export const updateMyProfile = async (data: Partial<UserProfile>): Promise<UserProfile> => {
   const response = await api.patch('/me/profile', data);
   return response.data.data || response.data.profile || response.data;
+};
+
+// Subir foto de perfil (POST /api/me/profile/avatar)
+export const uploadMyProfileAvatar = async (file: File): Promise<{ image_url: string | null }> => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const response = await api.post('/me/profile/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  const payload = response.data.data || response.data.profile || response.data;
+  return { image_url: payload?.image_url ?? null };
 };
 
 export const getMyOrganizations = async (): Promise<OrganizationAccess[]> => {

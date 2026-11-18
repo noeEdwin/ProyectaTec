@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -26,7 +27,7 @@ class AuthController extends Controller
             'email' => [
                 'required', 'string', 'email', 'max:255', 'unique:users',
             ],
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
             'account_type' => ['required', 'string', Rule::in([
                 'estudiante', 'academico', 'empleado_organizacion', 'residente_oaxaca', 'organizacion',
                 // Valores históricos aceptados para no bloquear integraciones existentes.
@@ -255,7 +256,7 @@ public function login(Request $request)
         $validated = $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         $status = Password::reset(

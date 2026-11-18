@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
+import logoProyectatec from '../assets/logo-proyectatec.png';
 import '../styles/Navbar.css';
 
 export default function Navbar() {
@@ -57,7 +58,8 @@ export default function Navbar() {
     >
       <div className="navbar-container">
         <Link to="/" className="navbar-brand" onClick={closeAllMenus}>
-          ProyectaTec
+          <img src={logoProyectatec} alt="ProyectaTec" className="navbar-logo-img" />
+          <span>ProyectaTec</span>
           <span className="brand-dot"></span>
         </Link>
 
