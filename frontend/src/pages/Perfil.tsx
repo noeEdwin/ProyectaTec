@@ -168,6 +168,7 @@ export default function Perfil() {
       setInitialAccountType(normalizedType);
       setProfile({
         display_name: data.display_name || user?.name || '',
+        image_url: data.image_url ?? null,
         description: data.description || '',
         phone: data.phone || '',
         location: data.location || '',
