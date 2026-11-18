@@ -5,9 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Organization;
 use App\Models\Profile;
 use App\Models\User;
+use App\Notifications\WelcomeRegisteredNotification;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -165,6 +171,15 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        try {
+            $user->notify(new WelcomeRegisteredNotification());
+        } catch (\Throwable $exception) {
+            Log::warning('No se pudo enviar el correo de bienvenida al registrarse.', [
+                'user_id' => $user->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Usuario registrado exitosamente',
             'access_token' => $token,
@@ -210,6 +225,66 @@ public function login(Request $request)
 
         return response()->json([
             'message' => 'Sesión cerrada exitosamente',
+        ]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:255'],
+        ]);
+
+        try {
+            Password::sendResetLink([
+                'email' => strtolower(trim($validated['email'])),
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('No se pudo enviar el correo de recuperación de contraseña.', [
+                'email' => strtolower(trim($validated['email'])),
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = Password::reset(
+            [
+                'token' => $validated['token'],
+                'email' => strtolower(trim($validated['email'])),
+                'password' => $validated['password'],
+                'password_confirmation' => $request->input('password_confirmation'),
+            ],
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
+                $user->tokens()->delete();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => ['El enlace de recuperación es inválido o ha expirado.'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Tu contraseña se restableció correctamente. Ya puedes iniciar sesión.',
         ]);
     }
 }

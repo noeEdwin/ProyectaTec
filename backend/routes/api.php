@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
 Route::get('/organizations', [OrganizationController::class, 'publicIndex']);
 Route::get('/organizations/catalog', [OrganizationController::class, 'catalog']);
 // Consultar un perfil público por su identificador

@@ -221,17 +221,9 @@ export default function Acceso({ onLogin }: AccesoProps) {
                 Mantener sesión iniciada
               </label>
 
-              <button
-                type="button"
-                className="acceso-forgot"
-                onClick={() =>
-                  setMensaje(
-                    'La recuperación de contraseña aún no está disponible.'
-                  )
-                }
-              >
+              <Link to="/olvide-contrasena" className="acceso-forgot">
                 ¿Olvidaste tu contraseña?
-              </button>
+              </Link>
             </div>
 
             {errores.general && (

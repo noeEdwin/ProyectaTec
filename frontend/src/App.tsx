@@ -10,6 +10,8 @@ import Inicio from './pages/inicio';
 import Registro from './pages/registro';
 import Catalogo from './pages/catalogo';
 import Acceso from './pages/acceso';
+import OlvideContrasena from './pages/OlvideContrasena';
+import RestablecerContrasena from './pages/RestablecerContrasena';
 import Perfil from './pages/Perfil';
 
 import MiPerfil from './pages/MiPerfil';
@@ -39,6 +41,8 @@ function App() {
             {/* Rutas de autenticación sin layout */}
             <Route path="/acceso" element={<Acceso />} />
             <Route path="/registro" element={<Registro />} />
+            <Route path="/olvide-contrasena" element={<OlvideContrasena />} />
+            <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
 
             {/* Layout Principal con Menú Superior (Navbar) */}
             <Route element={<MainLayout />}>
