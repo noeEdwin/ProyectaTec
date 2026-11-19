@@ -750,3 +750,33 @@
   display: grid;
   gap: 6px;
 }
+
+/* Acciones de las publicaciones administrables */
+.pub-mis-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pub-mis-acciones .pub-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .pub-mis-acciones {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .pub-mis-acciones .pub-boton {
+    width: 100%;
+  }
+}

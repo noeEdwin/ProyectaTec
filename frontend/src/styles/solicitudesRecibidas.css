@@ -1,0 +1,271 @@
+.sr-pagina {
+  min-height: calc(100vh - 78px);
+  background: #f8fafc;
+  color: #111827;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+}
+
+.sr-pagina *,
+.sr-pagina *::before,
+.sr-pagina *::after {
+  box-sizing: border-box;
+}
+
+.sr-contenedor {
+  width: min(1100px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 48px 0 80px;
+}
+
+.sr-cabecera {
+  margin-bottom: 30px;
+}
+
+.sr-eyebrow {
+  display: inline-block;
+  padding-bottom: 7px;
+  border-bottom: 2px solid #f59e0b;
+  color: #9c721d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sr-cabecera h1 {
+  margin: 19px 0 6px;
+  font-size: clamp(27px, 3vw, 38px);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.sr-cabecera p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.sr-tarjeta {
+  padding: 25px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.sr-tarjeta-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.sr-tarjeta h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+}
+
+.sr-tarjeta-encabezado p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.sr-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin: 24px 0 6px;
+}
+
+.sr-filtros button {
+  padding: 9px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sr-filtros button.sr-filtro-activo {
+  border-color: #0f4c5c;
+  background: #0f4c5c;
+  color: #fff;
+}
+
+.sr-lista {
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+
+.sr-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 110px;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 2px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sr-fila:last-child {
+  border-bottom: none;
+}
+
+.sr-solicitante {
+  min-width: 0;
+}
+
+.sr-solicitante h3 {
+  margin: 0 0 7px;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sr-solicitante p {
+  margin: 0 0 7px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.sr-solicitante small {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.sr-estado {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sr-pendiente {
+  color: #0f4c5c;
+}
+
+.sr-aceptada {
+  color: #15803d;
+}
+
+.sr-rechazada {
+  color: #b91c1c;
+}
+
+.sr-revisar {
+  justify-self: end;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: #0f4c5c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sr-revisar:hover:not(:disabled) {
+  background: #edf5f6;
+}
+
+.sr-revisar:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.sr-filtros button:focus-visible,
+.sr-revisar:focus-visible,
+.sr-boton:focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 3px;
+}
+
+.sr-mensaje {
+  margin: 20px 0 0;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.sr-mensaje-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.sr-mensaje-error p {
+  margin: 0 0 12px;
+}
+
+.sr-boton {
+  padding: 9px 18px;
+  border: 0;
+  border-radius: 24px;
+  background: #111827;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sr-informacion {
+  margin-top: 20px;
+}
+
+.sr-informacion p {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 650px) {
+  .sr-contenedor {
+    width: calc(100% - 28px);
+    padding: 28px 0 50px;
+  }
+
+  .sr-tarjeta {
+    padding: 20px 17px;
+  }
+
+  .sr-fila {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  .sr-solicitante {
+    grid-column: 1 / -1;
+  }
+
+  .sr-estado {
+    align-self: center;
+  }
+
+  .sr-revisar {
+    grid-column: 2;
+  }
+}
+
+/* Enlaces de navegación en los listados de solicitudes */
+.sr-fila a.sr-revisar {
+  text-decoration: none;
+}
+
+.sr-fila a.sr-revisar:hover {
+  text-decoration: underline;
+}
+
+.sr-mensaje p {
+  margin: 8px 0 0;
+}
