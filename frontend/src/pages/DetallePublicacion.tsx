@@ -6,10 +6,19 @@ import {
   reportarPublicacion,
   type RequerimientoPublicacion,
 } from '../api/publicacionesService';
+import {
+  enviarSolicitudVinculacion,
+  extraerMensajeErrorVinculacion,
+  listarMisSolicitudesEnviadas,
+} from '../api/vinculacionSeguimientoService';
 import { useAuth } from '../context/auth-context';
 import { getMyProfile } from '../api/profileService';
 import SolicitarVinculacionModal from '../components/vinculacion/SolicitarVinculacionModal';
-import type { PerfilSolicitanteResumen } from '../types/vinculacion';
+import type {
+  DatosSolicitudVinculacion,
+  PerfilSolicitanteResumen,
+  SolicitudEnviada,
+} from '../types/vinculacion';
 import '../styles/catalogoComponentes.css';
 
 interface DetalleData {
@@ -17,6 +26,8 @@ interface DetalleData {
   titulo: string;
   organizacion: string;
   organizacionId: number | null;
+  createdBy: number | null;
+  status: string;
   categoria: string;
   ubicacion: string;
   modalidad: string;
@@ -50,6 +61,8 @@ export default function DetallePublicacion() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
+  const [solicitudExistente, setSolicitudExistente] = useState<SolicitudEnviada | null>(null);
+  const [confirmacionSolicitud, setConfirmacionSolicitud] = useState<string | null>(null);
 
   const [cargandoPerfilSolicitud, setCargandoPerfilSolicitud] =
     useState(false);
@@ -90,6 +103,11 @@ export default function DetallePublicacion() {
           titulo: item.title ?? 'Publicación sin título',
           organizacion: item.organization?.name || (esProyecto ? 'Iniciativa ProyectaTec' : 'Comunidad de Oaxaca'),
           organizacionId: item.organization?.id ?? null,
+          createdBy:
+          typeof (item as { created_by?: unknown }).created_by === 'number'
+            ? ((item as { created_by: number }).created_by)
+            : null,
+          status: item.status ?? 'open',
           categoria: item.category?.name || 'Sin categoría',
           ubicacion: item.location || 'Oaxaca',
           modalidad: item.modality ? (MODALIDADES[item.modality] ?? item.modality) : '',
@@ -118,6 +136,36 @@ export default function DetallePublicacion() {
       void cargarDetalle();
     }
   }, [id, tipo]);
+
+  useEffect(() => {
+    let activo = true;
+
+    async function consultarSolicitudPrevia() {
+      if (!user || !publicacion || publicacion.tipo !== 'project') {
+        setSolicitudExistente(null);
+        return;
+      }
+
+      try {
+        const propias = await listarMisSolicitudesEnviadas();
+        if (!activo) return;
+        const previa = propias.find(
+          (s) =>
+            s.project_id === publicacion.id &&
+            (s.status === 'pending' || s.status === 'accepted'),
+        );
+        setSolicitudExistente(previa ?? null);
+      } catch {
+        if (activo) setSolicitudExistente(null);
+      }
+    }
+
+    void consultarSolicitudPrevia();
+
+    return () => {
+      activo = false;
+    };
+  }, [user, publicacion]);
 
   async function enviarReporte(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -162,44 +210,55 @@ export default function DetallePublicacion() {
     }
   }
 
-async function abrirFormularioSolicitud() {
-  if (
-    !user ||
-    !publicacion ||
-    publicacion.tipo !== 'project' ||
-    cargandoPerfilSolicitud
-  ) {
-    return;
+  async function abrirFormularioSolicitud() {
+    if (
+      !user ||
+      !publicacion ||
+      publicacion.tipo !== 'project' ||
+      cargandoPerfilSolicitud
+    ) {
+      return;
+    }
+
+    setCargandoPerfilSolicitud(true);
+    setErrorPerfilSolicitud(null);
+
+    try {
+      const perfil = await getMyProfile();
+
+      setPerfilSolicitud({
+        nombre: perfil.display_name?.trim() || user.name,
+        descripcion: perfil.description || null,
+        institucion:
+          perfil.institution || perfil.organization_name || null,
+        area:
+          perfil.field_of_study ||
+          perfil.organization_area ||
+          null,
+        ubicacion: perfil.location || null,
+      });
+
+      setMostrarSolicitud(true);
+    } catch (err: unknown) {
+      setErrorPerfilSolicitud(
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudo cargar la información de tu perfil. Comprueba la conexión e inténtalo nuevamente.',
+        ),
+      );
+    } finally {
+      setCargandoPerfilSolicitud(false);
+    }
   }
 
-  setCargandoPerfilSolicitud(true);
-  setErrorPerfilSolicitud(null);
-
-  try {
-    const perfil = await getMyProfile();
-
-    setPerfilSolicitud({
-      nombre: perfil.display_name?.trim() || user.name,
-      descripcion: perfil.description || null,
-      institucion:
-        perfil.institution || perfil.organization_name || null,
-      area:
-        perfil.field_of_study ||
-        perfil.organization_area ||
-        null,
-      ubicacion: perfil.location || null,
-    });
-
-    setMostrarSolicitud(true);
-  } catch {
-    setErrorPerfilSolicitud(
-      'No se pudo cargar la información de tu perfil. ' +
-        'Comprueba la conexión e inténtalo nuevamente.',
+  async function manejarEnvioSolicitud(datos: DatosSolicitudVinculacion) {
+    if (!publicacion) return;
+    const creada = await enviarSolicitudVinculacion(publicacion.id, datos);
+    setSolicitudExistente(creada);
+    setConfirmacionSolicitud(
+      'Tu solicitud de vinculación fue enviada correctamente.',
     );
-  } finally {
-    setCargandoPerfilSolicitud(false);
   }
-}
 
   if (cargando) {
     return (
@@ -223,6 +282,8 @@ async function abrirFormularioSolicitud() {
   const esProyecto = publicacion.tipo === 'project';
   const etiquetaTipo = esProyecto ? 'Proyecto' : 'Necesidad comunitaria';
   const claseTipo = esProyecto ? 'ic-tipo-proyecto' : 'ic-tipo-necesidad';
+  const esCreador = Boolean(user && publicacion.createdBy === user.id);
+  const proyectoAbierto = ['open', 'in_progress'].includes(publicacion.status);
 
   return (
     <main className="dp-page">
@@ -347,34 +408,64 @@ async function abrirFormularioSolicitud() {
                 : 'Si puedes apoyar esta necesidad, envía una solicitud de vinculación para ponerte en contacto.'}
             </p>
             {esProyecto ? (
-  user ? (
-    <button
-      type="button"
-      className="dp-boton"
-      onClick={() => void abrirFormularioSolicitud()}
-      disabled={cargandoPerfilSolicitud}
-    >
-      {cargandoPerfilSolicitud
-        ? 'Cargando tu perfil…'
-        : 'Solicitar vinculación →'}
-    </button>
-  ) : (
-    <Link className="ic-enlace" to="/acceso">
-      Inicia sesión para solicitar vinculación →
-    </Link>
-  )
-) : (
-  <p className="dp-aviso" role="status">
-    Las solicitudes directas para necesidades comunitarias
-    todavía no están disponibles.
-  </p>
-)}
+              user ? (
+                esCreador ? (
+                  <p className="dp-aviso" role="status">
+                    Eres responsable de este proyecto. Puedes gestionar sus solicitudes en{' '}
+                    <Link className="ic-enlace" to={`/mis-publicaciones/${publicacion.id}/solicitudes`}>
+                      Solicitudes recibidas →
+                    </Link>
+                  </p>
+                ) : solicitudExistente ? (
+                  <p className="dp-reporte-ok" role="status">
+                    Ya tienes una solicitud{' '}
+                    <strong>
+                      {solicitudExistente.status === 'accepted' ? 'aceptada' : 'pendiente'}
+                    </strong>{' '}
+                    en este proyecto.{' '}
+                    <Link className="ic-enlace" to="/mis-solicitudes">
+                      Ver mis solicitudes →
+                    </Link>
+                  </p>
+                ) : !proyectoAbierto ? (
+                  <p className="dp-aviso" role="status">
+                    Este proyecto ya no acepta nuevas solicitudes de vinculación.
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    className="dp-boton"
+                    onClick={() => void abrirFormularioSolicitud()}
+                    disabled={cargandoPerfilSolicitud}
+                  >
+                    {cargandoPerfilSolicitud
+                      ? 'Cargando tu perfil…'
+                      : 'Solicitar vinculación →'}
+                  </button>
+                )
+              ) : (
+                <Link className="ic-enlace" to="/acceso">
+                  Inicia sesión para solicitar vinculación →
+                </Link>
+              )
+            ) : (
+              <p className="dp-aviso" role="status">
+                Las solicitudes directas para necesidades comunitarias
+                todavía no están disponibles.
+              </p>
+            )}
 
-{errorPerfilSolicitud && (
-  <p className="dp-reporte-error" role="alert">
-    {errorPerfilSolicitud}
-  </p>
-)}
+            {confirmacionSolicitud && !solicitudExistente && (
+              <p className="dp-reporte-ok" role="status">
+                {confirmacionSolicitud}
+              </p>
+            )}
+
+            {errorPerfilSolicitud && (
+              <p className="dp-reporte-error" role="alert">
+                {errorPerfilSolicitud}
+              </p>
+            )}
 
             <div className="dp-reporte-bloque">
               {user ? (
@@ -466,7 +557,7 @@ async function abrirFormularioSolicitud() {
 
         <footer className="dp-footer">© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</footer>
       </div>
-            {mostrarSolicitud && perfilSolicitud && esProyecto && (
+      {mostrarSolicitud && perfilSolicitud && esProyecto && (
         <SolicitarVinculacionModal
           proyecto={{
             id: publicacion.id,
@@ -484,6 +575,7 @@ async function abrirFormularioSolicitud() {
                 ]
               : [],
           )}
+          onEnviar={manejarEnvioSolicitud}
           onCerrar={() => {
             setMostrarSolicitud(false);
             setPerfilSolicitud(null);

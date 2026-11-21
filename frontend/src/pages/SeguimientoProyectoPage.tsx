@@ -1,17 +1,37 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 
+import { useAuth } from '../context/auth-context';
 import { obtenerDetallePublicacion } from '../api/publicacionesService';
+import {
+  extraerMensajeErrorVinculacion,
+  listarAvancesProyecto,
+  listarMisSolicitudesEnviadas,
+  registrarAvanceProyecto,
+} from '../api/vinculacionSeguimientoService';
 import SeguimientoProyecto from '../components/seguimiento/SeguimientoProyecto';
+import type {
+  AvanceProyecto,
+  NuevoAvanceProyecto,
+  UltimoProgresoProyecto,
+} from '../types/seguimientoProyecto';
 
 import '../styles/seguimientoProyecto.css';
 
 export default function SeguimientoProyectoPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { user } = useAuth();
 
   const [tituloProyecto, setTituloProyecto] =
     useState<string | null>(null);
+  const [puedeRegistrar, setPuedeRegistrar] = useState(false);
+
+  const [avances, setAvances] = useState<AvanceProyecto[]>([]);
+  const [ultimoProgreso, setUltimoProgreso] =
+    useState<UltimoProgresoProyecto | null>(null);
+  const [cargandoAvances, setCargandoAvances] = useState(true);
+  const [errorAvances, setErrorAvances] = useState<string | null>(null);
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +41,26 @@ export default function SeguimientoProyectoPage() {
   const idValido =
     Number.isSafeInteger(idProyecto) && idProyecto > 0;
 
+  const cargarAvances = useCallback(async () => {
+    if (!idValido) return;
+    setCargandoAvances(true);
+    setErrorAvances(null);
+    try {
+      const res = await listarAvancesProyecto(idProyecto);
+      setAvances(res.avances);
+      setUltimoProgreso(res.ultimoProgreso);
+    } catch (err: unknown) {
+      setErrorAvances(
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudieron cargar los avances del proyecto.',
+        ),
+      );
+    } finally {
+      setCargandoAvances(false);
+    }
+  }, [idProyecto, idValido]);
+
   useEffect(() => {
     let activo = true;
 
@@ -28,7 +68,7 @@ export default function SeguimientoProyectoPage() {
       return;
     }
 
-    async function cargarProyecto() {
+    async function cargarTodo() {
       setCargando(true);
       setError(null);
       setTituloProyecto(null);
@@ -42,6 +82,32 @@ export default function SeguimientoProyectoPage() {
         if (!activo) return;
 
         setTituloProyecto(proyecto.title);
+
+        const proyectoAbierto = ['open', 'in_progress'].includes(
+          proyecto.status ?? 'open',
+        );
+
+        let tienePermiso = false;
+        if (user && proyectoAbierto) {
+          const creadorId =
+            typeof (proyecto as { created_by?: unknown }).created_by === 'number'
+              ? ((proyecto as { created_by: number }).created_by)
+              : null;
+
+          if (creadorId === user.id || user.can_manage_platform) {
+            tienePermiso = true;
+          } else {
+            try {
+              const propias = await listarMisSolicitudesEnviadas('accepted');
+              tienePermiso = propias.some((s) => s.project_id === idProyecto);
+            } catch {
+              tienePermiso = false;
+            }
+          }
+        }
+
+        if (!activo) return;
+        setPuedeRegistrar(tienePermiso);
       } catch (err) {
         if (!activo) return;
 
@@ -62,12 +128,25 @@ export default function SeguimientoProyectoPage() {
       }
     }
 
-    void cargarProyecto();
+    void cargarTodo();
+    void cargarAvances();
 
     return () => {
       activo = false;
     };
-  }, [idProyecto, idValido]);
+  }, [idProyecto, idValido, user, cargarAvances]);
+
+  async function manejarRegistroAvance(datos: NuevoAvanceProyecto) {
+    const nuevo = await registrarAvanceProyecto(idProyecto, datos);
+    setAvances((lista) => [nuevo, ...lista]);
+    if (nuevo.progress !== null) {
+      setUltimoProgreso({
+        update_id: nuevo.id,
+        progress: nuevo.progress,
+        created_at: nuevo.created_at,
+      });
+    }
+  }
 
   if (!idValido || cargando || error || !tituloProyecto) {
     return (
@@ -104,6 +183,13 @@ export default function SeguimientoProyectoPage() {
         id: idProyecto,
         titulo: tituloProyecto,
       }}
+      avances={avances}
+      ultimoProgreso={ultimoProgreso}
+      cargando={cargandoAvances}
+      error={errorAvances}
+      puedeRegistrar={puedeRegistrar}
+      onRegistrar={manejarRegistroAvance}
+      onReintentar={() => void cargarAvances()}
     />
   );
 }

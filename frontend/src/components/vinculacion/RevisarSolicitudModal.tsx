@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { extraerMensajeErrorVinculacion } from '../../api/vinculacionSeguimientoService';
 
 import type {
   SolicitudRecibida,
@@ -170,9 +171,12 @@ export default function RevisarSolicitudModal({
     try {
       await onResolver(solicitud.id, decision, notas.trim());
       onCerrar();
-    } catch {
+    } catch (err: unknown) {
       setError(
-        'No se pudo actualizar la solicitud. Inténtalo nuevamente.',
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudo actualizar la solicitud. Inténtalo nuevamente.',
+        ),
       );
     } finally {
       setProcesando(false);

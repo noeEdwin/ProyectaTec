@@ -37,6 +37,7 @@ type PublicationRecord = {
   requirements?: RequerimientoPublicacion[];
   is_hidden?: boolean;
   created_at?: string;
+  created_by?: number | null;
 };
 
 export type MiPublicacion = {

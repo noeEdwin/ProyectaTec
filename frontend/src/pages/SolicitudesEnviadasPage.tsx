@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  extraerMensajeErrorVinculacion,
+  listarMisSolicitudesEnviadas,
+} from '../api/vinculacionSeguimientoService';
 
 import type {
   EstadoSolicitud,
@@ -60,16 +64,46 @@ function fechaLegible(fecha: string | null): string {
 
 export default function SolicitudesEnviadasPage({
   solicitudes,
-  cargando = false,
-  error = null,
+  cargando,
+  error,
   onReintentar,
 }: Props) {
   const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [datosLocales, setDatosLocales] = useState<SolicitudEnviada[]>([]);
+  const [cargandoLocal, setCargandoLocal] = useState(solicitudes === undefined);
+  const [errorLocal, setErrorLocal] = useState<string | null>(null);
 
-  const pendienteIntegracion =
-    solicitudes === undefined && !cargando && !error;
+  const esControlado = solicitudes !== undefined;
 
-  const registros = solicitudes ?? [];
+  const cargar = useCallback(async () => {
+    if (esControlado) return;
+    setCargandoLocal(true);
+    setErrorLocal(null);
+    try {
+      const lista = await listarMisSolicitudesEnviadas();
+      setDatosLocales(lista);
+    } catch (err: unknown) {
+      setErrorLocal(
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudieron cargar tus solicitudes enviadas.',
+        ),
+      );
+    } finally {
+      setCargandoLocal(false);
+    }
+  }, [esControlado]);
+
+  useEffect(() => {
+    if (!esControlado) {
+      void cargar();
+    }
+  }, [cargar, esControlado]);
+
+  const registros = esControlado ? solicitudes : datosLocales;
+  const estaCargando = cargando ?? cargandoLocal;
+  const mensajeError = error !== undefined ? error : errorLocal;
+  const reintentar = onReintentar ?? (() => void cargar());
 
   const filtradas = registros.filter(
     (solicitud) =>
@@ -106,7 +140,7 @@ export default function SolicitudesEnviadasPage({
                 Mi historial de solicitudes
               </h2>
 
-              {!pendienteIntegracion && !cargando && !error && (
+              {!estaCargando && !mensajeError && (
                 <p aria-live="polite">
                   {registros.length} solicitudes ·{' '}
                   {pendientes} pendientes
@@ -115,7 +149,7 @@ export default function SolicitudesEnviadasPage({
             </div>
           </div>
 
-          {!pendienteIntegracion && !cargando && !error && (
+          {!estaCargando && !mensajeError && (
             <div
               className="sr-filtros"
               role="group"
@@ -139,45 +173,31 @@ export default function SolicitudesEnviadasPage({
             </div>
           )}
 
-          {pendienteIntegracion && (
-            <div className="sr-mensaje" role="status">
-              <strong>Vista preparada para integración</strong>
-              <p>
-                El historial todavía no está conectado con
-                Laravel. Aquí aparecerán tus solicitudes reales
-                cuando se integre el servicio correspondiente.
-              </p>
-            </div>
-          )}
-
-          {cargando && (
+          {estaCargando && (
             <p className="sr-mensaje" role="status">
               Cargando solicitudes enviadas…
             </p>
           )}
 
-          {!cargando && error && (
+          {!estaCargando && mensajeError && (
             <div
               className="sr-mensaje sr-mensaje-error"
               role="alert"
             >
-              <p>{error}</p>
+              <p>{mensajeError}</p>
 
-              {onReintentar && (
-                <button
-                  type="button"
-                  className="sr-boton"
-                  onClick={onReintentar}
-                >
-                  Reintentar
-                </button>
-              )}
+              <button
+                type="button"
+                className="sr-boton"
+                onClick={reintentar}
+              >
+                Reintentar
+              </button>
             </div>
           )}
 
-          {!pendienteIntegracion &&
-            !cargando &&
-            !error &&
+          {!estaCargando &&
+            !mensajeError &&
             filtradas.length === 0 && (
               <div className="sr-mensaje" role="status">
                 {registros.length === 0
@@ -186,9 +206,8 @@ export default function SolicitudesEnviadasPage({
               </div>
             )}
 
-          {!pendienteIntegracion &&
-            !cargando &&
-            !error &&
+          {!estaCargando &&
+            !mensajeError &&
             filtradas.length > 0 && (
               <ul className="sr-lista">
                 {filtradas.map((solicitud) => {
@@ -214,6 +233,13 @@ export default function SolicitudesEnviadasPage({
 
                         {solicitud.message && (
                           <p>{solicitud.message}</p>
+                        )}
+
+                        {solicitud.review_notes && (
+                          <p>
+                            <strong>Nota de revisión:</strong>{' '}
+                            {solicitud.review_notes}
+                          </p>
                         )}
 
                         <small>
