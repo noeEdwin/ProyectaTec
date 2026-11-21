@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { extraerMensajeErrorVinculacion } from '../../api/vinculacionSeguimientoService';
 
 import type {
   AvanceProyecto,
@@ -125,9 +126,12 @@ export default function SeguimientoProyecto({
       setTitulo('');
       setDescripcion('');
       setProgreso('');
-    } catch {
+    } catch (err: unknown) {
       setErrorFormulario(
-        'No se pudo registrar el avance. Inténtalo nuevamente.',
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudo registrar el avance. Inténtalo nuevamente.',
+        ),
       );
     } finally {
       setGuardando(false);

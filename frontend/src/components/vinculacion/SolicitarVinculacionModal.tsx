@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
+import { extraerMensajeErrorVinculacion } from '../../api/vinculacionSeguimientoService';
 
 import type {
   DatosSolicitudVinculacion,
@@ -137,7 +138,6 @@ export default function SolicitarVinculacionModal({
     (necesidad) => necesidad.disponible !== false,
   );
 
-  // Bloquear el desplazamiento de fondo y recuperar el foco al cerrar.
   useEffect(() => {
     const elementoPrevio =
       document.activeElement instanceof HTMLElement
@@ -234,9 +234,12 @@ export default function SolicitarVinculacionModal({
       });
 
       setEnviado(true);
-    } catch {
+    } catch (err: unknown) {
       setErrorGeneral(
-        'No se pudo enviar la solicitud. Inténtalo nuevamente.',
+        extraerMensajeErrorVinculacion(
+          err,
+          'No se pudo enviar la solicitud. Inténtalo nuevamente.',
+        ),
       );
     } finally {
       setEnviando(false);

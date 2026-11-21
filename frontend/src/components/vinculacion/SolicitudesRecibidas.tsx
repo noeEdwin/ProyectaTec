@@ -150,7 +150,7 @@ export default function SolicitudesRecibidas({
             </p>
           )}
 
-          {!pendienteIntegracion && !cargando && !error && (
+          {!pendienteIntegracion && !cargando && Boolean(error) && (
             <div className="sr-mensaje sr-mensaje-error" role="alert">
               <p>{error}</p>
 
