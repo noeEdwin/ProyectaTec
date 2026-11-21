@@ -26,7 +26,9 @@ import NuevaPublicacion from './pages/NuevaPublicacion';
 import EditarPublicacion from './pages/EditarPublicacion';
 import DetallePublicacion from './pages/DetallePublicacion';
 import MisPublicaciones from './pages/MisPublicaciones';
-
+import SolicitudesRecibidasPage from './pages/SolicitudesRecibidasPage';
+import SolicitudesEnviadasPage from './pages/SolicitudesEnviadasPage';
+import SeguimientoProyectoPage from './pages/SeguimientoProyectoPage';
 import MasIniciativas from './pages/MasIniciativas';
 import PublicacionesVinculaciones from './pages/PublicacionesVinculaciones';
 
@@ -54,6 +56,10 @@ function App() {
               {/* Detalle de iniciativa: pública, con el menú de MainLayout */}
               <Route path="/iniciativas/:tipo/:id" element={<DetallePublicacion />} />
               <Route path="/publicaciones/:tipo/:id" element={<DetallePublicacion />} />
+              <Route
+                path="/iniciativas/proyecto/:projectId/seguimiento"
+                element={<SeguimientoProyectoPage />}
+              />
 
               {/* Rutas protegidas que requieren sesión activa */}
               <Route element={<ProtectedRoute />}>
@@ -69,6 +75,14 @@ function App() {
                 {/* Publicaciones: Crear y Editar */}
                 <Route path="/publicaciones/nueva" element={<NuevaPublicacion />} />
                 <Route path="/mis-publicaciones" element={<MisPublicaciones />} />
+                <Route
+                  path="/mis-solicitudes"
+                  element={<SolicitudesEnviadasPage />}
+                />
+                <Route
+                  path="/mis-publicaciones/:projectId/solicitudes"
+                  element={<SolicitudesRecibidasPage />}
+                />
                 <Route path="/publicaciones/:tipo/:id/editar" element={<EditarPublicacion />} />
                 <Route path="/iniciativas/:tipo/:id/editar" element={<EditarPublicacion />} />
 

@@ -59,14 +59,45 @@ export default function MisPublicaciones() {
         </header>
 
         <div className="pub-mis-toolbar">
-          <span>{loading ? 'Cargando…' : `${publications.length} ${publications.length === 1 ? 'publicación' : 'publicaciones'}`}</span>
-          {user?.has_pending_institution_approval ? (
-            <span className="pub-estado-bloqueado" role="status" style={{ fontSize: 13, color: '#9a3412', fontWeight: 600 }}>
-              Publicación bloqueada hasta que aprueben tu institución
-            </span>
-          ) : (
-            <Link className="pub-boton pub-boton-primario" to="/publicaciones/nueva">Crear publicación</Link>
-          )}
+          <span>
+            {loading
+              ? 'Cargando…'
+              : `${publications.length} ${
+                  publications.length === 1
+                    ? 'publicación'
+                    : 'publicaciones'
+                }`}
+          </span>
+
+          <div className="pub-mis-acciones">
+            <Link
+              className="pub-boton pub-boton-secundario"
+              to="/mis-solicitudes"
+            >
+              Mis solicitudes enviadas →
+            </Link>
+
+            {user?.has_pending_institution_approval ? (
+              <span
+                className="pub-estado-bloqueado"
+                role="status"
+                style={{
+                  fontSize: 13,
+                  color: '#9a3412',
+                  fontWeight: 600,
+                }}
+              >
+                Publicación bloqueada hasta que aprueben tu institución
+              </span>
+            ) : (
+              <Link
+                className="pub-boton pub-boton-primario"
+                to="/publicaciones/nueva"
+              >
+                Crear publicación
+              </Link>
+            )}
+          </div>
         </div>
 
         {user?.has_pending_institution_approval && (
@@ -99,9 +130,25 @@ export default function MisPublicaciones() {
                 <small>Actualizada {publication.updated_at ? new Date(publication.updated_at).toLocaleDateString('es-MX') : 'recientemente'}</small>
               </div>
               {publication.can_edit && (
-                <Link className="pub-boton pub-boton-secundario" to={`/publicaciones/${publication.type}/${publication.id}/editar`} aria-label={`Editar ${publication.title}`}>
-                  Editar publicación <span aria-hidden="true">→</span>
-                </Link>
+                <div className="pub-mis-acciones">
+                  {publication.type === 'proyecto' && (
+                    <Link
+                      className="pub-boton pub-boton-secundario"
+                      to={`/mis-publicaciones/${publication.id}/solicitudes`}
+                      aria-label={`Ver solicitudes de ${publication.title}`}
+                    >
+                      Revisar solicitudes <span aria-hidden="true">→</span>
+                    </Link>
+                  )}
+
+                  <Link
+                    className="pub-boton pub-boton-secundario"
+                    to={`/publicaciones/${publication.type}/${publication.id}/editar`}
+                    aria-label={`Editar ${publication.title}`}
+                  >
+                    Editar publicación <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
               )}
             </article>
           ))}

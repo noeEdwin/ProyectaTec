@@ -7,6 +7,9 @@ import {
   type RequerimientoPublicacion,
 } from '../api/publicacionesService';
 import { useAuth } from '../context/auth-context';
+import { getMyProfile } from '../api/profileService';
+import SolicitarVinculacionModal from '../components/vinculacion/SolicitarVinculacionModal';
+import type { PerfilSolicitanteResumen } from '../types/vinculacion';
 import '../styles/catalogoComponentes.css';
 
 interface DetalleData {
@@ -46,7 +49,16 @@ export default function DetallePublicacion() {
   const [publicacion, setPublicacion] = useState<DetalleData | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [avisoVinculacion, setAvisoVinculacion] = useState(false);
+  const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
+
+  const [cargandoPerfilSolicitud, setCargandoPerfilSolicitud] =
+    useState(false);
+
+  const [errorPerfilSolicitud, setErrorPerfilSolicitud] =
+    useState<string | null>(null);
+
+  const [perfilSolicitud, setPerfilSolicitud] =
+    useState<PerfilSolicitanteResumen | null>(null);
   const [imagenAmpliada, setImagenAmpliada] = useState<string | null>(null);
 
   const [mostrandoReporte, setMostrandoReporte] = useState(false);
@@ -149,6 +161,45 @@ export default function DetallePublicacion() {
       setEnviandoReporte(false);
     }
   }
+
+async function abrirFormularioSolicitud() {
+  if (
+    !user ||
+    !publicacion ||
+    publicacion.tipo !== 'project' ||
+    cargandoPerfilSolicitud
+  ) {
+    return;
+  }
+
+  setCargandoPerfilSolicitud(true);
+  setErrorPerfilSolicitud(null);
+
+  try {
+    const perfil = await getMyProfile();
+
+    setPerfilSolicitud({
+      nombre: perfil.display_name?.trim() || user.name,
+      descripcion: perfil.description || null,
+      institucion:
+        perfil.institution || perfil.organization_name || null,
+      area:
+        perfil.field_of_study ||
+        perfil.organization_area ||
+        null,
+      ubicacion: perfil.location || null,
+    });
+
+    setMostrarSolicitud(true);
+  } catch {
+    setErrorPerfilSolicitud(
+      'No se pudo cargar la información de tu perfil. ' +
+        'Comprueba la conexión e inténtalo nuevamente.',
+    );
+  } finally {
+    setCargandoPerfilSolicitud(false);
+  }
+}
 
   if (cargando) {
     return (
@@ -268,6 +319,24 @@ export default function DetallePublicacion() {
               <h3>Colaboración abierta</h3>
               <p>Los alcances, requisitos y condiciones se confirman con la entidad responsable de la publicación.</p>
             </div>
+
+            {esProyecto && (
+              <div className="dp-bloque">
+                <h3>Seguimiento del proyecto</h3>
+                <p>
+                  Consulta el progreso y las actividades registradas
+                  durante el desarrollo de esta iniciativa.
+                </p>
+
+                <Link
+                  className="ic-enlace dp-seguimiento-enlace"
+                  to={`/iniciativas/proyecto/${publicacion.id}/seguimiento`}
+                >
+                  Consultar avances →
+                </Link>
+              </div>
+            )}
+
           </section>
 
           <aside className="dp-tarjeta dp-lateral" aria-label="Participar">
@@ -277,15 +346,35 @@ export default function DetallePublicacion() {
                 ? 'Consulta los detalles y envía una solicitud de vinculación para establecer contacto.'
                 : 'Si puedes apoyar esta necesidad, envía una solicitud de vinculación para ponerte en contacto.'}
             </p>
-            {/* TODO (Heber): conectar con el flujo real de solicitudes de vinculación. */}
-            <button type="button" className="dp-boton" onClick={() => setAvisoVinculacion(true)}>
-              Solicitar vinculación →
-            </button>
-            {avisoVinculacion && (
-              <p className="dp-aviso" role="status">
-                Las solicitudes de vinculación estarán disponibles próximamente.
-              </p>
-            )}
+            {esProyecto ? (
+  user ? (
+    <button
+      type="button"
+      className="dp-boton"
+      onClick={() => void abrirFormularioSolicitud()}
+      disabled={cargandoPerfilSolicitud}
+    >
+      {cargandoPerfilSolicitud
+        ? 'Cargando tu perfil…'
+        : 'Solicitar vinculación →'}
+    </button>
+  ) : (
+    <Link className="ic-enlace" to="/acceso">
+      Inicia sesión para solicitar vinculación →
+    </Link>
+  )
+) : (
+  <p className="dp-aviso" role="status">
+    Las solicitudes directas para necesidades comunitarias
+    todavía no están disponibles.
+  </p>
+)}
+
+{errorPerfilSolicitud && (
+  <p className="dp-reporte-error" role="alert">
+    {errorPerfilSolicitud}
+  </p>
+)}
 
             <div className="dp-reporte-bloque">
               {user ? (
@@ -377,6 +466,30 @@ export default function DetallePublicacion() {
 
         <footer className="dp-footer">© 2026 ProyectaTec · Instituto Tecnológico de Oaxaca</footer>
       </div>
+            {mostrarSolicitud && perfilSolicitud && esProyecto && (
+        <SolicitarVinculacionModal
+          proyecto={{
+            id: publicacion.id,
+            titulo: publicacion.titulo,
+          }}
+          perfil={perfilSolicitud}
+          necesidades={publicacion.requirements.flatMap((req) =>
+            typeof req.id === 'number' && req.status === 'open'
+              ? [
+                  {
+                    id: req.id,
+                    titulo: req.title,
+                    disponible: true,
+                  },
+                ]
+              : [],
+          )}
+          onCerrar={() => {
+            setMostrarSolicitud(false);
+            setPerfilSolicitud(null);
+          }}
+        />
+      )}
       {imagenAmpliada && (
         <div
           className="dp-lightbox"
