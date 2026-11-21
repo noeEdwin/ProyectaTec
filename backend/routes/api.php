@@ -16,6 +16,7 @@ use App\Http\Controllers\PublicationMediaController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
 use App\Http\Controllers\ProjectMemberController;
+use App\Http\Controllers\ProjectCommentController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Category;
 use App\Models\Project;
@@ -44,6 +45,12 @@ Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumb
 Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])->whereNumber('project');
 Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
 Route::get('/projects/{project}/updates', [ProjectUpdateController::class, 'index'])->whereNumber('project');
+// Consultar comentarios de un avance
+Route::get(
+    '/projects/{project}/updates/{update}/comments',
+    [ProjectCommentController::class, 'index']
+)->whereNumber('project')->whereNumber('update');
+
 // Consultar participantes activos de un proyecto
 Route::get(
     '/projects/{project}/members',
@@ -87,6 +94,11 @@ Route::get('/proyectos/destacado', function () {
 // --------------------------------------------------------------------------
 
 Route::middleware(['auth:sanctum', EnsureActiveUser::class])->group(function () {
+    // Registrar comentario en un avance
+Route::post(
+    '/projects/{project}/updates/{update}/comments',
+    [ProjectCommentController::class, 'store']
+)->whereNumber('project')->whereNumber('update');
     // Moderación de usuarios
     Route::get(
         '/admin/users',
