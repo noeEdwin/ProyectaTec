@@ -15,11 +15,13 @@ use App\Http\Controllers\ProjectUpdateController;
 use App\Http\Controllers\PublicationMediaController;
 use App\Http\Controllers\PublicationReportController;
 use App\Http\Controllers\PublicationStatsController;
+use App\Http\Controllers\ProjectMemberController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Models\Category;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
 
 // --------------------------------------------------------------------------
 // Rutas públicas (No requieren inicio de sesión)
@@ -42,6 +44,11 @@ Route::get('/projects/{project}', [ProjectController::class, 'show'])->whereNumb
 Route::get('/projects/{project}/needs', [ProjectNeedController::class, 'index'])->whereNumber('project');
 Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 'show'])->whereNumber('project')->whereNumber('need');
 Route::get('/projects/{project}/updates', [ProjectUpdateController::class, 'index'])->whereNumber('project');
+// Consultar participantes activos de un proyecto
+Route::get(
+    '/projects/{project}/members',
+    [ProjectMemberController::class, 'index']
+)->whereNumber('project');
 Route::get('/projects/{project}/updates/{update}', [ProjectUpdateController::class, 'show'])->whereNumber('project')->whereNumber('update');
 Route::get('/community-needs', [CommunityNeedController::class, 'index']);
 Route::get('/community-needs/{communityNeed}', [CommunityNeedController::class, 'show'])->whereNumber('communityNeed');
