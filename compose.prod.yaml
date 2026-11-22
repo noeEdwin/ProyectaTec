@@ -39,6 +39,7 @@ services:
       DB_PORT: 5432
     volumes:
       - backend_storage:/var/www/html/storage/app/public
+      - backend_private_storage:/var/www/html/storage/app/private
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,5 +69,6 @@ services:
 volumes:
   postgres_data:
   backend_storage:
+  backend_private_storage:
   caddy_data:
   caddy_config:

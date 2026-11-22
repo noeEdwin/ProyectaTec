@@ -6,6 +6,7 @@ use App\Models\ProjectUpdate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class ProjectCommentController extends Controller
 {
@@ -73,6 +74,12 @@ class ProjectCommentController extends Controller
             ProjectUpdate::class,
             $visibleProject,
         ]);
+
+        if (! in_array($visibleProject->status, ['open', 'in_progress'], true)) {
+            throw ValidationException::withMessages([
+                'project' => ['Este proyecto no admite nuevos comentarios.'],
+            ]);
+        }
 
         $data = $request->validate([
             'content' => [

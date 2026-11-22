@@ -138,15 +138,16 @@ class ProjectFileController extends Controller
             abort(500, 'No se pudo guardar el archivo.');
         }
 
-        $originalName = mb_substr(
+        $rawName = preg_replace(
+            '/[\x00-\x1F\x7F]+/',
+            '',
             basename(str_replace(
                 '\\',
                 '/',
                 $uploaded->getClientOriginalName()
-            )),
-            0,
-            255
+            ))
         );
+        $originalName = mb_substr(trim((string) $rawName), 0, 255) ?: 'archivo';
 
         try {
             $file = $visibleProject->files()->create([

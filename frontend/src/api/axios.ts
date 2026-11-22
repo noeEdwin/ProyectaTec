@@ -17,4 +17,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const requestUrl = String(error?.config?.url ?? '');
+    if (
+      error?.response?.status === 401
+      && !requestUrl.includes('/login')
+      && !requestUrl.includes('/register')
+    ) {
+      localStorage.removeItem('token');
+    }
+    return Promise.reject(error);
+  },
+);
+
 export default api;

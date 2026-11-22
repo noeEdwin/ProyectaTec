@@ -178,6 +178,19 @@ class ApplicationController extends Controller
                 ]);
             }
 
+            if ($data['status'] === Application::STATUS_ACCEPTED) {
+                $lockedProject = $locked->project;
+                if (
+                    ! $lockedProject
+                    || $lockedProject->is_hidden
+                    || ! in_array($lockedProject->status, ['open', 'in_progress'], true)
+                ) {
+                    throw ValidationException::withMessages([
+                        'status' => ['No se puede aceptar una solicitud en un proyecto oculto, cerrado o completado.'],
+                    ]);
+                }
+            }
+
             $locked->update([
                 'status' => $data['status'],
                 'reviewed_by' => $reviewer->id,

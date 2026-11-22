@@ -94,6 +94,9 @@ function App() {
                 <Route path="/publicaciones" element={<PublicacionesVinculaciones />} />
               </Route>
             </Route>
+
+            {/* Fallback para rutas inexistentes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </PerfilProvider>

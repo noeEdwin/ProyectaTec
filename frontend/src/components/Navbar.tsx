@@ -106,6 +106,22 @@ export default function Navbar() {
                     </Link>
 
                     <Link
+                      to="/mis-solicitudes"
+                      onClick={closeAllMenus}
+                      className="dropdown-item"
+                    >
+                      Mis solicitudes
+                    </Link>
+
+                    <Link
+                      to="/publicaciones"
+                      onClick={closeAllMenus}
+                      className="dropdown-item"
+                    >
+                      Panel de vinculación
+                    </Link>
+
+                    <Link
                       to="/mi-perfil?tipo=organizacion"
                       onClick={closeAllMenus}
                       className="dropdown-item"
