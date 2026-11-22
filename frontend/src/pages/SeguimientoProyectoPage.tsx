@@ -128,11 +128,14 @@ export default function SeguimientoProyectoPage() {
       }
     }
 
-    void cargarTodo();
-    void cargarAvances();
+    const timer = window.setTimeout(() => {
+      void cargarTodo();
+      void cargarAvances();
+    }, 0);
 
     return () => {
       activo = false;
+      window.clearTimeout(timer);
     };
   }, [idProyecto, idValido, user, cargarAvances]);
 

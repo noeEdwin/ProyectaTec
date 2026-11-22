@@ -76,9 +76,11 @@ export default function SolicitudesRecibidasPage({
   }, [esControlado, idProyecto, idValido]);
 
   useEffect(() => {
-    if (!esControlado && idValido) {
+    if (esControlado || !idValido) return;
+    const timer = window.setTimeout(() => {
       void cargar();
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [cargar, esControlado, idValido]);
 
   async function manejarResolucion(

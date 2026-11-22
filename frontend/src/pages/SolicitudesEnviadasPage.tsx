@@ -95,9 +95,11 @@ export default function SolicitudesEnviadasPage({
   }, [esControlado]);
 
   useEffect(() => {
-    if (!esControlado) {
+    if (esControlado) return;
+    const timer = window.setTimeout(() => {
       void cargar();
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [cargar, esControlado]);
 
   const registros = esControlado ? solicitudes : datosLocales;
