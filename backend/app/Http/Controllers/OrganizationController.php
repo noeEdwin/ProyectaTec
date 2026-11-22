@@ -35,13 +35,18 @@ class OrganizationController extends Controller
             ->where('approval_status', 'approved')
             ->when($type !== null, fn ($query) => $query->where('organization_type', $type))
             ->when($search !== '', function ($query) use ($search) {
-                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], mb_strtolower($search));
+                $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], mb_strtolower($search));
                 $pattern = '%'.$escaped.'%';
                 $query->where(function ($sub) use ($pattern) {
-                    $sub->whereRaw('LOWER(name) LIKE ?', [$pattern])
-                        ->orWhereRaw("LOWER(COALESCE(sector, '')) LIKE ?", [$pattern])
-                        ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE ?", [$pattern])
-                        ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ?", [$pattern]);
+                    $sub->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhereRaw("LOWER(COALESCE(sector, '')) LIKE ? ESCAPE '!'", [$pattern])
+                        ->orWhere(function ($location) use ($pattern) {
+                            $location->where(function ($visibility) {
+                                $visibility->whereNull('public_fields')
+                                    ->orWhereJsonContains('public_fields', 'location');
+                            })->whereRaw("LOWER(COALESCE(location, '')) LIKE ? ESCAPE '!'", [$pattern]);
+                        })
+                        ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ? ESCAPE '!'", [$pattern]);
                 });
             })
             ->withCount(['projects' => fn ($query) => $query->publiclyVisible()])
