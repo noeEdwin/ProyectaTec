@@ -140,9 +140,12 @@ export default function Acceso({ onLogin }: AccesoProps) {
           </nav>
 
           <form onSubmit={handleSubmit} noValidate>
+            <p className="form-leyenda-obligatorios">
+              Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+            </p>
             <div className="acceso-field">
               <label htmlFor="acceso-email">
-                Correo electrónico
+                Correo electrónico<span className="campo-obligatorio" aria-hidden="true">*</span>
               </label>
 
               <input
@@ -168,7 +171,7 @@ export default function Acceso({ onLogin }: AccesoProps) {
 
             <div className="acceso-field">
               <label htmlFor="acceso-password">
-                Contraseña
+                Contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
               </label>
 
               <div className="acceso-password-wrapper">

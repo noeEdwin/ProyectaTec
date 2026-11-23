@@ -76,8 +76,13 @@ export default function OlvideContrasena() {
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
+            <p className="form-leyenda-obligatorios">
+              Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+            </p>
             <div className="acceso-field">
-              <label htmlFor="forgot-email">Correo electrónico</label>
+              <label htmlFor="forgot-email">
+                Correo electrónico<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
               <input
                 id="forgot-email"
                 type="email"
@@ -88,6 +93,11 @@ export default function OlvideContrasena() {
                 onChange={(event) => setEmail(event.target.value)}
                 aria-invalid={Boolean(error)}
               />
+              {email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && (
+                <p className="formato-ayuda invalido">
+                  Formato esperado: usuario@dominio.com (incluye @ y dominio).
+                </p>
+              )}
             </div>
 
             {error && (

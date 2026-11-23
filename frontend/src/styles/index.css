@@ -31,3 +31,108 @@ textarea[aria-invalid="true"] {
   font-weight: 500;
   line-height: 1.45;
 }
+
+/* Indicadores unificados de campos obligatorios, opcionales y validación de formato */
+.campo-obligatorio {
+  color: #dc2626;
+  font-weight: 700;
+  margin-left: 3px;
+}
+
+.campo-opcional {
+  color: #64748b;
+  font-weight: 500;
+  font-size: 11px;
+  margin-left: 5px;
+}
+
+.form-leyenda-obligatorios {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.formato-ayuda {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.formato-ayuda.invalido {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.formato-ayuda.valido {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.pwd-checklist {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pwd-checklist-titulo {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pwd-checklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.pwd-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.pwd-item.neutro {
+  color: #64748b;
+}
+
+.pwd-item.ok,
+.pwd-match.ok {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.pwd-item.faltante,
+.pwd-match.faltante {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.pwd-icon {
+  flex: none;
+  font-weight: 700;
+  width: 14px;
+  text-align: center;
+}
+
+.pwd-razon {
+  font-weight: 400;
+  color: #991b1b;
+}
+
+.pwd-match {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}

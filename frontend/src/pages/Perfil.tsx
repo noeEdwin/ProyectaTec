@@ -53,10 +53,28 @@ const CAMPOS_A_VALIDAR: Record<string, string[]> = {
   residente_oaxaca: ['locality'],
 };
 
-function Campo({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {
+function Campo({
+  id,
+  label,
+  error,
+  required = false,
+  optional = false,
+  children,
+}: {
+  id: string;
+  label: string;
+  error?: string;
+  required?: boolean;
+  optional?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div>
-      <label htmlFor={id} style={estiloLabel}>{label}</label>
+      <label htmlFor={id} style={estiloLabel}>
+        {label}
+        {required && <span className="campo-obligatorio" aria-hidden="true">*</span>}
+        {optional && <span className="campo-opcional">(opcional)</span>}
+      </label>
       {children}
       {error && <span role="alert" style={{ color: '#b91c1c', fontSize: '12px', marginTop: '4px', display: 'block' }}>{error}</span>}
     </div>
@@ -585,11 +603,14 @@ export default function Perfil() {
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <p className="form-leyenda-obligatorios" style={{ marginBottom: 0 }}>
+              Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+            </p>
 
             {/* Nombre o razón social */}
             <div>
               <label htmlFor="profile-display-name" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Nombre o razón social
+                Nombre o razón social<span className="campo-obligatorio" aria-hidden="true">*</span>
               </label>
               <input
                 id="profile-display-name"
@@ -666,30 +687,30 @@ export default function Perfil() {
 
             {profile.account_type === 'estudiante' && <>
               {renderInstitutionSelect('Institución educativa')}
-              <Campo id="profile-campus" label="Campus o plantel" error={errorDe('campus')}>
-                <input id="profile-campus" value={profile.campus || ''} onChange={(e) => setField('campus', e.target.value)} required maxLength={255} style={estiloInput} />
+              <Campo id="profile-campus" label="Campus o plantel" optional error={errorDe('campus')}>
+                <input id="profile-campus" value={profile.campus || ''} onChange={(e) => setField('campus', e.target.value)} maxLength={255} style={estiloInput} />
               </Campo>
-              <Campo id="profile-field-of-study" label="Carrera o programa" error={errorDe('field_of_study')}>
+              <Campo id="profile-field-of-study" label="Carrera o programa" required error={errorDe('field_of_study')}>
                 <input id="profile-field-of-study" value={profile.field_of_study || ''} onChange={(e) => setField('field_of_study', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
-              <Campo id="profile-semester" label="Semestre o periodo" error={errorDe('semester')}>
+              <Campo id="profile-semester" label="Semestre o periodo" required error={errorDe('semester')}>
                 <select id="profile-semester" value={profile.semester || ''} onChange={(e) => setField('semester', e.target.value)} required style={estiloInput}>
                   <option value="">Selecciona tu semestre</option>
                   {SEMESTRES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
                   {profile.semester && !SEMESTRES.some((item) => item.value === profile.semester) && <option value={profile.semester}>{profile.semester}</option>}
                 </select>
               </Campo>
-              <Campo id="profile-student-number" label="Matrícula" error={errorDe('student_number')}>
+              <Campo id="profile-student-number" label="Matrícula" required error={errorDe('student_number')}>
                 <input id="profile-student-number" inputMode="numeric" value={profile.student_number || ''} onChange={(e) => setField('student_number', e.target.value)} required maxLength={REGLAS_CAMPO.student_number.maxLength} style={estiloInput} />
               </Campo>
-              <Campo id="profile-expected-graduation" label="Fecha estimada de egreso" error={errorDe('expected_graduation')}>
+              <Campo id="profile-expected-graduation" label="Fecha estimada de egreso" required error={errorDe('expected_graduation')}>
                 <input id="profile-expected-graduation" type="month" value={profile.expected_graduation || ''} onChange={(e) => setField('expected_graduation', e.target.value)} required style={estiloInput} />
               </Campo>
             </>}
 
             {profile.account_type === 'academico' && <>
               {renderInstitutionSelect('Institución')}
-              <Campo id="profile-academic-role" label="Actividad académica" error={errorDe('academic_role')}>
+              <Campo id="profile-academic-role" label="Actividad académica" required error={errorDe('academic_role')}>
                 <select id="profile-academic-role" value={profile.academic_role || ''} onChange={(e) => setField('academic_role', e.target.value)} required style={estiloInput}>
                   <option value="">Selecciona</option>
                   <option value="docente">Docente</option>
@@ -697,24 +718,24 @@ export default function Perfil() {
                   <option value="ambos">Docente e investigador/a</option>
                 </select>
               </Campo>
-              <Campo id="profile-organization-area" label="Área o campo de investigación" error={errorDe('organization_area')}>
+              <Campo id="profile-organization-area" label="Área o campo de investigación" optional error={errorDe('organization_area')}>
                 <input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setField('organization_area', e.target.value)} maxLength={255} style={estiloInput} />
               </Campo>
-              <Campo id="profile-organization-position" label="Cargo o función" error={errorDe('organization_position')}>
+              <Campo id="profile-organization-position" label="Cargo o función" optional error={errorDe('organization_position')}>
                 <input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setField('organization_position', e.target.value)} maxLength={255} style={estiloInput} />
               </Campo>
             </>}
 
             {profile.account_type === 'empleado_organizacion' && <>
-              <Campo id="profile-organization-name" label="Organización" error={errorDe('organization_name')}>
+              <Campo id="profile-organization-name" label="Organización" required error={errorDe('organization_name')}>
                 <input id="profile-organization-name" list="profile-organization-list" value={profile.organization_name || ''} onChange={(e) => { const name = e.target.value; setProfile({ ...profile, organization_name: name, organization_id: catalog.find((item) => item.name === name)?.id ?? null }); }} required maxLength={255} style={estiloInput} />
                 <datalist id="profile-organization-list">{catalog.map((item) => <option key={item.id} value={item.name} />)}</datalist>
                 <p style={{ color: '#64748b', fontSize: '12px' }}>Selecciona una opción o escribe una organización que aún no esté en la lista.</p>
               </Campo>
-              <Campo id="profile-organization-area" label="Área o departamento" error={errorDe('organization_area')}>
+              <Campo id="profile-organization-area" label="Área o departamento" required error={errorDe('organization_area')}>
                 <input id="profile-organization-area" value={profile.organization_area || ''} onChange={(e) => setField('organization_area', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
-              <Campo id="profile-organization-position" label="Cargo o puesto" error={errorDe('organization_position')}>
+              <Campo id="profile-organization-position" label="Cargo o puesto" required error={errorDe('organization_position')}>
                 <input id="profile-organization-position" value={profile.organization_position || ''} onChange={(e) => setField('organization_position', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
 
@@ -767,13 +788,13 @@ export default function Perfil() {
             </>}
 
             {esResidente && <>
-              <Campo id="profile-municipality" label="Municipio" error={errorDe('municipality')}>
+              <Campo id="profile-municipality" label="Municipio" required error={errorDe('municipality')}>
                 <select id="profile-municipality" value={profile.municipality || ''} onChange={(e) => setField('municipality', e.target.value)} required style={estiloInput}>
                   <option value="">Selecciona tu municipio</option>
                   {opcionesConActual(MUNICIPIOS_OAXACA, profile.municipality || '').map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </Campo>
-              <Campo id="profile-locality" label="Barrio, colonia o comunidad" error={errorDe('locality')}>
+              <Campo id="profile-locality" label="Barrio, colonia o comunidad" required error={errorDe('locality')}>
                 <input id="profile-locality" value={profile.locality || ''} onChange={(e) => setField('locality', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>
             </>}
@@ -828,7 +849,7 @@ export default function Perfil() {
             {/* Correo de contacto */}
             <div>
               <label htmlFor="profile-email" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Correo de contacto
+                Correo de contacto<span className="campo-obligatorio" aria-hidden="true">*</span>
               </label>
               <input
                 id="profile-email"
@@ -848,7 +869,7 @@ export default function Perfil() {
               {validationErrors.email && <span style={{ color: '#b91c1c', fontSize: '12px' }}>{validationErrors.email[0]}</span>}
             </div>
 
-            <Campo id="profile-phone" label="Teléfono de contacto" error={errorDe('phone')}>
+            <Campo id="profile-phone" label="Teléfono de contacto" optional error={errorDe('phone')}>
               <input
                 id="profile-phone"
                 type="tel"
@@ -859,12 +880,20 @@ export default function Perfil() {
                 maxLength={REGLAS_CAMPO.phone.maxLength}
                 style={estiloInput}
               />
+              {(() => {
+                const raw = (profile.phone || '').trim();
+                const digitos = raw.replace(/\D/g, '');
+                if (raw.length > 0 && (digitos.length !== 10 || /[^\d]/.test(raw))) {
+                  return <p className="formato-ayuda invalido">Formato: 10 dígitos numéricos sin espacios (actual: {digitos.length}/10).</p>;
+                }
+                return <p className="formato-ayuda">Formato: 10 dígitos numéricos (ej. 9511234567).</p>;
+              })()}
             </Campo>
 
             {/* Descripción breve */}
             <div>
               <label htmlFor="profile-description" style={{ display: 'block', fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '6px' }}>
-                Descripción breve
+                Descripción breve<span className="campo-opcional">(opcional)</span>
               </label>
               <textarea
                 id="profile-description"

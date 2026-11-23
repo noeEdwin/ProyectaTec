@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import axios from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { REQUISITOS_CONTRASENA, validarContrasenaSegura } from '../utils/passwordValidation';
+import { validarContrasenaSegura } from '../utils/passwordValidation';
+import PasswordChecklist from '../components/PasswordChecklist';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
 
@@ -120,8 +121,13 @@ export default function RestablecerContrasena() {
           )}
 
           <form onSubmit={handleSubmit} noValidate>
+            <p className="form-leyenda-obligatorios">
+              Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+            </p>
             <div className="acceso-field">
-              <label htmlFor="reset-email">Correo electrónico</label>
+              <label htmlFor="reset-email">
+                Correo electrónico<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
               <input
                 id="reset-email"
                 type="email"
@@ -135,7 +141,9 @@ export default function RestablecerContrasena() {
             </div>
 
             <div className="acceso-field">
-              <label htmlFor="reset-password">Nueva contraseña</label>
+              <label htmlFor="reset-password">
+                Nueva contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
               <div className="acceso-password-wrapper">
                 <input
                   id="reset-password"
@@ -155,15 +163,17 @@ export default function RestablecerContrasena() {
                   {mostrarPassword ? 'Ocultar' : 'Mostrar'}
                 </button>
               </div>
-              <ul className="acceso-requisitos">
-                {REQUISITOS_CONTRASENA.map((req) => (
-                  <li key={req}>{req}</li>
-                ))}
-              </ul>
+              <PasswordChecklist
+                password={password}
+                confirmation={passwordConfirmation}
+                showConfirmationCheck={passwordConfirmation.length > 0}
+              />
             </div>
 
             <div className="acceso-field">
-              <label htmlFor="reset-password-confirmation">Confirmar contraseña</label>
+              <label htmlFor="reset-password-confirmation">
+                Confirmar contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
               <input
                 id="reset-password-confirmation"
                 type={mostrarPassword ? 'text' : 'password'}

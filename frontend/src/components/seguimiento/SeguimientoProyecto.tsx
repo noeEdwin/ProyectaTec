@@ -314,9 +314,12 @@ export default function SeguimientoProyecto({
               onSubmit={(evento) => void registrar(evento)}
               noValidate
             >
+              <p className="form-leyenda-obligatorios" style={{ marginBottom: 0 }}>
+                Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+              </p>
               <div className="sp-campo">
                 <label htmlFor="sp-title">
-                  Título del avance *
+                  Título del avance<span className="campo-obligatorio" aria-hidden="true">*</span>
                 </label>
                 <input
                   id="sp-title"
@@ -333,7 +336,7 @@ export default function SeguimientoProyecto({
 
               <div className="sp-campo">
                 <label htmlFor="sp-description">
-                  Descripción del avance *
+                  Descripción del avance<span className="campo-obligatorio" aria-hidden="true">*</span>
                 </label>
                 <textarea
                   id="sp-description"
@@ -350,9 +353,7 @@ export default function SeguimientoProyecto({
               <div className="sp-campo sp-campo-progreso">
                 <label htmlFor="sp-progress">
                   Porcentaje de progreso
-                  <span className="sp-opcional">
-                    {' '}(opcional)
-                  </span>
+                  <span className="campo-opcional">(opcional)</span>
                 </label>
 
                 <input
@@ -370,9 +371,13 @@ export default function SeguimientoProyecto({
                 />
 
                 <small>
-                  Deja este campo vacío si no deseas actualizar
-                  el porcentaje del proyecto.
+                  Formato: número entero del 0 al 100. Déjalo vacío si no deseas cambiar el porcentaje.
                 </small>
+                {progreso.trim() !== '' && (!/^\d+$/.test(progreso.trim()) || Number(progreso.trim()) > 100) && (
+                  <p className="formato-ayuda invalido">
+                    Debe ser un número entero entre 0 y 100 (sin decimales ni símbolos).
+                  </p>
+                )}
               </div>
 
               {errorFormulario && (

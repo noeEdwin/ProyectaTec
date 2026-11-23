@@ -388,10 +388,15 @@ export default function PublicacionForm({
                 )}
 
                 <form className="pub-form" onSubmit={irAVistaPrevia} noValidate>
+                  <p className="form-leyenda-obligatorios">
+                    Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+                  </p>
                   <div className="pub-campos">
                     {/* Título */}
                     <div className="pub-campo">
-                      <label htmlFor="pub-title">Título</label>
+                      <label htmlFor="pub-title">
+                        Título<span className="campo-obligatorio" aria-hidden="true">*</span>
+                      </label>
                       <input
                         id="pub-title"
                         type="text"
@@ -408,7 +413,9 @@ export default function PublicacionForm({
                     {/* Categoría y modalidad */}
                     <div className={`pub-fila${esProyecto ? '' : ' pub-fila-simple'}`}>
                       <div className="pub-campo">
-                        <label htmlFor="pub-category_id">Categoría</label>
+                        <label htmlFor="pub-category_id">
+                          Categoría<span className="campo-obligatorio" aria-hidden="true">*</span>
+                        </label>
                         <select
                           id="pub-category_id"
                           value={valores.category_id}
@@ -522,7 +529,9 @@ export default function PublicacionForm({
 
                     {/* Descripción */}
                     <div className="pub-campo">
-                      <label htmlFor="pub-description">Descripción</label>
+                      <label htmlFor="pub-description">
+                        Descripción<span className="campo-obligatorio" aria-hidden="true">*</span>
+                      </label>
                       <textarea
                         id="pub-description"
                         ref={descripcionRef}
@@ -685,7 +694,9 @@ export default function PublicacionForm({
                               </div>
                               <div className="pub-fila">
                                 <div className="pub-campo">
-                                  <label htmlFor={`pub-req-title-${index}`}>Título / rol buscado</label>
+                                  <label htmlFor={`pub-req-title-${index}`}>
+                                    Título / rol buscado<span className="campo-obligatorio" aria-hidden="true">*</span>
+                                  </label>
                                   <input
                                     id={`pub-req-title-${index}`}
                                     type="text"
@@ -698,7 +709,9 @@ export default function PublicacionForm({
                                   />
                                 </div>
                                 <div className="pub-campo">
-                                  <label htmlFor={`pub-req-openings-${index}`}>Vacantes</label>
+                                  <label htmlFor={`pub-req-openings-${index}`}>
+                                    Vacantes<span className="campo-obligatorio" aria-hidden="true">*</span>
+                                  </label>
                                   <input
                                     id={`pub-req-openings-${index}`}
                                     type="number"

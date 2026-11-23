@@ -359,12 +359,15 @@ export default function SolicitarVinculacionModal({
 
               <section className="sv-seccion">
                 <h3>Propuesta de colaboración</h3>
+                <p className="form-leyenda-obligatorios">
+                  Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+                </p>
 
                 {necesidadesAbiertas.length > 0 && (
                   <div className="sv-campo">
                     <label htmlFor="sv-necesidad">
                       Necesidad del proyecto
-                      <span className="sv-opcional"> (opcional)</span>
+                      <span className="campo-opcional">(opcional)</span>
                     </label>
                     <select
                       id="sv-necesidad"
@@ -398,7 +401,7 @@ export default function SolicitarVinculacionModal({
 
                 <div className="sv-campo">
                   <label htmlFor="sv-mensaje">
-                    ¿Por qué quieres participar? *
+                    ¿Por qué quieres participar?<span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
                   <textarea
                     id="sv-mensaje"
@@ -419,8 +422,10 @@ export default function SolicitarVinculacionModal({
                     disabled={enviando}
                   />
                   <div className="sv-campo-pie">
-                    <small id="sv-mensaje-ayuda">
-                      Mínimo 20 caracteres.
+                    <small id="sv-mensaje-ayuda" className={valores.message.trim().length > 0 && valores.message.trim().length < 20 ? 'formato-ayuda invalido' : ''}>
+                      {valores.message.trim().length > 0 && valores.message.trim().length < 20
+                        ? `Te faltan ${20 - valores.message.trim().length} caracteres (mínimo 20).`
+                        : 'Mínimo 20 caracteres.'}
                     </small>
                     <small>{valores.message.length}/2000</small>
                   </div>
@@ -434,7 +439,7 @@ export default function SolicitarVinculacionModal({
                 <div className="sv-dos-columnas">
                   <div className="sv-campo">
                     <label htmlFor="sv-tipo-apoyo">
-                      Tipo de apoyo que ofreces *
+                      Tipo de apoyo que ofreces<span className="campo-obligatorio" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="sv-tipo-apoyo"
@@ -456,7 +461,7 @@ export default function SolicitarVinculacionModal({
 
                   <div className="sv-campo">
                     <label htmlFor="sv-disponibilidad">
-                      Disponibilidad u horarios *
+                      Disponibilidad u horarios<span className="campo-obligatorio" aria-hidden="true">*</span>
                     </label>
                     <input
                       id="sv-disponibilidad"
@@ -535,6 +540,11 @@ export default function SolicitarVinculacionModal({
                     aria-invalid={Boolean(errores.portafolio_url)}
                     disabled={enviando}
                   />
+                  {!errores.portafolio_url && valores.portafolio_url.trim().length > 0 && !enlaceValido(valores.portafolio_url) && (
+                    <p className="formato-ayuda invalido">
+                      Formato inválido: debe iniciar con https:// o http://.
+                    </p>
+                  )}
                   {errores.portafolio_url && (
                     <p className="sv-error">
                       {errores.portafolio_url}
@@ -546,7 +556,7 @@ export default function SolicitarVinculacionModal({
                   <div className="sv-campo">
                     <label htmlFor="sv-github">
                       GitHub
-                      <span className="sv-opcional"> (opcional)</span>
+                      <span className="campo-opcional">(opcional)</span>
                     </label>
                     <input
                       id="sv-github"
@@ -560,6 +570,11 @@ export default function SolicitarVinculacionModal({
                       aria-invalid={Boolean(errores.github_url)}
                       disabled={enviando}
                     />
+                    {!errores.github_url && valores.github_url.trim().length > 0 && !enlaceValido(valores.github_url) && (
+                      <p className="formato-ayuda invalido">
+                        Formato inválido: debe iniciar con https:// o http://.
+                      </p>
+                    )}
                     {errores.github_url && (
                       <p className="sv-error">
                         {errores.github_url}
@@ -570,7 +585,7 @@ export default function SolicitarVinculacionModal({
                   <div className="sv-campo">
                     <label htmlFor="sv-linkedin">
                       LinkedIn
-                      <span className="sv-opcional"> (opcional)</span>
+                      <span className="campo-opcional">(opcional)</span>
                     </label>
                     <input
                       id="sv-linkedin"
@@ -584,6 +599,11 @@ export default function SolicitarVinculacionModal({
                       aria-invalid={Boolean(errores.linkedin_url)}
                       disabled={enviando}
                     />
+                    {!errores.linkedin_url && valores.linkedin_url.trim().length > 0 && !enlaceValido(valores.linkedin_url) && (
+                      <p className="formato-ayuda invalido">
+                        Formato inválido: debe iniciar con https:// o http://.
+                      </p>
+                    )}
                     {errores.linkedin_url && (
                       <p className="sv-error">
                         {errores.linkedin_url}

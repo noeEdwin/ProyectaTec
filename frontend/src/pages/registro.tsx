@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { validarContrasenaSegura } from '../utils/passwordValidation';
+import PasswordChecklist from '../components/PasswordChecklist';
 import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/profileService';
 import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
@@ -245,9 +246,37 @@ export default function Registro({ onRegister }: RegistroProps) {
 
   function renderProfileInput(key: keyof RegistroPayload, label: string, placeholder = '', type = 'text', required = true) {
     const error = errores[key];
+    const valor = (perfil[key as string] ?? '').trim();
+    const etiquetaLimpia = label.replace(/\s*\(opcional\)\s*/gi, '').trim();
+    let avisoFormato: { texto: string; invalido: boolean } | null = null;
+
+    if (type === 'url') {
+      if (valor.length > 0 && !/^https?:\/\/.+\..+/i.test(valor)) {
+        avisoFormato = { texto: 'Formato inválido: debe iniciar con https:// o http:// (ej. https://ejemplo.org).', invalido: true };
+      } else {
+        avisoFormato = { texto: 'Formato: https://ejemplo.org', invalido: false };
+      }
+    } else if (type === 'tel') {
+      const digitos = valor.replace(/\D/g, '');
+      if (valor.length > 0 && (digitos.length !== 10 || /[^\d]/.test(valor))) {
+        avisoFormato = { texto: `Formato requerido: 10 dígitos sin espacios (actual: ${digitos.length}/10).`, invalido: true };
+      } else {
+        avisoFormato = { texto: 'Formato: 10 dígitos numéricos (ej. 9511234567).', invalido: false };
+      }
+    } else if (type === 'email' && valor.length > 0 && !correoValido(valor)) {
+      avisoFormato = { texto: 'Formato inválido: incluye @ y dominio (ej. contacto@organizacion.org).', invalido: true };
+    }
+
     return (
       <div className="registro-field" key={key}>
-        <label htmlFor={`registro-${key}`}>{label}</label>
+        <label htmlFor={`registro-${key}`}>
+          {etiquetaLimpia}
+          {required ? (
+            <span className="campo-obligatorio" aria-hidden="true">*</span>
+          ) : (
+            <span className="campo-opcional">(opcional)</span>
+          )}
+        </label>
         <input
           id={`registro-${key}`}
           type={type}
@@ -260,6 +289,9 @@ export default function Registro({ onRegister }: RegistroProps) {
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `registro-${key}-error` : undefined}
         />
+        {!error && avisoFormato && (
+          <p className={`formato-ayuda${avisoFormato.invalido ? ' invalido' : ''}`}>{avisoFormato.texto}</p>
+        )}
         {error && <p className="registro-error" id={`registro-${key}-error`}>{error}</p>}
       </div>
     );
@@ -270,7 +302,9 @@ export default function Registro({ onRegister }: RegistroProps) {
     const error = errores.institution;
     return (
       <div className="registro-field">
-        <label htmlFor="registro-institution">Institución educativa</label>
+        <label htmlFor="registro-institution">
+          Institución educativa<span className="campo-obligatorio" aria-hidden="true">*</span>
+        </label>
         {!institutionManual ? (
           <select
             id="registro-institution"
@@ -335,7 +369,9 @@ export default function Registro({ onRegister }: RegistroProps) {
     const error = errores.organization_name;
     return (
       <div className="registro-field">
-        <label htmlFor="registro-organization_name">Organización</label>
+        <label htmlFor="registro-organization_name">
+          Organización<span className="campo-obligatorio" aria-hidden="true">*</span>
+        </label>
         {!organizationManual ? (
           <select
             id="registro-organization_name"
@@ -383,7 +419,9 @@ export default function Registro({ onRegister }: RegistroProps) {
     const error = errores.municipality;
     return (
       <div className="registro-field">
-        <label htmlFor="registro-municipality">Municipio</label>
+        <label htmlFor="registro-municipality">
+          Municipio<span className="campo-obligatorio" aria-hidden="true">*</span>
+        </label>
         <select
           id="registro-municipality"
           value={perfil.municipality ?? ''}
@@ -405,10 +443,12 @@ export default function Registro({ onRegister }: RegistroProps) {
       case 'estudiante':
         return <>
           {renderInstitutionField()}
-          {renderProfileInput('campus', 'Campus o plantel (opcional)')}
+          {renderProfileInput('campus', 'Campus o plantel', '', 'text', false)}
           {renderProfileInput('field_of_study', 'Carrera o programa')}
           <div className="registro-field">
-            <label htmlFor="registro-semester">Semestre o periodo</label>
+            <label htmlFor="registro-semester">
+              Semestre o periodo<span className="campo-obligatorio" aria-hidden="true">*</span>
+            </label>
             <select id="registro-semester" value={perfil.semester ?? ''} onChange={(event) => setProfileField('semester', event.target.value)} required aria-invalid={Boolean(errores.semester)}>
               <option value="">Selecciona tu semestre</option>
               {SEMESTRES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -422,7 +462,9 @@ export default function Registro({ onRegister }: RegistroProps) {
         return <>
           {renderInstitutionField()}
           <div className="registro-field">
-            <label htmlFor="registro-academic_role">Actividad académica</label>
+            <label htmlFor="registro-academic_role">
+              Actividad académica<span className="campo-obligatorio" aria-hidden="true">*</span>
+            </label>
             <select id="registro-academic_role" value={perfil.academic_role ?? ''} onChange={(event) => setProfileField('academic_role', event.target.value)} required aria-invalid={Boolean(errores.academic_role)}>
               <option value="">Selecciona una opción</option>
               <option value="docente">Docente</option>
@@ -431,8 +473,8 @@ export default function Registro({ onRegister }: RegistroProps) {
             </select>
             {errores.academic_role && <p className="registro-error">{errores.academic_role}</p>}
           </div>
-          {renderProfileInput('organization_area', 'Área, departamento o campo de investigación (opcional)', '', 'text', false)}
-          {renderProfileInput('organization_position', 'Cargo o función (opcional)', '', 'text', false)}
+          {renderProfileInput('organization_area', 'Área, departamento o campo de investigación', '', 'text', false)}
+          {renderProfileInput('organization_position', 'Cargo o función', '', 'text', false)}
         </>;
       case 'empleado_organizacion':
         return <>
@@ -451,7 +493,9 @@ export default function Registro({ onRegister }: RegistroProps) {
           {renderProfileInput('legal_name', 'Razón social legal')}
           {renderProfileInput('website', 'Sitio web (URL)', 'https://ejemplo.org', 'url')}
           <div className="registro-field">
-            <label htmlFor="registro-organization_type">Tipo de organización</label>
+            <label htmlFor="registro-organization_type">
+              Tipo de organización<span className="campo-obligatorio" aria-hidden="true">*</span>
+            </label>
             <select id="registro-organization_type" value={perfil.organization_type ?? ''} onChange={(event) => setProfileField('organization_type', event.target.value)} required aria-invalid={Boolean(errores.organization_type)}>
               <option value="">Selecciona el tipo</option>
               <option value="empresa">Empresa</option>
@@ -461,7 +505,9 @@ export default function Registro({ onRegister }: RegistroProps) {
             {errores.organization_type && <p className="registro-error">{errores.organization_type}</p>}
           </div>
           <div className="registro-field">
-            <label htmlFor="registro-organization_sector">Sector o actividad</label>
+            <label htmlFor="registro-organization_sector">
+              Sector o actividad<span className="campo-obligatorio" aria-hidden="true">*</span>
+            </label>
             <select id="registro-organization_sector" value={perfil.organization_sector ?? ''} onChange={(event) => setProfileField('organization_sector', event.target.value)} required aria-invalid={Boolean(errores.organization_sector)}>
               <option value="">Selecciona un sector</option>
               {SECTORES.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
@@ -520,11 +566,15 @@ export default function Registro({ onRegister }: RegistroProps) {
               onSubmit={handleSubmit}
               noValidate
             >
+              <p className="form-leyenda-obligatorios">
+                Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
+              </p>
               <div className="registro-fields">
                 {/* Nombre */}
                 <div className="registro-field">
                   <label htmlFor="registro-nombre">
                     {tipoCuenta === 'organizacion' ? 'Nombre de la persona representante' : 'Nombre completo'}
+                    <span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
 
                   <input
@@ -557,7 +607,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                 {/* Tipo de cuenta */}
                 <div className="registro-field">
                   <label htmlFor="registro-tipo">
-                    Tipo de cuenta
+                    Tipo de cuenta<span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
 
                   <select
@@ -671,7 +721,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                 {/* Correo */}
                 <div className="registro-field">
                   <label htmlFor="registro-correo">
-                    Correo electrónico
+                    Correo electrónico<span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
 
                   <input
@@ -693,6 +743,12 @@ export default function Registro({ onRegister }: RegistroProps) {
                     }
                   />
 
+                  {!errores.email && correo.trim().length > 0 && !correoValido(correo.trim()) && (
+                    <p className="formato-ayuda invalido">
+                      Formato esperado: usuario@dominio.com (incluye @ y dominio).
+                    </p>
+                  )}
+
                   {errores.email && (
                     <p
                       id="registro-correo-error"
@@ -706,7 +762,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                 {/* Contraseña */}
                 <div className="registro-field">
                   <label htmlFor="registro-password">
-                    Contraseña
+                    Contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
 
                   <div className="registro-password-wrapper">
@@ -736,9 +792,13 @@ export default function Registro({ onRegister }: RegistroProps) {
                     </button>
                   </div>
 
-                  <p id="registro-password-hint" className="registro-hint">
-                    Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.
-                  </p>
+                  <div id="registro-password-hint">
+                    <PasswordChecklist
+                      password={password}
+                      confirmation={confirmacion}
+                      showConfirmationCheck={confirmacion.length > 0}
+                    />
+                  </div>
 
                   {errores.password && (
                     <p
@@ -756,7 +816,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                   Boolean(errores.password_confirmation)) && (
                   <div className="registro-field">
                     <label htmlFor="registro-confirmacion">
-                      Confirmar contraseña
+                      Confirmar contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
                     </label>
 
                     <div className="registro-password-wrapper">
