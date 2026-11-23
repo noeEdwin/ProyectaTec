@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import axios from 'axios';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { validarContrasenaSegura } from '../utils/passwordValidation';
+import { REQUISITOS_CONTRASENA, validarContrasenaSegura } from '../utils/passwordValidation';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
 
@@ -20,12 +20,14 @@ export default function RestablecerContrasena() {
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
 
+  const tokenFaltante = !token.trim();
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setMensaje('');
 
-    if (!token) {
+    if (tokenFaltante) {
       setError('El enlace de recuperación no incluye un token válido. Solicita uno nuevo.');
       return;
     }
@@ -61,6 +63,10 @@ export default function RestablecerContrasena() {
       setPasswordConfirmation('');
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
+        if (err.response?.status === 429) {
+          setError('Demasiados intentos seguidos. Espera un momento antes de volver a intentarlo.');
+          return;
+        }
         const apiErrors = err.response?.data?.errors as Record<string, string[]> | undefined;
         const firstFieldError = apiErrors ? Object.values(apiErrors).flat()[0] : undefined;
         setError(
@@ -97,13 +103,23 @@ export default function RestablecerContrasena() {
             NUEVA CONTRASEÑA
           </div>
 
-          <h1 className="acceso-title">Restablecer contraseña</h1>
+          <h1>Restablecer contraseña</h1>
 
-          <p className="acceso-subtitle">
-            Define una nueva contraseña de al menos 8 caracteres para tu cuenta.
+          <p className="acceso-intro">
+            Define una nueva contraseña segura para recuperar el acceso a tu cuenta.
           </p>
 
-          <form className="acceso-form" onSubmit={handleSubmit} noValidate>
+          {tokenFaltante && (
+            <div className="acceso-warning" role="alert">
+              <strong>Enlace incompleto o inválido.</strong>
+              <p>
+                Abre el enlace directamente desde tu correo electrónico o{' '}
+                <Link to="/olvide-contrasena">solicita un nuevo enlace de recuperación</Link>.
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
             <div className="acceso-field">
               <label htmlFor="reset-email">Correo electrónico</label>
               <input
@@ -111,8 +127,9 @@ export default function RestablecerContrasena() {
                 type="email"
                 name="email"
                 autoComplete="email"
-                placeholder="nombre@correo.com"
+                placeholder="usuario@itoaxaca.edu.mx"
                 value={email}
+                readOnly={Boolean(initialEmail)}
                 onChange={(event) => setEmail(event.target.value)}
               />
             </div>
@@ -125,8 +142,9 @@ export default function RestablecerContrasena() {
                   type={mostrarPassword ? 'text' : 'password'}
                   name="password"
                   autoComplete="new-password"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mín. 8 caracteres, mayús., minús., número y símbolo"
                   value={password}
+                  disabled={tokenFaltante || Boolean(mensaje)}
                   onChange={(event) => setPassword(event.target.value)}
                 />
                 <button
@@ -137,6 +155,11 @@ export default function RestablecerContrasena() {
                   {mostrarPassword ? 'Ocultar' : 'Mostrar'}
                 </button>
               </div>
+              <ul className="acceso-requisitos">
+                {REQUISITOS_CONTRASENA.map((req) => (
+                  <li key={req}>{req}</li>
+                ))}
+              </ul>
             </div>
 
             <div className="acceso-field">
@@ -148,26 +171,33 @@ export default function RestablecerContrasena() {
                 autoComplete="new-password"
                 placeholder="Repite tu nueva contraseña"
                 value={passwordConfirmation}
+                disabled={tokenFaltante || Boolean(mensaje)}
                 onChange={(event) => setPasswordConfirmation(event.target.value)}
               />
             </div>
 
             {error && (
-              <p className="acceso-error" role="alert">
+              <p className="acceso-error acceso-alert-block" role="alert">
                 {error}
               </p>
             )}
 
             {mensaje && (
-              <p className="acceso-notice" role="status">
-                {mensaje}{' '}
-                <Link to="/acceso" style={{ fontWeight: 700, color: '#0f4c5c' }}>
-                  Ir a iniciar sesión →
-                </Link>
-              </p>
+              <div className="acceso-notice" role="status">
+                <strong>{mensaje}</strong>
+                <p>
+                  <Link to="/acceso" className="acceso-notice-link">
+                    Ir a iniciar sesión →
+                  </Link>
+                </p>
+              </div>
             )}
 
-            <button type="submit" className="acceso-submit" disabled={procesando || Boolean(mensaje)}>
+            <button
+              type="submit"
+              className="acceso-submit"
+              disabled={procesando || tokenFaltante || Boolean(mensaje)}
+            >
               {procesando ? 'Guardando...' : 'Guardar nueva contraseña'}
             </button>
 
@@ -178,16 +208,37 @@ export default function RestablecerContrasena() {
           </form>
         </section>
 
-        <section className="acceso-visual-section" aria-hidden="true">
-          <div className="acceso-visual-card">
+        <aside className="acceso-hero" aria-hidden="true">
+          <div className="acceso-hero-eyebrow">
+            <span />
+            PROTECCIÓN DE CUENTA
+          </div>
+
+          <div className="acceso-image-frame">
             <img
               src={inicioSesionImage}
-              alt="Colaboración en ProyectaTec"
-              className="acceso-visual-image"
+              alt="Estudiantes y profesionales colaborando en Oaxaca"
             />
           </div>
-        </section>
+
+          <div className="acceso-hero-description">
+            <h2>
+              Tu cuenta siempre
+              <br />
+              bajo tu control.
+            </h2>
+
+            <p>
+              Al guardar tu nueva contraseña cerraremos las sesiones anteriores en otros dispositivos
+              por tu seguridad.
+            </p>
+          </div>
+        </aside>
       </main>
+
+      <footer className="acceso-footer">
+        © 2026 ProyectaTec · Instituto Tecnológico de Oaxaca
+      </footer>
     </div>
   );
 }

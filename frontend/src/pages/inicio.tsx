@@ -27,7 +27,7 @@ function PanelVinculacion() {
 
   useEffect(() => {
     // Consulta la lista de proyectos reales desde PostgreSQL a través de Laravel
-    api.get('/api/projects')
+    api.get('/projects')
       .then((res) => {
         const projects = Array.isArray(res.data?.projects)
           ? res.data.projects
@@ -37,13 +37,20 @@ function PanelVinculacion() {
 
         if (projects.length > 0) {
           const primero = projects[0];
+          const estadoLabel =
+            primero.status === 'closed'
+              ? 'Cerrado'
+              : primero.status === 'in_progress'
+                ? 'En curso'
+                : 'Activo';
           setProyecto({
             id: primero.id,
             titulo: primero.title,
             subtitulo: primero.organization?.name || primero.location || 'Iniciativa ProyectaTec',
             fase: 'Fase 01',
-            estado: primero.status === 'open' ? 'Activo' : 'Activo',
+            estado: estadoLabel,
             dias_restantes: 24,
+            imagen_url: primero.cover_image_url || undefined,
             tipo: 'project',
           });
         } else {
@@ -95,7 +102,7 @@ function PanelVinculacion() {
           <div style={{ padding: '1rem', color: '#888' }}>Cargando proyecto...</div>
         ) : (
           <Link
-            to={proyecto ? `/iniciativas/${proyecto.tipo}/${proyecto.id}` : '/iniciativas'}
+            to={proyecto ? `/iniciativas/${proyecto.tipo === 'community_need' ? 'necesidad' : 'proyecto'}/${proyecto.id}` : '/iniciativas'}
             className="inicio-panel-project"
           >
             <span className="inicio-panel-project-icon" aria-hidden="true">

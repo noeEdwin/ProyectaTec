@@ -121,6 +121,21 @@ Route::get('/categories', fn () => response()->json([
         ->get(['id', 'name']),
 ]));
 
+// Estadísticas públicas para la portada de inicio en React
+Route::get('/estadisticas/inicio', function () {
+    $proyectosActivos = Project::publiclyVisible()->count();
+    $organizaciones = \App\Models\Organization::query()
+        ->where('approval_status', 'approved')
+        ->count();
+
+    return response()->json([
+        'impacto' => '100%',
+        'sectores' => 3,
+        'proyectos_activos' => $proyectosActivos,
+        'organizaciones' => $organizaciones,
+    ]);
+});
+
 // Consulta del proyecto destacado para la vista de inicio en React
 Route::get('/proyectos/destacado', function () {
     $project = Project::publiclyVisible()->latest()->first();

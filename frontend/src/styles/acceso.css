@@ -239,15 +239,86 @@
   font-size: 12px;
 }
 
+.acceso-alert-block {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  line-height: 1.5;
+}
+
+.acceso-warning {
+  margin: 0 0 20px;
+  padding: 13px 15px;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.acceso-warning p {
+  margin: 4px 0 0;
+}
+
+.acceso-warning a {
+  color: var(--acceso-teal);
+  font-weight: 700;
+}
+
 .acceso-notice {
   margin: 0 0 16px;
-  padding: 12px;
+  padding: 13px 15px;
   border: 1px solid #9fc8d0;
   border-radius: 10px;
   color: var(--acceso-teal);
   background: #e7f2f3;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.acceso-notice p {
+  margin: 6px 0 0;
+  color: #174957;
   font-size: 12px;
+}
+
+.acceso-notice-link {
+  font-weight: 700;
+  color: var(--acceso-teal);
+  text-decoration: none;
+}
+
+.acceso-notice-link:hover {
+  text-decoration: underline;
+}
+
+.acceso-requisitos {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--acceso-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.acceso-register {
+  margin: 18px 0 0;
+  text-align: center;
+  color: var(--acceso-muted);
+  font-size: 13px;
   line-height: 1.5;
+}
+
+.acceso-register a {
+  color: var(--acceso-teal);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.acceso-register a:hover {
+  text-decoration: underline;
 }
 
 .acceso-submit {

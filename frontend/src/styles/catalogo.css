@@ -61,3 +61,24 @@
     gap: 16px;
   }
 }
+
+@media (max-width: 480px) {
+  .catalogo-page {
+    padding: 24px 14px;
+  }
+
+  .catalogo-buscador {
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .catalogo-buscador input {
+    flex: 1 1 180px;
+    font-size: 14px;
+  }
+
+  .catalogo-buscador button[type="submit"] {
+    width: 100%;
+  }
+}

@@ -71,6 +71,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   className="user-dropdown-btn"
+                  aria-label="Menú de cuenta"
                   aria-expanded={isMenuOpen}
                   onClick={() => {
                     setIsMenuOpen((prev) => !prev);
@@ -86,7 +87,7 @@ export default function Navbar() {
                     )}
                   </div>
                   <span className="user-dropdown-text">
-                    Cuenta <span className="dropdown-icon">▼</span>
+                    <span className="user-dropdown-label">Cuenta</span> <span className="dropdown-icon">▼</span>
                   </span>
                 </button>
 

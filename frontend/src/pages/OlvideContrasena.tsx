@@ -35,7 +35,9 @@ export default function OlvideContrasena() {
           'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.'
       );
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
+      if (axios.isAxiosError(err) && err.response?.status === 429) {
+        setError('Has realizado varios intentos seguidos. Espera un minuto antes de solicitar otro enlace.');
+      } else if (axios.isAxiosError(err) && err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
         setError('No se pudo procesar la solicitud en este momento. Intenta de nuevo.');
@@ -66,13 +68,14 @@ export default function OlvideContrasena() {
             RECUPERACIÓN DE CUENTA
           </div>
 
-          <h1 className="acceso-title">¿Olvidaste tu contraseña?</h1>
+          <h1>¿Olvidaste tu contraseña?</h1>
 
-          <p className="acceso-subtitle">
-            Ingresa el correo con el que te registraste y te enviaremos un enlace para restablecerla.
+          <p className="acceso-intro">
+            Ingresa el correo con el que te registraste y te enviaremos un enlace temporal
+            para restablecer el acceso a tu cuenta.
           </p>
 
-          <form className="acceso-form" onSubmit={handleSubmit} noValidate>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="acceso-field">
               <label htmlFor="forgot-email">Correo electrónico</label>
               <input
@@ -80,7 +83,7 @@ export default function OlvideContrasena() {
                 type="email"
                 name="email"
                 autoComplete="email"
-                placeholder="nombre@correo.com"
+                placeholder="usuario@itoaxaca.edu.mx"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 aria-invalid={Boolean(error)}
@@ -88,15 +91,19 @@ export default function OlvideContrasena() {
             </div>
 
             {error && (
-              <p className="acceso-error" role="alert">
+              <p className="acceso-error acceso-alert-block" role="alert">
                 {error}
               </p>
             )}
 
             {mensaje && (
-              <p className="acceso-notice" role="status">
-                {mensaje}
-              </p>
+              <div className="acceso-notice" role="status">
+                <strong>{mensaje}</strong>
+                <p>
+                  Revisa tu bandeja de entrada y tu carpeta de spam. Si necesitas otro enlace,
+                  espera al menos 1 minuto antes de volver a solicitarlo.
+                </p>
+              </div>
             )}
 
             <button type="submit" className="acceso-submit" disabled={procesando}>
@@ -110,16 +117,37 @@ export default function OlvideContrasena() {
           </form>
         </section>
 
-        <section className="acceso-visual-section" aria-hidden="true">
-          <div className="acceso-visual-card">
+        <aside className="acceso-hero" aria-hidden="true">
+          <div className="acceso-hero-eyebrow">
+            <span />
+            ACCESO SEGURO
+          </div>
+
+          <div className="acceso-image-frame">
             <img
               src={inicioSesionImage}
-              alt="Colaboración en ProyectaTec"
-              className="acceso-visual-image"
+              alt="Estudiantes y profesionales colaborando en Oaxaca"
             />
           </div>
-        </section>
+
+          <div className="acceso-hero-description">
+            <h2>
+              Recupera el acceso
+              <br />
+              en pocos minutos.
+            </h2>
+
+            <p>
+              El enlace enviado a tu correo es de un solo uso y tiene vigencia de 60 minutos
+              para proteger tu cuenta en ProyectaTec.
+            </p>
+          </div>
+        </aside>
       </main>
+
+      <footer className="acceso-footer">
+        © 2026 ProyectaTec · Instituto Tecnológico de Oaxaca
+      </footer>
     </div>
   );
 }

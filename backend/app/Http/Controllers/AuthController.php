@@ -22,6 +22,12 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
+        if ($request->has('email') && is_string($request->input('email'))) {
+            $request->merge([
+                'email' => strtolower(trim($request->input('email'))),
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => [
@@ -76,7 +82,10 @@ class AuthController extends Controller
             'email.unique' => 'Este correo electrónico ya está registrado.',
         ]);
 
-        if (in_array(strtolower($validated['email']), array_map('strtolower', config('services.proyectatec.admin_emails', [])), true)) {
+        if (
+            in_array(strtolower($validated['email']), array_map('strtolower', config('services.proyectatec.admin_emails', [])), true)
+            || User::whereRaw('LOWER(email) = ?', [strtolower($validated['email'])])->exists()
+        ) {
             throw ValidationException::withMessages([
                 'email' => ['Este correo electrónico ya está registrado.'],
             ]);
@@ -190,37 +199,37 @@ class AuthController extends Controller
         ], 201);
     }
 
-public function login(Request $request)
-{
-    $request->validate([
-        'email' => 'required|string|email',
-        'password' => 'required|string',
-    ]);
+    public function login(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
 
-    $user = User::where('email', $request->email)->first();
+        $normalizedEmail = strtolower(trim((string) $request->input('email')));
+        $user = User::whereRaw('LOWER(email) = ?', [$normalizedEmail])->first();
 
-    if (! $user || ! Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Credenciales inválidas',
+            ], 401);
+        }
+
+        // Impedir el acceso a cuentas desactivadas
+        if (! $user->is_active) {
+            return response()->json([
+                'message' => 'Esta cuenta está desactivada.',
+            ], 403);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'message' => 'Credenciales inválidas',
-        ], 401);
+            'message' => 'Inicio de sesión exitoso',
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ]);
     }
-
-    // Impedir el acceso a cuentas desactivadas
-    if (! $user->is_active) {
-        return response()->json([
-            'message' => 'Esta cuenta está desactivada.',
-        ], 403);
-    }
-
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-    return response()->json([
-        'message' => 'Inicio de sesión exitoso',
-        'access_token' => $token,
-        'token_type' => 'Bearer',
-    ]);
-}
-
 
     public function logout(Request $request)
     {
@@ -235,17 +244,32 @@ public function login(Request $request)
     {
         $validated = $request->validate([
             'email' => ['required', 'string', 'email', 'max:255'],
+        ], [
+            'email.required' => 'Ingresa tu correo electrónico.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
         ]);
 
-        try {
-            Password::sendResetLink([
-                'email' => strtolower(trim($validated['email'])),
-            ]);
-        } catch (\Throwable $exception) {
-            Log::warning('No se pudo enviar el correo de recuperación de contraseña.', [
-                'email' => strtolower(trim($validated['email'])),
-                'error' => $exception->getMessage(),
-            ]);
+        $normalizedEmail = strtolower(trim($validated['email']));
+        $user = User::whereRaw('LOWER(email) = ?', [$normalizedEmail])->first();
+
+        if ($user && $user->is_active) {
+            try {
+                $status = Password::sendResetLink([
+                    'email' => $user->email,
+                ]);
+
+                if ($status !== Password::RESET_LINK_SENT && $status !== Password::RESET_THROTTLED) {
+                    Log::warning('Estado inesperado al enviar enlace de recuperación de contraseña.', [
+                        'user_id' => $user->id,
+                        'status' => $status,
+                    ]);
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('No se pudo enviar el correo de recuperación de contraseña.', [
+                    'user_id' => $user->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         return response()->json([
@@ -259,12 +283,33 @@ public function login(Request $request)
             'token' => ['required', 'string'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'token.required' => 'El enlace de recuperación no es válido. Solicita uno nuevo.',
+            'email.required' => 'Ingresa tu correo electrónico.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
+            'password.required' => 'Ingresa una nueva contraseña.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.mixed' => 'La contraseña debe incluir al menos una letra mayúscula y una minúscula.',
+            'password.numbers' => 'La contraseña debe incluir al menos un número.',
+            'password.symbols' => 'La contraseña debe incluir al menos un símbolo especial.',
         ]);
+
+        $normalizedEmail = strtolower(trim($validated['email']));
+        $user = User::whereRaw('LOWER(email) = ?', [$normalizedEmail])->first();
+
+        if ($user && ! $user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['El enlace de recuperación es inválido o ha expirado.'],
+            ]);
+        }
+
+        $targetEmail = $user ? $user->email : $normalizedEmail;
 
         $status = Password::reset(
             [
                 'token' => $validated['token'],
-                'email' => strtolower(trim($validated['email'])),
+                'email' => $targetEmail,
                 'password' => $validated['password'],
                 'password_confirmation' => $request->input('password_confirmation'),
             ],

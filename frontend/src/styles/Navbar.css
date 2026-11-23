@@ -192,13 +192,43 @@
 @media (max-width: 760px) {
   .navbar-container {
     flex-wrap: wrap;
-    gap: 12px;
-    padding: 14px 16px;
-    min-height: 70px;
+    row-gap: 10px;
+    column-gap: 8px;
+    padding: 12px 16px;
+    min-height: 66px;
+  }
+
+  .navbar-brand {
+    font-size: 19px;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .navbar-logo-img {
+    width: 26px;
+    height: 26px;
+  }
+
+  .brand-dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .navbar-right-controls {
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .navbar-actions {
+    gap: 6px;
   }
 
   .navbar-toggle {
     display: inline-flex;
+    width: 38px;
+    height: 38px;
+    font-size: 17px;
   }
 
   .navbar-menu {
@@ -232,12 +262,28 @@
 }
 
 @media (max-width: 480px) {
+  .navbar-container {
+    padding: 10px 12px;
+    min-height: 60px;
+  }
+
   .navbar-brand {
-    font-size: 20px;
+    font-size: 17px;
+    gap: 6px;
+  }
+
+  .navbar-logo-img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .brand-dot {
+    width: 8px;
+    height: 8px;
   }
 
   .user-dropdown-btn {
-    gap: 8px;
+    gap: 5px;
   }
 
   .user-avatar {
@@ -247,14 +293,25 @@
   }
 
   .user-dropdown-text {
-    font-size: 15px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .user-dropdown-label {
+    display: none;
   }
 
   .btn-acceso,
   .btn-registro {
-    min-height: 36px;
-    padding: 0 10px;
-    font-size: 12px;
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .navbar-toggle {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
 }
 

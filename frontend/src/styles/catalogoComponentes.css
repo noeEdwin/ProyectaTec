@@ -96,10 +96,11 @@
 .dp-galeria-btn { display:block; padding:0; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; background:#f8fafc; cursor:pointer; aspect-ratio:4/3; }
 .dp-galeria-btn img { width:100%; height:100%; object-fit:cover; display:block; }
 
-.dp-lightbox { position:fixed; inset:0; z-index:200; background:rgba(15,23,42,.82); display:grid; place-items:center; padding:24px; }
+.dp-lightbox { position:fixed; inset:0; z-index:200; background:rgba(15,23,42,.82); display:grid; place-items:center; padding:16px; }
 .dp-lightbox-contenido { position:relative; max-width:900px; max-height:90vh; }
 .dp-lightbox-contenido img { max-width:100%; max-height:85vh; border-radius:14px; display:block; box-shadow:0 24px 60px rgba(0,0,0,.45); }
-.dp-lightbox-cerrar { position:absolute; top:-14px; right:-14px; width:36px; height:36px; border-radius:999px; border:0; background:#fff; color:#0f172a; font-size:22px; font-weight:700; cursor:pointer; }
+.dp-lightbox-cerrar { position:absolute; top:10px; right:10px; width:36px; height:36px; border-radius:999px; border:0; background:rgba(255,255,255,.95); color:#0f172a; font-size:22px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+@media(max-width:480px){ .dp-page { padding:24px 14px; } .dp-banner { padding:16px 18px; } }
 .dp-seguimiento-enlace {
   display: inline-block;
   margin-top: 12px;

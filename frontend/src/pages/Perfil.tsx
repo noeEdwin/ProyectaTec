@@ -180,7 +180,11 @@ export default function Perfil() {
         campus: data.campus || '',
         semester: data.semester || '',
         student_number: data.student_number || '',
-        expected_graduation: data.expected_graduation || '',
+        expected_graduation: data.expected_graduation
+          ? (/^\d{4}$/.test(data.expected_graduation.trim())
+            ? `${data.expected_graduation.trim()}-06`
+            : (/^\d{4}-\d{2}$/.test(data.expected_graduation.trim()) ? data.expected_graduation.trim() : ''))
+          : '',
         academic_role: data.academic_role || '',
         organization_name: data.organization_name || '',
         organization_id: data.organization_id ?? null,
@@ -445,7 +449,7 @@ export default function Perfil() {
   }
 
   return (
-    <div style={{ maxWidth: '1140px', margin: '2.5rem auto', padding: '0 1.5rem', fontFamily: 'system-ui, sans-serif' }}>
+    <div className="perfil-editor-page">
 
       {/* Encabezado e Identidad ProyectaTec */}
       <div style={{ marginBottom: '2.5rem' }}>
@@ -498,13 +502,7 @@ export default function Perfil() {
       <div className="perfil-editor-grid">
 
         {/* Tarjeta Izquierda: Formulario */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '16px',
-          padding: '2rem',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-        }}>
+        <div className="perfil-editor-card">
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '1.5rem' }}>
             Datos de tu perfil
           </h2>
