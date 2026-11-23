@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import {
+  listarMisPublicaciones,
   obtenerDetallePublicacion,
   reportarPublicacion,
   type RequerimientoPublicacion,
@@ -28,6 +29,7 @@ interface DetalleData {
   organizacionId: number | null;
   createdBy: number | null;
   status: string;
+  categoriaId: number | null;
   categoria: string;
   ubicacion: string;
   modalidad: string;
@@ -62,6 +64,8 @@ export default function DetallePublicacion() {
   const [error, setError] = useState<string | null>(null);
   const [mostrarSolicitud, setMostrarSolicitud] = useState(false);
   const [solicitudExistente, setSolicitudExistente] = useState<SolicitudEnviada | null>(null);
+  const [esResponsableProyecto, setEsResponsableProyecto] = useState(false);
+  const [verificandoSolicitud, setVerificandoSolicitud] = useState(false);
   const [confirmacionSolicitud, setConfirmacionSolicitud] = useState<string | null>(null);
 
   const [cargandoPerfilSolicitud, setCargandoPerfilSolicitud] =
@@ -108,6 +112,7 @@ export default function DetallePublicacion() {
             ? ((item as { created_by: number }).created_by)
             : null,
           status: item.status ?? 'open',
+          categoriaId: item.category_id ?? item.category?.id ?? null,
           categoria: item.category?.name || 'Sin categoría',
           ubicacion: item.location || 'Oaxaca',
           modalidad: item.modality ? (MODALIDADES[item.modality] ?? item.modality) : '',
@@ -143,11 +148,17 @@ export default function DetallePublicacion() {
     async function consultarSolicitudPrevia() {
       if (!user || !publicacion || publicacion.tipo !== 'project') {
         setSolicitudExistente(null);
+        setEsResponsableProyecto(false);
+        setVerificandoSolicitud(false);
         return;
       }
 
+      setVerificandoSolicitud(true);
       try {
-        const propias = await listarMisSolicitudesEnviadas();
+        const [propias, misPubs] = await Promise.all([
+          listarMisSolicitudesEnviadas().catch(() => []),
+          listarMisPublicaciones().catch(() => []),
+        ]);
         if (!activo) return;
         const previa = propias.find(
           (s) =>
@@ -155,8 +166,16 @@ export default function DetallePublicacion() {
             (s.status === 'pending' || s.status === 'accepted'),
         );
         setSolicitudExistente(previa ?? null);
+        setEsResponsableProyecto(
+          misPubs.some((p) => p.type === 'proyecto' && p.id === publicacion.id),
+        );
       } catch {
-        if (activo) setSolicitudExistente(null);
+        if (activo) {
+          setSolicitudExistente(null);
+          setEsResponsableProyecto(false);
+        }
+      } finally {
+        if (activo) setVerificandoSolicitud(false);
       }
     }
 
@@ -409,7 +428,7 @@ export default function DetallePublicacion() {
             </p>
             {esProyecto ? (
               user ? (
-                esCreador ? (
+                (esCreador || esResponsableProyecto) ? (
                   <p className="dp-aviso" role="status">
                     Eres responsable de este proyecto. Puedes gestionar sus solicitudes en{' '}
                     <Link className="ic-enlace" to={`/mis-publicaciones/${publicacion.id}/solicitudes`}>
@@ -436,11 +455,13 @@ export default function DetallePublicacion() {
                     type="button"
                     className="dp-boton"
                     onClick={() => void abrirFormularioSolicitud()}
-                    disabled={cargandoPerfilSolicitud}
+                    disabled={cargandoPerfilSolicitud || verificandoSolicitud}
                   >
-                    {cargandoPerfilSolicitud
-                      ? 'Cargando tu perfil…'
-                      : 'Solicitar vinculación →'}
+                    {verificandoSolicitud
+                      ? 'Verificando estado…'
+                      : cargandoPerfilSolicitud
+                        ? 'Cargando tu perfil…'
+                        : 'Solicitar vinculación →'}
                   </button>
                 )
               ) : (
@@ -448,11 +469,34 @@ export default function DetallePublicacion() {
                   Inicia sesión para solicitar vinculación →
                 </Link>
               )
+            ) : user ? (
+              proyectoAbierto ? (
+                <Link
+                  className="dp-boton"
+                  style={{ display: 'inline-block', textAlign: 'center', textDecoration: 'none' }}
+                  to="/publicaciones/nueva"
+                  state={{
+                    desdeNecesidad: {
+                      id: publicacion.id,
+                      titulo: publicacion.titulo,
+                      categoriaId: publicacion.categoriaId,
+                      ubicacion: publicacion.ubicacion,
+                      descripcion: publicacion.descripcion,
+                      organizacion: publicacion.organizacion,
+                    },
+                  }}
+                >
+                  Crear proyecto para atender esta necesidad →
+                </Link>
+              ) : (
+                <p className="dp-aviso" role="status">
+                  Esta necesidad comunitaria ya no está abierta para nuevas propuestas.
+                </p>
+              )
             ) : (
-              <p className="dp-aviso" role="status">
-                Las solicitudes directas para necesidades comunitarias
-                todavía no están disponibles.
-              </p>
+              <Link className="ic-enlace" to="/acceso">
+                Inicia sesión para crear un proyecto que atienda esta necesidad →
+              </Link>
             )}
 
             {confirmacionSolicitud && !solicitudExistente && (

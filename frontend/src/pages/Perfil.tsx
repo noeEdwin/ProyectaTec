@@ -73,7 +73,7 @@ function normalizeAccountType(type?: string): string {
 
 export default function Perfil() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile>({
     display_name: '',
@@ -565,6 +565,7 @@ export default function Perfil() {
                     setUploadingAvatar(true);
                     const result = await uploadMyProfileAvatar(file);
                     setProfile((prev) => ({ ...prev, image_url: result.image_url ?? prev.image_url }));
+                    await refreshUser();
                     setSuccessMessage('Foto de perfil actualizada correctamente.');
                   } catch (err: unknown) {
                     if (axios.isAxiosError(err) && err.response?.data?.message) {

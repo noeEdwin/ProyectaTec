@@ -3,7 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 import { useAuth } from '../context/auth-context';
-import { obtenerDetallePublicacion } from '../api/publicacionesService';
+import {
+  listarMisPublicaciones,
+  obtenerDetallePublicacion,
+} from '../api/publicacionesService';
 import {
   extraerMensajeErrorVinculacion,
   listarAvancesProyecto,
@@ -89,20 +92,18 @@ export default function SeguimientoProyectoPage() {
 
         let tienePermiso = false;
         if (user && proyectoAbierto) {
-          const creadorId =
-            typeof (proyecto as { created_by?: unknown }).created_by === 'number'
-              ? ((proyecto as { created_by: number }).created_by)
-              : null;
-
-          if (creadorId === user.id || user.can_manage_platform) {
+          if (user.can_manage_platform) {
             tienePermiso = true;
           } else {
-            try {
-              const propias = await listarMisSolicitudesEnviadas('accepted');
-              tienePermiso = propias.some((s) => s.project_id === idProyecto);
-            } catch {
-              tienePermiso = false;
-            }
+            const [misPubs, propias] = await Promise.all([
+              listarMisPublicaciones().catch(() => []),
+              listarMisSolicitudesEnviadas('accepted').catch(() => []),
+            ]);
+            const esResponsable = misPubs.some(
+              (p) => p.type === 'proyecto' && p.id === idProyecto,
+            );
+            tienePermiso =
+              esResponsable || propias.some((s) => s.project_id === idProyecto);
           }
         }
 

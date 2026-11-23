@@ -59,8 +59,9 @@ export default function Navbar() {
       <div className="navbar-container">
         <Link to="/" className="navbar-brand" onClick={closeAllMenus}>
           <img src={logoProyectatec} alt="ProyectaTec" className="navbar-logo-img" />
-          <span>ProyectaTec</span>
-          <span className="brand-dot"></span>
+          <span className="navbar-brand-text">
+            ProyectaTec<span className="brand-dot"></span>
+          </span>
         </Link>
 
         <div className="navbar-right-controls">
@@ -78,7 +79,11 @@ export default function Navbar() {
                   disabled={isLoggingOut}
                 >
                   <div className="user-avatar">
-                    {getInitials(user.name)}
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.name} className="user-avatar-img" />
+                    ) : (
+                      getInitials(user.name)
+                    )}
                   </div>
                   <span className="user-dropdown-text">
                     Cuenta <span className="dropdown-icon">▼</span>

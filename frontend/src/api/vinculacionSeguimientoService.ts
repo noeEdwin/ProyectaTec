@@ -179,6 +179,26 @@ export async function listarAvancesProyecto(
   };
 }
 
+export type ParticipanteProyecto = {
+  id: number;
+  role: string;
+  joined_at: string | null;
+  user: {
+    id: number;
+    name: string;
+  };
+};
+
+export async function listarParticipantesProyecto(
+  projectId: number,
+): Promise<ParticipanteProyecto[]> {
+  const { data } = await api.get<{ members?: ParticipanteProyecto[] }>(
+    `/projects/${projectId}/members`,
+  );
+
+  return Array.isArray(data.members) ? data.members : [];
+}
+
 export async function registrarAvanceProyecto(
   projectId: number,
   datos: NuevoAvanceProyecto,

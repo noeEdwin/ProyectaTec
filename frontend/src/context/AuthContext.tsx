@@ -53,6 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function refreshUser() {
+    if (!localStorage.getItem('token')) return;
+    try {
+      const result = await api.get<AuthUser>('/me');
+      setUser(result.data);
+    } catch {
+      // ignore refresh failures
+    }
+  }
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -60,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoggingOut, 
       login: (data) => authenticate('/login', data), 
       register: (data) => authenticate('/register', data), 
-      logout 
+      logout,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

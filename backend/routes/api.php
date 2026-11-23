@@ -23,6 +23,7 @@ use App\Models\Category;
 use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // --------------------------------------------------------------------------
 // Rutas públicas (no requieren inicio de sesión)
@@ -504,6 +505,7 @@ Route::middleware([
 
     Route::get('/me', function (Request $request) {
         $user = $request->user();
+        $avatarPath = $user->profile?->avatar_path;
 
         $adminEmails = array_map(
             'strtolower',
@@ -516,6 +518,7 @@ Route::middleware([
             'email',
             'account_type',
         ]) + [
+            'avatar_url' => $avatarPath ? Storage::disk('public')->url($avatarPath) : null,
             'can_manage_platform' => in_array(
                 strtolower($user->email),
                 $adminEmails,

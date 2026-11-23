@@ -100,7 +100,7 @@ export default function Registro({ onRegister }: RegistroProps) {
 
   function validateProfileFields(errors: RegistroErrors) {
     const required: Record<string, string[]> = {
-      estudiante: ['institution', 'campus', 'field_of_study', 'semester', 'student_number', 'expected_graduation'],
+      estudiante: ['institution', 'field_of_study', 'semester', 'student_number', 'expected_graduation'],
       academico: ['institution', 'academic_role'],
       empleado_organizacion: ['organization_name', 'organization_area', 'organization_position'],
       residente_oaxaca: ['municipality', 'locality'],
@@ -215,14 +215,19 @@ export default function Registro({ onRegister }: RegistroProps) {
           Object.entries(apiErrors).map(([key, messages]) => [key, messages[0]]),
         ) as RegistroErrors;
         const firstServerMessage = Object.values(apiErrors).flat()[0];
+        const emailTraducido = traducirErrorCorreo(apiErrors.email?.[0]);
+        const generalTraducido =
+          traducirErrorCorreo(firstServerMessage)
+          || firstServerMessage
+          || 'Revisa los campos marcados arriba antes de continuar.';
         setErrores({
           name: apiErrors.name ? apiErrors.name[0] : undefined,
           password: apiErrors.password ? apiErrors.password[0] : undefined,
           account_type: apiErrors.account_type ? apiErrors.account_type[0] : undefined,
           password_confirmation: apiErrors.password_confirmation ? apiErrors.password_confirmation[0] : undefined,
           ...fieldErrors,
-          email: traducirErrorCorreo(apiErrors.email?.[0]),
-          general: firstServerMessage || 'Revisa los campos marcados arriba antes de continuar.',
+          email: emailTraducido,
+          general: emailTraducido && Object.keys(apiErrors).length === 1 ? undefined : generalTraducido,
         });
         window.setTimeout(() => {
           document.querySelector('.registro-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -400,7 +405,7 @@ export default function Registro({ onRegister }: RegistroProps) {
       case 'estudiante':
         return <>
           {renderInstitutionField()}
-          {renderProfileInput('campus', 'Campus o plantel')}
+          {renderProfileInput('campus', 'Campus o plantel (opcional)')}
           {renderProfileInput('field_of_study', 'Carrera o programa')}
           <div className="registro-field">
             <label htmlFor="registro-semester">Semestre o periodo</label>

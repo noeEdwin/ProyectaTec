@@ -5,6 +5,7 @@ export type AuthUser = {
   name: string;
   email: string;
   account_type: string;
+  avatar_url?: string | null;
   can_manage_platform?: boolean;
   has_pending_institution_approval?: boolean;
 };
@@ -27,6 +28,7 @@ type AuthContextValue = {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegistrationData) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

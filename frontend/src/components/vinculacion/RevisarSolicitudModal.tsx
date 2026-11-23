@@ -77,6 +77,16 @@ export default function RevisarSolicitudModal({
   const [notas, setNotas] = useState('');
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const confirmacionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (decision && confirmacionRef.current) {
+      confirmacionRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [decision]);
 
   const pendiente = solicitud.status === 'pending';
 
@@ -373,6 +383,7 @@ export default function RevisarSolicitudModal({
 
           {pendiente && decision && (
             <section
+              ref={confirmacionRef}
               className="rv-confirmacion"
               aria-labelledby="rv-confirmar-titulo"
             >

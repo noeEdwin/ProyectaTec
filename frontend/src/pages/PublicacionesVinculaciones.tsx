@@ -7,7 +7,9 @@ import {
 } from '../api/publicacionesService';
 import {
   extraerMensajeErrorVinculacion,
+  listarAvancesProyecto,
   listarMisSolicitudesEnviadas,
+  listarParticipantesProyecto,
   listarSolicitudesProyecto,
 } from '../api/vinculacionSeguimientoService';
 import type {
@@ -106,13 +108,46 @@ export default function PublicacionesVinculaciones({
           (p) => p.type === 'proyecto',
         );
 
-        const listasRecibidas = await Promise.all(
-          proyectosPropios.map((proy) =>
-            listarSolicitudesProyecto(proy.id).catch(() => []),
+        const [listasRecibidas, seguimientoProyectos] = await Promise.all([
+          Promise.all(
+            proyectosPropios.map((proy) =>
+              listarSolicitudesProyecto(proy.id).catch(() => []),
+            ),
           ),
-        );
+          Promise.all(
+            proyectosPropios.map(async (proy) => {
+              const [avancesRes, miembros] = await Promise.all([
+                listarAvancesProyecto(proy.id).catch(() => null),
+                listarParticipantesProyecto(proy.id).catch(() => []),
+              ]);
+              return {
+                projectId: proy.id,
+                progreso: avancesRes?.ultimoProgreso?.progress ?? null,
+                participantes:
+                  miembros.length > 0
+                    ? miembros.map((m) => m.user.name).join(', ')
+                    : 'Sin participantes aceptados aún',
+              };
+            }),
+          ),
+        ]);
 
         if (!activo) return;
+
+        const seguimientoMap = new Map(
+          seguimientoProyectos.map((item) => [item.projectId, item]),
+        );
+
+        const pubsEnriquecidas = pubsMapeadas.map((pub) => {
+          if (pub.tipo !== 'proyecto' || pub.id === null) return pub;
+          const info = seguimientoMap.get(pub.id);
+          if (!info) return pub;
+          return {
+            ...pub,
+            progresoPorcentaje: info.progreso,
+            participantes: info.participantes,
+          };
+        });
 
         const recibidasPanel: SolicitudPanelConProyecto[] = listasRecibidas
           .flat()
@@ -141,7 +176,7 @@ export default function PublicacionesVinculaciones({
           }`,
         }));
 
-        setPublicacionesReales(pubsMapeadas);
+        setPublicacionesReales(pubsEnriquecidas);
         setSolicitudesReales([...recibidasPanel, ...enviadasPanel]);
       } catch (err: unknown) {
         if (!activo) return;
@@ -310,26 +345,30 @@ export default function PublicacionesVinculaciones({
                     <div className="pav-seguimiento-cabecera">
                       <strong>Seguimiento</strong>
                       <span>
-                        {destacada.etapaActual && destacada.etapasTotales
-                          ? `${destacada.estado} · Etapa ${destacada.etapaActual} de ${destacada.etapasTotales}`
-                          : destacada.estado}
+                        {typeof destacada.progresoPorcentaje === 'number'
+                          ? `${destacada.estado} · ${destacada.progresoPorcentaje}% de avance`
+                          : destacada.etapaActual && destacada.etapasTotales
+                            ? `${destacada.estado} · Etapa ${destacada.etapaActual} de ${destacada.etapasTotales}`
+                            : destacada.estado}
                       </span>
                     </div>
                     <div className="pav-progreso">
                       <div
                         style={{
                           width:
-                            destacada.etapaActual && destacada.etapasTotales
-                              ? `${Math.min(
-                                  100,
-                                  Math.max(
-                                    0,
-                                    (destacada.etapaActual /
-                                      destacada.etapasTotales) *
-                                      100,
-                                  ),
-                                )}%`
-                              : '0%',
+                            typeof destacada.progresoPorcentaje === 'number'
+                              ? `${Math.min(100, Math.max(0, destacada.progresoPorcentaje))}%`
+                              : destacada.etapaActual && destacada.etapasTotales
+                                ? `${Math.min(
+                                    100,
+                                    Math.max(
+                                      0,
+                                      (destacada.etapaActual /
+                                        destacada.etapasTotales) *
+                                        100,
+                                    ),
+                                  )}%`
+                                : '0%',
                         }}
                       />
                     </div>
@@ -373,7 +412,14 @@ export default function PublicacionesVinculaciones({
                 <section className="pav-tarjeta pav-solicitudes">
                   <div className="pav-seccion-titulo">
                     <h2>Solicitudes recientes</h2>
-                    <Link className="pav-enlace" to="/mis-solicitudes">
+                    <Link
+                      className="pav-enlace"
+                      to={
+                        listaSolicitudes.find((s) => s.descripcion.startsWith('Recibida') && s.projectId)?.projectId
+                          ? `/mis-publicaciones/${listaSolicitudes.find((s) => s.descripcion.startsWith('Recibida') && s.projectId)?.projectId}/solicitudes`
+                          : '/mis-solicitudes'
+                      }
+                    >
                       Ver todas →
                     </Link>
                   </div>

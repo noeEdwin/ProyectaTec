@@ -38,7 +38,7 @@ class AuthController extends Controller
             'institution_website' => ['nullable', 'url:http,https', 'max:255'],
             'institution_location' => ['nullable', 'string', 'max:255'],
             'institution_email' => ['nullable', 'email', 'max:255'],
-            'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'campus' => ['nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'interest_areas' => ['sometimes', 'array', 'max:6'],
             'interest_areas.*' => ['string', 'max:80', 'distinct'],
@@ -72,11 +72,13 @@ class AuthController extends Controller
             ])],
             'organization_public_fields' => ['nullable', 'array'],
             'organization_public_fields.*' => [Rule::in(['location', 'email', 'phone', 'classification'])],
+        ], [
+            'email.unique' => 'Este correo electrónico ya está registrado.',
         ]);
 
         if (in_array(strtolower($validated['email']), array_map('strtolower', config('services.proyectatec.admin_emails', [])), true)) {
             throw ValidationException::withMessages([
-                'email' => ['Este correo está reservado para una cuenta administradora existente.'],
+                'email' => ['Este correo electrónico ya está registrado.'],
             ]);
         }
 

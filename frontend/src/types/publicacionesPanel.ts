@@ -9,6 +9,7 @@ export type PublicacionPanel = {
   ubicacion?: string;
   modalidad?: string;
   participantes?: string;
+  progresoPorcentaje?: number | null;
   etapaActual?: number;
   etapasTotales?: number;
 };

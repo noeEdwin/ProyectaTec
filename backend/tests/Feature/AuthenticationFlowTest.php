@@ -82,7 +82,7 @@ class AuthenticationFlowTest extends TestCase
         $this->postJson('/api/register', $base)
             ->assertUnprocessable()
             ->assertJsonValidationErrors([
-                'institution', 'campus', 'field_of_study', 'semester', 'student_number', 'expected_graduation',
+                'institution', 'field_of_study', 'semester', 'student_number', 'expected_graduation',
             ]);
 
         $this->postJson('/api/register', $base + [

@@ -58,8 +58,12 @@ export default function PerfilPublico() {
           {/* Tarjeta resumen del perfil */}
           <section className="perfil-resumen-card" style={{ padding: '2rem', background: '#fff', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', position: 'relative' }}>
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600 }}>
-                {getInitials(nombreReal)}
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#EFF6F7', color: '#0B4A54', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 600 }}>
+                {profile?.image_url ? (
+                  <img src={profile.image_url} alt={nombreReal} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  getInitials(nombreReal)
+                )}
               </div>
               <div>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#1A202C', marginBottom: '4px' }}>{nombreReal}</h2>
@@ -88,7 +92,7 @@ export default function PerfilPublico() {
                   transition: 'background 0.2s ease',
                 }}
               >
-                {mostrarContacto ? 'Ocultar contacto' : 'Contactar'}
+                {mostrarContacto ? 'Ocultar vista previa de contacto' : 'Ver contacto público'}
               </button>
 
               {/* Ventana flotante (Popover) */}
@@ -109,26 +113,12 @@ export default function PerfilPublico() {
                   flexDirection: 'column',
                   gap: '8px',
                 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CONTACTO PÚBLICO</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.05em', color: '#64748B' }}>CONTACTO PÚBLICO (VISTA PREVIA)</span>
                   {correoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0, wordBreak: 'break-all' }}>{correoPublico}</p>}
                   {telefonoPublico && <p style={{ fontSize: '14px', color: '#1E293B', fontWeight: 500, margin: 0 }}>{telefonoPublico}</p>}
-                  {correoPublico && <a
-                    href={`mailto:${correoPublico}`}
-                    style={{
-                      display: 'block',
-                      marginTop: '6px',
-                      textAlign: 'center',
-                      background: '#F1F5F9',
-                      color: '#0B4A54',
-                      padding: '8px',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Enviar correo ↗
-                  </a>}
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '4px 0 0' }}>
+                    Así verán otras personas tus datos públicos de contacto.
+                  </p>
                 </div>
               )}
             </div>}

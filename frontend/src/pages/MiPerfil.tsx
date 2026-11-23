@@ -55,7 +55,10 @@ export default function MiPerfil() {
         location: organization.location ?? '',
         image: organization.image_url ?? null,
         classification: organization.classification ?? '',
-        contact: {},
+        contact: {
+          email: organization.email ?? undefined,
+          phone: organization.phone ?? undefined,
+        },
         initiatives: [],
       }
     : perfilCargado?.tipo === tipo ? perfilCargado.perfil : {
@@ -79,7 +82,7 @@ export default function MiPerfil() {
           perfil: {
             id: String(data.id ?? 'personal'),
             is_organization: false,
-            image: null,
+            image: data.image_url ?? null,
             initiatives: [],
             interests: data.interest_areas || [],
             name: data.display_name || user?.name || '',
