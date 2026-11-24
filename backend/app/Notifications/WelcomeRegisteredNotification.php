@@ -16,12 +16,25 @@ class WelcomeRegisteredNotification extends Notification
     {
         $loginUrl = rtrim((string) config('app.url'), '/').'/acceso';
 
+        $subject = 'Bienvenido a ProyectaTec';
+        $actionText = 'Iniciar sesión en ProyectaTec';
+
         return (new MailMessage)
-            ->subject('Bienvenido a ProyectaTec')
-            ->greeting("Hola, {$notifiable->name}")
-            ->line('Tu cuenta en ProyectaTec se registró correctamente.')
-            ->line("Correo registrado: {$notifiable->email}")
-            ->action('Iniciar sesión en ProyectaTec', $loginUrl)
-            ->line('Si no realizaste este registro, puedes ignorar este mensaje.');
+            ->subject($subject)
+            ->action($actionText, $loginUrl)
+            ->view('emails.proyectatec', [
+                'subject' => $subject,
+                'eyebrow' => 'BIENVENIDA',
+                'greeting' => "Hola, {$notifiable->name}",
+                'introLines' => [
+                    'Tu cuenta en ProyectaTec se registró correctamente. Ya puedes explorar proyectos, necesidades comunitarias y organizaciones de Oaxaca.',
+                ],
+                'actionText' => $actionText,
+                'actionUrl' => $loginUrl,
+                'highlightText' => "Correo registrado: {$notifiable->email}",
+                'outroLines' => [
+                    'Si no realizaste este registro, puedes ignorar este mensaje.',
+                ],
+            ]);
     }
 }

@@ -65,6 +65,13 @@ class AdversarialWorkflowsAndPasswordResetTest extends TestCase
             parse_str((string) parse_url($mail->actionUrl, PHP_URL_QUERY), $query);
             $capturedToken = $query['token'] ?? null;
 
+            $html = (string) $mail->render();
+            $this->assertStringContainsString('Atentamente,', $html);
+            $this->assertStringContainsString('Si tienes problemas para hacer clic', $html);
+            $this->assertStringNotContainsString('Regards,', $html);
+            $this->assertStringNotContainsString('having trouble clicking', $html);
+            $this->assertStringNotContainsString('All rights reserved', $html);
+
             return ! empty($capturedToken);
         });
 
