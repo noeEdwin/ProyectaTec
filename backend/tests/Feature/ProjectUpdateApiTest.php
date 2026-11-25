@@ -124,9 +124,15 @@ class ProjectUpdateApiTest extends TestCase
 
         foreach ([$withApplication, $withoutApplication] as $user) {
             $response = $this->actingAs($user, 'sanctum')
-                ->postJson("/api/projects/{$project->id}/updates", $this->payload())
+                ->postJson("/api/projects/{$project->id}/updates", [
+                    'title' => 'Avance de colaborador',
+                    'description' => 'Trabajo realizado en el proyecto.',
+                ])
                 ->assertCreated();
             $this->assertDatabaseHas('project_updates', ['id' => $response->json('project_update.id'), 'created_by' => $user->id]);
+            $this->actingAs($user, 'sanctum')
+                ->postJson("/api/projects/{$project->id}/updates", $this->payload())
+                ->assertForbidden();
         }
         $this->assertDatabaseHas('project_members', ['project_id' => $project->id, 'user_id' => $withoutApplication->id, 'application_id' => null, 'status' => 'active']);
     }

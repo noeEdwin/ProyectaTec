@@ -22,7 +22,8 @@ interface Estadisticas {
 }
 
 function PanelVinculacion() {
-  const [proyecto, setProyecto] = useState<ProyectoDestacado | null>(null);
+  const [proyectos, setProyectos] = useState<ProyectoDestacado[]>([]);
+  const [indice, setIndice] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -36,30 +37,47 @@ function PanelVinculacion() {
           : [];
 
         if (projects.length > 0) {
-          const primero = projects[0];
-          const estadoLabel =
-            primero.status === 'closed'
-              ? 'Cerrado'
-              : primero.status === 'in_progress'
-                ? 'En curso'
-                : 'Activo';
-          setProyecto({
-            id: primero.id,
-            titulo: primero.title,
-            subtitulo: primero.organization?.name || primero.location || 'Iniciativa ProyectaTec',
-            fase: 'Fase 01',
-            estado: estadoLabel,
-            dias_restantes: 24,
-            imagen_url: primero.cover_image_url || undefined,
-            tipo: 'project',
+          const mapeados: ProyectoDestacado[] = projects.map((item: {
+            id: number;
+            title: string;
+            status?: string;
+            location?: string;
+            cover_image_url?: string | null;
+            gallery_urls?: string[];
+            organization?: { name?: string } | null;
+          }) => {
+            const estadoLabel =
+              item.status === 'closed'
+                ? 'Cerrado'
+                : item.status === 'completed'
+                  ? 'Finalizado'
+                  : item.status === 'in_progress'
+                    ? 'En curso'
+                    : 'Activo';
+            const primeraImagen =
+              item.cover_image_url ||
+              (Array.isArray(item.gallery_urls) && item.gallery_urls.length > 0 ? item.gallery_urls[0] : undefined);
+            return {
+              id: item.id,
+              titulo: item.title,
+              subtitulo: item.organization?.name || item.location || 'Iniciativa ProyectaTec',
+              fase: 'Fase 01',
+              estado: estadoLabel,
+              dias_restantes: 24,
+              imagen_url: primeraImagen,
+              tipo: 'project' as const,
+            };
           });
+          // Priorizar proyectos que sí tienen imagen real para el carrusel
+          const conImagen = mapeados.filter((p) => Boolean(p.imagen_url));
+          setProyectos(conImagen.length > 0 ? conImagen : mapeados.slice(0, 5));
         } else {
           throw new Error('Sin proyectos');
         }
       })
       .catch(() => {
         // Fallback local si la base de datos está vacía o el servidor no responde
-        setProyecto({
+        setProyectos([{
           id: 1,
           titulo: 'AgroTech Oaxaca',
           subtitulo: 'Café de Especialidad Pluma',
@@ -67,11 +85,20 @@ function PanelVinculacion() {
           estado: 'Activo',
           dias_restantes: 24,
           tipo: 'project',
-        });
+        }]);
       })
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (proyectos.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setIndice((prev) => (prev + 1) % proyectos.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [proyectos.length]);
+
+  const proyecto = proyectos[indice] ?? proyectos[0] ?? null;
   const imagenMostrar = proyecto?.imagen_url || colaboracionImage;
 
   return (
@@ -88,8 +115,42 @@ function PanelVinculacion() {
         />
         <div className="inicio-panel-caption">
           <strong>DESARROLLO REGIONAL</strong>
-          <span>Ingeniería + Identidad Cultural</span>
+          <span>{proyecto?.titulo || 'Ingeniería + Identidad Cultural'}</span>
         </div>
+        {proyectos.length > 1 && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '14%',
+              left: 0,
+              right: 0,
+              zIndex: 3,
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+            aria-label="Indicadores del carrusel de proyectos"
+          >
+            {proyectos.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                aria-label={`Ver proyecto ${p.titulo}`}
+                onClick={() => setIndice(i)}
+                style={{
+                  width: i === indice ? '18px' : '8px',
+                  height: '8px',
+                  borderRadius: '999px',
+                  border: 0,
+                  padding: 0,
+                  cursor: 'pointer',
+                  background: i === indice ? '#fbbf24' : 'rgba(255,255,255,0.55)',
+                  transition: 'all 0.2s ease',
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="inicio-panel-card">

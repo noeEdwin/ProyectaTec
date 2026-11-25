@@ -32,8 +32,12 @@ function resumenPersona(data: UserProfile): { etiqueta: string; valor: string } 
 
 export default function MiPerfil() {
   const [busqueda] = useSearchParams();
-  const tipo = obtenerTipoPerfil(busqueda.get('tipo'));
   const { user } = useAuth();
+  const paramTipo = busqueda.get('tipo');
+  const esCuentaOrg = Boolean(
+    user && ['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'].includes(user.account_type),
+  );
+  const tipo = paramTipo ? obtenerTipoPerfil(paramTipo) : (esCuentaOrg ? 'organizacion' : 'persona');
   const [perfilCargado, setPerfilCargado] = useState<{
     tipo: TipoPerfil;
     perfil: PerfilPublicoData;

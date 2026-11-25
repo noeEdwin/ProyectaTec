@@ -4,6 +4,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -21,6 +22,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.',
+                ], 429, $exception->getHeaders());
+            }
+
+            return null;
+        });
 
         $exceptions->render(function (QueryException $exception, Request $request) {
             if (($request->is('api/*') || $request->expectsJson()) && (string) $exception->getCode() === '22003') {

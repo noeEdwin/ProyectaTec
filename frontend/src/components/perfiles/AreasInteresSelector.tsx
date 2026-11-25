@@ -32,20 +32,24 @@ type Props = {
 };
 
 export default function AreasInteresSelector({ value, onChange, error }: Props) {
+  const validValues = value.filter((item) =>
+    (AREAS_INTERES as readonly string[]).includes(item),
+  );
+
   return (
     <fieldset className="campos-perfil-grupo" aria-invalid={Boolean(error)}>
       <legend>Áreas de interés (opcional)</legend>
-      <p>Elige hasta {MAX_AREAS} temas en los que te gustaría colaborar. {value.length}/{MAX_AREAS} seleccionadas.</p>
+      <p>Elige hasta {MAX_AREAS} temas en los que te gustaría colaborar. {validValues.length}/{MAX_AREAS} seleccionadas.</p>
       <div className="campos-perfil-opciones">
         {AREAS_INTERES.map((area) => {
-          const checked = value.includes(area);
+          const checked = validValues.includes(area);
           return (
             <label key={area} className="campos-perfil-opcion">
               <input
                 type="checkbox"
                 checked={checked}
-                disabled={!checked && value.length >= MAX_AREAS}
-                onChange={() => onChange(checked ? value.filter((item) => item !== area) : [...value, area])}
+                disabled={!checked && validValues.length >= MAX_AREAS}
+                onChange={() => onChange(checked ? validValues.filter((item) => item !== area) : [...validValues, area])}
               />
               {area}
             </label>

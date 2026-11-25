@@ -98,14 +98,40 @@ class Sprint7IntegrationAndSecurityTest extends TestCase
             ->assertJsonPath('members.0.user.id', $applicant->id)
             ->assertJsonPath('members.0.role', 'fullstack');
 
-        // 5. Accepted member posts update, comment, and evidence file
+        // 5. Accepted member posts activity update (without changing progress), comment, and evidence file
         $updateRes = $this->actingAs($applicant, 'sanctum')
             ->postJson("/api/projects/{$project->id}/updates", [
                 'title' => 'Primer entregable',
                 'description' => 'Modulo de vinculacion conectado.',
+            ])
+            ->assertStatus(201);
+
+        // Non-owner cannot change progress percentage
+        $this->actingAs($applicant, 'sanctum')
+            ->postJson("/api/projects/{$project->id}/updates", [
+                'title' => 'Intento de porcentaje',
+                'description' => 'Colaborador intentando subir porcentaje.',
+                'progress' => 45,
+            ])
+            ->assertStatus(403);
+
+        // Owner sets progress to 45% and cannot regress to 10%
+        $this->actingAs($owner, 'sanctum')
+            ->postJson("/api/projects/{$project->id}/updates", [
+                'title' => 'Avance validado por responsable',
+                'description' => 'Integracion revisada.',
                 'progress' => 45,
             ])
             ->assertStatus(201);
+
+        $this->actingAs($owner, 'sanctum')
+            ->postJson("/api/projects/{$project->id}/updates", [
+                'title' => 'Retroceso invalido',
+                'description' => 'No debe bajar de 45% a 10%.',
+                'progress' => 10,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['progress']);
 
         $updateId = $updateRes->json('project_update.id');
 

@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProjectUpdateRequest;
 use App\Http\Resources\ProjectUpdateResource;
 use App\Models\Project;
 use App\Models\ProjectUpdate;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,8 +82,11 @@ class ProjectUpdateController extends Controller implements HasMiddleware
         $project = $request->route('project');
         $this->ensureWritable($project);
 
+        $data = $request->validated();
+        $this->validateProgressChange($request->user(), $project, $data['progress'] ?? null, array_key_exists('progress', $data));
+
         $update = $project->updates()->create([
-            ...$request->validated(),
+            ...$data,
             'created_by' => $request->user()->id,
         ]);
 
@@ -93,13 +97,62 @@ class ProjectUpdateController extends Controller implements HasMiddleware
 
     public function update(UpdateProjectUpdateRequest $request): JsonResponse
     {
-        $this->ensureWritable($request->route('project'));
+        $project = $request->route('project');
+        $this->ensureWritable($project);
         $update = $request->route('update');
-        $update->update($request->validated());
+
+        $data = $request->validated();
+        if (array_key_exists('progress', $data)) {
+            $this->validateProgressChange($request->user(), $project, $data['progress'], true, $update->id);
+        }
+
+        $update->update($data);
 
         return response()->json([
             'project_update' => new ProjectUpdateResource($update->load('creator:id,name')),
         ]);
+    }
+
+    private function canManageProgress(User $user, Project $project): bool
+    {
+        if ((int) $project->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $project->organization_id !== null
+            && $project->organization !== null
+            && $project->organization->memberships()
+                ->where('user_id', $user->id)
+                ->where('role', 'admin')
+                ->where('status', 'active')
+                ->exists();
+    }
+
+    private function validateProgressChange(
+        User $user,
+        Project $project,
+        mixed $progress,
+        bool $hasProgressKey,
+        ?int $ignoreUpdateId = null
+    ): void {
+        if (! $hasProgressKey || $progress === null) {
+            return;
+        }
+
+        if (! $this->canManageProgress($user, $project)) {
+            abort(403, 'Solo el responsable del proyecto puede actualizar el porcentaje de avance.');
+        }
+
+        $maxExisting = $project->updates()
+            ->whereNotNull('progress')
+            ->when($ignoreUpdateId !== null, fn ($q) => $q->where('id', '!=', $ignoreUpdateId))
+            ->max('progress');
+
+        if ($maxExisting !== null && (int) $progress < (int) $maxExisting) {
+            throw ValidationException::withMessages([
+                'progress' => ["El porcentaje de avance no puede retroceder por debajo del avance actual ({$maxExisting}%)."],
+            ]);
+        }
     }
 
     private function ensureWritable(Project $project): void

@@ -70,11 +70,11 @@ class DemoAccountsSeeder extends Seeder
                 'field_of_study' => 'Ingeniería en Sistemas Computacionales',
                 'campus' => 'Oaxaca',
                 'semester' => '6',
-                'student_number' => 'DEMO-2026-01',
-                'expected_graduation' => '2027',
+                'student_number' => '23160001',
+                'expected_graduation' => '2027-06',
                 'academic_role' => 'investigador',
                 'locality' => 'Oaxaca de Juárez, Oaxaca',
-                'interest_areas' => ['Tecnología', 'Desarrollo comunitario'],
+                'interest_areas' => ['Tecnología e innovación', 'Desarrollo comunitario'],
                 'public_fields' => ['location', 'institution', 'field_of_study', 'interest_areas'],
             ]
         );

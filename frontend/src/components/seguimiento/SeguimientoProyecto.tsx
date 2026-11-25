@@ -14,13 +14,16 @@ type Props = {
   proyecto: {
     id: number;
     titulo: string;
+    estado?: string;
   };
   avances?: AvanceProyecto[];
   ultimoProgreso?: UltimoProgresoProyecto | null;
   cargando?: boolean;
   error?: string | null;
   puedeRegistrar?: boolean;
+  esDueno?: boolean;
   onRegistrar?: (datos: NuevoAvanceProyecto) => Promise<void>;
+  onCambiarEstado?: (estado: 'completed' | 'closed') => Promise<void>;
   onReintentar?: () => void;
 };
 
@@ -47,13 +50,17 @@ export default function SeguimientoProyecto({
   cargando = false,
   error = null,
   puedeRegistrar = false,
+  esDueno = false,
   onRegistrar,
+  onCambiarEstado,
   onReintentar,
 }: Props) {
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [progreso, setProgreso] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(false);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [errorFormulario, setErrorFormulario] =
     useState<string | null>(null);
 
@@ -99,15 +106,19 @@ export default function SeguimientoProyecto({
       return;
     }
 
-    if (
-      progresoLimpio !== '' &&
-      (!/^\d+$/.test(progresoLimpio) ||
-        Number(progresoLimpio) > 100)
-    ) {
-      setErrorFormulario(
-        'El porcentaje debe ser un número entero entre 0 y 100.',
-      );
-      return;
+    if (esDueno && progresoLimpio !== '') {
+      if (!/^\d+$/.test(progresoLimpio) || Number(progresoLimpio) > 100) {
+        setErrorFormulario(
+          'El porcentaje debe ser un número entero entre 0 y 100.',
+        );
+        return;
+      }
+      if (progresoActual !== null && Number(progresoLimpio) < progresoActual) {
+        setErrorFormulario(
+          `El porcentaje no puede retroceder por debajo del avance actual (${progresoActual}%).`,
+        );
+        return;
+      }
     }
 
     setErrorFormulario(null);
@@ -118,9 +129,9 @@ export default function SeguimientoProyecto({
         title: tituloLimpio,
         description: descripcionLimpia,
         progress:
-          progresoLimpio === ''
-            ? null
-            : Number(progresoLimpio),
+          esDueno && progresoLimpio !== ''
+            ? Number(progresoLimpio)
+            : null,
       });
 
       setTitulo('');
@@ -135,6 +146,23 @@ export default function SeguimientoProyecto({
       );
     } finally {
       setGuardando(false);
+    }
+  }
+
+  const proyectoAbierto = ['open', 'in_progress'].includes(proyecto.estado ?? 'open');
+
+  async function cambiarEstadoProyecto(nuevoEstado: 'completed' | 'closed') {
+    if (!esDueno || !onCambiarEstado || cambiandoEstado || !proyectoAbierto) return;
+    setErrorEstado(null);
+    setCambiandoEstado(true);
+    try {
+      await onCambiarEstado(nuevoEstado);
+    } catch (err: unknown) {
+      setErrorEstado(
+        extraerMensajeErrorVinculacion(err, 'No se pudo actualizar el estado del proyecto.'),
+      );
+    } finally {
+      setCambiandoEstado(false);
     }
   }
 
@@ -163,7 +191,41 @@ export default function SeguimientoProyecto({
             <h2 id="sp-resumen-titulo">
               {proyecto.titulo}
             </h2>
-            <p>Avance general del proyecto</p>
+            <p>
+              Avance general del proyecto
+              {proyecto.estado === 'completed'
+                ? ' · Proyecto finalizado'
+                : proyecto.estado === 'closed'
+                  ? ' · Proyecto cerrado'
+                  : ''}
+            </p>
+            {esDueno && proyectoAbierto && onCambiarEstado && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  className="sp-boton sp-boton-primario"
+                  style={{ padding: '8px 14px', fontSize: '13px' }}
+                  disabled={cambiandoEstado}
+                  onClick={() => void cambiarEstadoProyecto('completed')}
+                >
+                  {cambiandoEstado ? 'Actualizando…' : 'Finalizar proyecto'}
+                </button>
+                <button
+                  type="button"
+                  className="sp-boton"
+                  style={{ padding: '8px 14px', fontSize: '13px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
+                  disabled={cambiandoEstado}
+                  onClick={() => void cambiarEstadoProyecto('closed')}
+                >
+                  Cerrar proyecto
+                </button>
+              </div>
+            )}
+            {errorEstado && (
+              <p className="sp-mensaje sp-mensaje-error" role="alert" style={{ marginTop: '8px' }}>
+                {errorEstado}
+              </p>
+            )}
           </div>
 
           {!pendienteIntegracion &&
@@ -350,35 +412,49 @@ export default function SeguimientoProyecto({
                 />
               </div>
 
-              <div className="sp-campo sp-campo-progreso">
-                <label htmlFor="sp-progress">
-                  Porcentaje de progreso
-                  <span className="campo-opcional">(opcional)</span>
-                </label>
+              {esDueno ? (
+                <div className="sp-campo sp-campo-progreso">
+                  <label htmlFor="sp-progress">
+                    Porcentaje de progreso
+                    <span className="campo-opcional">(opcional)</span>
+                  </label>
 
-                <input
-                  id="sp-progress"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={progreso}
-                  onChange={(evento) =>
-                    setProgreso(evento.target.value)
-                  }
-                  placeholder="0 a 100"
-                  disabled={guardando}
-                />
+                  <input
+                    id="sp-progress"
+                    type="number"
+                    min={progresoActual ?? 0}
+                    max={100}
+                    step={1}
+                    value={progreso}
+                    onChange={(evento) =>
+                      setProgreso(evento.target.value)
+                    }
+                    placeholder={progresoActual !== null ? `${progresoActual} a 100` : '0 a 100'}
+                    disabled={guardando}
+                  />
 
-                <small>
-                  Formato: número entero del 0 al 100. Déjalo vacío si no deseas cambiar el porcentaje.
-                </small>
-                {progreso.trim() !== '' && (!/^\d+$/.test(progreso.trim()) || Number(progreso.trim()) > 100) && (
-                  <p className="formato-ayuda invalido">
-                    Debe ser un número entero entre 0 y 100 (sin decimales ni símbolos).
-                  </p>
-                )}
-              </div>
+                  <small>
+                    {progresoActual !== null
+                      ? `Debe ser un entero entre ${progresoActual}% y 100%. Déjalo vacío para mantener ${progresoActual}%.`
+                      : 'Formato: número entero del 0 al 100. Déjalo vacío si no deseas cambiar el porcentaje.'}
+                  </small>
+                  {progreso.trim() !== '' && (
+                    !/^\d+$/.test(progreso.trim()) || Number(progreso.trim()) > 100 ? (
+                      <p className="formato-ayuda invalido">
+                        Debe ser un número entero entre 0 y 100 (sin decimales ni símbolos).
+                      </p>
+                    ) : progresoActual !== null && Number(progreso.trim()) < progresoActual ? (
+                      <p className="formato-ayuda invalido">
+                        No puede retroceder por debajo del avance actual ({progresoActual}%).
+                      </p>
+                    ) : null
+                  )}
+                </div>
+              ) : (
+                <p className="formato-ayuda">
+                  Como colaborador puedes registrar actividades; solo el responsable del proyecto ajusta el porcentaje de avance y el cierre.
+                </p>
+              )}
 
               {errorFormulario && (
                 <p

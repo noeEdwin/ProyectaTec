@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import { validarContrasenaSegura } from '../utils/passwordValidation';
 import PasswordChecklist from '../components/PasswordChecklist';
@@ -91,7 +91,7 @@ export default function Registro({ onRegister }: RegistroProps) {
   const [mensaje, setMensaje] = useState('');
   const [procesando, setProcesando] = useState(false);
 
-  const { register } = useAuth();
+  const { register, user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -551,6 +551,10 @@ export default function Registro({ onRegister }: RegistroProps) {
       default:
         return null;
     }
+  }
+
+  if (!onRegister && !loading && user) {
+    return <Navigate to="/iniciativas" replace />;
   }
 
   return (

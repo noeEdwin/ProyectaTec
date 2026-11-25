@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   extraerMensajeErrorVinculacion,
   listarMisSolicitudesEnviadas,
@@ -68,7 +68,13 @@ export default function SolicitudesEnviadasPage({
   error,
   onReintentar,
 }: Props) {
-  const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [searchParams] = useSearchParams();
+  const estadoUrl = searchParams.get('estado');
+  const filtroInicial: Filtro =
+    estadoUrl === 'pending' || estadoUrl === 'accepted' || estadoUrl === 'rejected'
+      ? estadoUrl
+      : 'todas';
+  const [filtro, setFiltro] = useState<Filtro>(filtroInicial);
   const [datosLocales, setDatosLocales] = useState<SolicitudEnviada[]>([]);
   const [cargandoLocal, setCargandoLocal] = useState(solicitudes === undefined);
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
@@ -256,12 +262,23 @@ export default function SolicitudesEnviadasPage({
                         {estado.texto}
                       </span>
 
-                      <Link
-                        className="sr-revisar"
-                        to={`/iniciativas/proyecto/${solicitud.project_id}`}
-                      >
-                        Ver proyecto →
-                      </Link>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                        {solicitud.status === 'accepted' && (
+                          <Link
+                            className="sr-revisar"
+                            style={{ background: '#0b4a54', color: '#fff', borderColor: '#0b4a54' }}
+                            to={`/iniciativas/proyecto/${solicitud.project_id}/seguimiento`}
+                          >
+                            Seguimiento de avances →
+                          </Link>
+                        )}
+                        <Link
+                          className="sr-revisar"
+                          to={`/iniciativas/proyecto/${solicitud.project_id}`}
+                        >
+                          Ver proyecto →
+                        </Link>
+                      </div>
                     </li>
                   );
                 })}

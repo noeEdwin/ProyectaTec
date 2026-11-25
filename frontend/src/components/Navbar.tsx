@@ -5,7 +5,10 @@ import logoProyectatec from '../assets/logo-proyectatec.png';
 import '../styles/Navbar.css';
 
 export default function Navbar() {
-  const { user, logout, isLoggingOut } = useAuth();
+  const { user, loading, logout, isLoggingOut } = useAuth();
+  const esOrganizacion = Boolean(
+    user && ['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'].includes(user.account_type),
+  );
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -94,13 +97,11 @@ export default function Navbar() {
                 {isMenuOpen && (
                   <div className="user-dropdown-menu">
                     <Link
-                      to={['organizacion', 'organization', 'empresa', 'institucion_educativa', 'sector_social'].includes(user.account_type)
-                        ? '/mi-perfil?tipo=organizacion'
-                        : '/mi-perfil?tipo=persona'}
+                      to={esOrganizacion ? '/mi-perfil?tipo=organizacion' : '/mi-perfil?tipo=persona'}
                       onClick={closeAllMenus}
                       className="dropdown-item"
                     >
-                      Mi Perfil
+                      {esOrganizacion ? 'Mi organización' : 'Mi Perfil'}
                     </Link>
 
                     <Link
@@ -119,20 +120,22 @@ export default function Navbar() {
                       Mis solicitudes
                     </Link>
 
+                    {!esOrganizacion && (
+                      <Link
+                        to="/mis-solicitudes?estado=accepted"
+                        onClick={closeAllMenus}
+                        className="dropdown-item"
+                      >
+                        Proyectos vinculados
+                      </Link>
+                    )}
+
                     <Link
                       to="/publicaciones"
                       onClick={closeAllMenus}
                       className="dropdown-item"
                     >
                       Panel de vinculación
-                    </Link>
-
-                    <Link
-                      to="/mi-perfil?tipo=organizacion"
-                      onClick={closeAllMenus}
-                      className="dropdown-item"
-                    >
-                      Mis organizaciones
                     </Link>
 
                     {user.can_manage_platform && (
@@ -167,7 +170,7 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : loading ? null : (
               <>
                 <NavLink to="/acceso" className="btn-acceso" onClick={closeAllMenus}>ACCESO</NavLink>
                 <NavLink to="/registro" className="btn-registro" onClick={closeAllMenus}>REGISTRARSE</NavLink>

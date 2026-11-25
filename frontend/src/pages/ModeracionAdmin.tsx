@@ -410,10 +410,21 @@ export default function ModeracionAdmin() {
     return (
       <div className="pd-pagina">
         <main className="pd-contenedor">
-          <p className="pd-error" role="alert">
-            No tienes permisos para acceder al panel de moderación.
-          </p>
-          <Link to="/">Volver al inicio</Link>
+          <section
+            className="pd-tarjeta"
+            style={{ maxWidth: 520, margin: '48px auto', textAlign: 'center', display: 'grid', gap: '16px' }}
+          >
+            <span className="pd-eyebrow" style={{ margin: '0 auto' }}>ADMINISTRACIÓN / MODERACIÓN</span>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>Acceso restringido</h1>
+            <p className="pd-error" role="alert" style={{ margin: 0 }}>
+              No tienes permisos para acceder al panel de moderación.
+            </p>
+            <div>
+              <Link className="pd-boton-oscuro" to="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
+                Volver al inicio
+              </Link>
+            </div>
+          </section>
         </main>
       </div>
     );

@@ -97,6 +97,10 @@ export default function RevisarSolicitudModal({
     'Solicitante';
 
   const perfilId = solicitud.applicant?.profile_id;
+  const cvUrl = enlaceSeguro(solicitud.cv_url);
+  const cvLabel = solicitud.cv_original_name
+    ? `Ver currículum (${solicitud.cv_original_name})`
+    : 'Ver currículum PDF';
 
   const enlaces = [
     {
@@ -286,17 +290,32 @@ export default function RevisarSolicitudModal({
               )}
             </div>
 
-            {typeof perfilId === 'number' && perfilId > 0 &&
-              onVerPerfil && (
-                <button
-                  type="button"
-                  className="rv-enlace-perfil"
-                  onClick={() => onVerPerfil(perfilId)}
-                  disabled={procesando}
-                >
-                  Ver perfil del solicitante →
-                </button>
-              )}
+            {(typeof perfilId === 'number' && perfilId > 0 && onVerPerfil) || cvUrl ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginTop: '12px' }}>
+                {typeof perfilId === 'number' && perfilId > 0 && onVerPerfil && (
+                  <button
+                    type="button"
+                    className="rv-enlace-perfil"
+                    style={{ marginTop: 0 }}
+                    onClick={() => onVerPerfil(perfilId)}
+                    disabled={procesando}
+                  >
+                    Ver perfil del solicitante →
+                  </button>
+                )}
+                {cvUrl && (
+                  <a
+                    href={cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rv-enlace-perfil"
+                    style={{ marginTop: 0, textDecoration: 'none' }}
+                  >
+                    {cvLabel} ↗
+                  </a>
+                )}
+              </div>
+            ) : null}
           </section>
 
           <section className="sv-seccion">

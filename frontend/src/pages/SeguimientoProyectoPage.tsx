@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 
+import api from '../api/axios';
 import { useAuth } from '../context/auth-context';
 import {
   listarMisPublicaciones,
@@ -28,7 +29,10 @@ export default function SeguimientoProyectoPage() {
 
   const [tituloProyecto, setTituloProyecto] =
     useState<string | null>(null);
+  const [estadoProyecto, setEstadoProyecto] =
+    useState<string>('open');
   const [puedeRegistrar, setPuedeRegistrar] = useState(false);
+  const [esDueno, setEsDueno] = useState(false);
 
   const [avances, setAvances] = useState<AvanceProyecto[]>([]);
   const [ultimoProgreso, setUltimoProgreso] =
@@ -85,29 +89,32 @@ export default function SeguimientoProyectoPage() {
         if (!activo) return;
 
         setTituloProyecto(proyecto.title);
+        setEstadoProyecto(proyecto.status ?? 'open');
 
         const proyectoAbierto = ['open', 'in_progress'].includes(
           proyecto.status ?? 'open',
         );
 
         let tienePermiso = false;
-        if (user && proyectoAbierto) {
-          if (user.can_manage_platform) {
-            tienePermiso = true;
-          } else {
-            const [misPubs, propias] = await Promise.all([
-              listarMisPublicaciones().catch(() => []),
-              listarMisSolicitudesEnviadas('accepted').catch(() => []),
-            ]);
-            const esResponsable = misPubs.some(
+        let esResponsableProyecto = false;
+        if (user) {
+          const [misPubs, propias] = await Promise.all([
+            listarMisPublicaciones().catch(() => []),
+            listarMisSolicitudesEnviadas('accepted').catch(() => []),
+          ]);
+          esResponsableProyecto =
+            Boolean(user.can_manage_platform) ||
+            misPubs.some(
               (p) => p.type === 'proyecto' && p.id === idProyecto,
             );
-            tienePermiso =
-              esResponsable || propias.some((s) => s.project_id === idProyecto);
-          }
+          tienePermiso =
+            proyectoAbierto &&
+            (esResponsableProyecto ||
+              propias.some((s) => s.project_id === idProyecto));
         }
 
         if (!activo) return;
+        setEsDueno(esResponsableProyecto);
         setPuedeRegistrar(tienePermiso);
       } catch (err) {
         if (!activo) return;
@@ -152,6 +159,12 @@ export default function SeguimientoProyectoPage() {
     }
   }
 
+  async function manejarCambioEstado(nuevoEstado: 'completed' | 'closed') {
+    await api.patch(`/projects/${idProyecto}`, { status: nuevoEstado });
+    setEstadoProyecto(nuevoEstado);
+    setPuedeRegistrar(false);
+  }
+
   if (!idValido || cargando || error || !tituloProyecto) {
     return (
       <main className="sp-pagina">
@@ -186,13 +199,16 @@ export default function SeguimientoProyectoPage() {
       proyecto={{
         id: idProyecto,
         titulo: tituloProyecto,
+        estado: estadoProyecto,
       }}
       avances={avances}
       ultimoProgreso={ultimoProgreso}
       cargando={cargandoAvances}
       error={errorAvances}
       puedeRegistrar={puedeRegistrar}
+      esDueno={esDueno}
       onRegistrar={manejarRegistroAvance}
+      onCambiarEstado={manejarCambioEstado}
       onReintentar={() => void cargarAvances()}
     />
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import axios from 'axios';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth-context';
 import inicioSesionImage from '../assets/inicio_sesion.png';
 import '../styles/acceso.css';
@@ -31,7 +31,7 @@ export default function Acceso({ onLogin }: AccesoProps) {
 
   const [mensaje, setMensaje] = useState('');
 
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const cuentasDemo = [
@@ -85,8 +85,18 @@ export default function Acceso({ onLogin }: AccesoProps) {
       const from = (location.state as { from?: string } | null)?.from;
       navigate(from?.startsWith('/') && !from.startsWith('//') ? from : '/iniciativas', { replace: true });
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setErrores({ general: err.response.data.message });
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const apiMsg = err.response?.data?.message;
+        if (status === 429 || apiMsg === 'Too Many Attempts.') {
+          setErrores({ general: 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.' });
+        } else if (apiMsg) {
+          setErrores({ general: apiMsg });
+        } else {
+          setErrores({
+            general: 'Credenciales incorrectas o problema de conexión con el servidor.',
+          });
+        }
       } else {
         setErrores({
           general: 'Credenciales incorrectas o problema de conexión con el servidor.',
@@ -95,6 +105,10 @@ export default function Acceso({ onLogin }: AccesoProps) {
     } finally {
       setProcesando(false);
     }
+  }
+
+  if (!onLogin && !loading && user) {
+    return <Navigate to="/iniciativas" replace />;
   }
 
   return (
