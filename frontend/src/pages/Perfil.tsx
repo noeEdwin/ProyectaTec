@@ -47,7 +47,7 @@ const estiloInput: CSSProperties = {
 
 // Campos que se validan según el tipo de cuenta (además del teléfono).
 const CAMPOS_A_VALIDAR: Record<string, string[]> = {
-  estudiante: ['campus', 'field_of_study', 'student_number'],
+  estudiante: ['field_of_study', 'student_number'],
   academico: ['organization_area', 'organization_position'],
   empleado_organizacion: ['organization_area', 'organization_position'],
   residente_oaxaca: ['locality'],
@@ -687,9 +687,6 @@ export default function Perfil() {
 
             {profile.account_type === 'estudiante' && <>
               {renderInstitutionSelect('Institución educativa')}
-              <Campo id="profile-campus" label="Campus o plantel" optional error={errorDe('campus')}>
-                <input id="profile-campus" value={profile.campus || ''} onChange={(e) => setField('campus', e.target.value)} maxLength={255} style={estiloInput} />
-              </Campo>
               <Campo id="profile-field-of-study" label="Carrera o programa" required error={errorDe('field_of_study')}>
                 <input id="profile-field-of-study" value={profile.field_of_study || ''} onChange={(e) => setField('field_of_study', e.target.value)} required maxLength={255} style={estiloInput} />
               </Campo>

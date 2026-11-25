@@ -53,7 +53,7 @@ type RegistroProps = {
 };
 
 type RegistroErrors = Partial<
-  Record<keyof RegistroPayload | 'general', string>
+  Record<keyof RegistroPayload | 'general' | 'nombres' | 'apellido_paterno', string>
 >;
 
 const tiposCuenta = [
@@ -67,7 +67,9 @@ const tiposCuenta = [
 const perfilVacio: Record<string, string> = {};
 
 export default function Registro({ onRegister }: RegistroProps) {
-  const [nombre, setNombre] = useState('');
+  const [nombres, setNombres] = useState('');
+  const [apellidoPaterno, setApellidoPaterno] = useState('');
+  const [apellidoMaterno, setApellidoMaterno] = useState('');
   const [tipoCuenta, setTipoCuenta] = useState('');
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
@@ -131,13 +133,20 @@ export default function Registro({ onRegister }: RegistroProps) {
     setMensaje('');
 
     const nuevosErrores: RegistroErrors = {};
-    const nombreLimpio = nombre.trim();
+    const nombresLimpios = nombres.trim();
+    const paternoLimpio = apellidoPaterno.trim();
+    const maternoLimpio = apellidoMaterno.trim();
+    const nombreLimpio = [nombresLimpios, paternoLimpio, maternoLimpio].filter(Boolean).join(' ');
     const correoLimpio = correo.trim();
 
-    if (!nombreLimpio) {
-      nuevosErrores.name = 'Ingresa tu nombre o razón social.';
-    } else if (nombreLimpio.length > 255) {
-      nuevosErrores.name = 'El nombre es demasiado largo.';
+    if (!nombresLimpios) {
+      nuevosErrores.nombres = 'Ingresa tu(s) nombre(s).';
+    }
+    if (!paternoLimpio) {
+      nuevosErrores.apellido_paterno = 'Ingresa tu apellido paterno.';
+    }
+    if (nombreLimpio.length > 255) {
+      nuevosErrores.name = 'El nombre completo excede los 255 caracteres.';
     }
 
     if (!tipoCuenta) {
@@ -443,7 +452,6 @@ export default function Registro({ onRegister }: RegistroProps) {
       case 'estudiante':
         return <>
           {renderInstitutionField()}
-          {renderProfileInput('campus', 'Campus o plantel', '', 'text', false)}
           {renderProfileInput('field_of_study', 'Carrera o programa')}
           <div className="registro-field">
             <label htmlFor="registro-semester">
@@ -570,39 +578,78 @@ export default function Registro({ onRegister }: RegistroProps) {
                 Los campos marcados con <span className="campo-obligatorio">*</span> son obligatorios.
               </p>
               <div className="registro-fields">
-                {/* Nombre */}
+                {/* Nombre(s) y apellidos */}
                 <div className="registro-field">
-                  <label htmlFor="registro-nombre">
-                    {tipoCuenta === 'organizacion' ? 'Nombre de la persona representante' : 'Nombre completo'}
+                  <label htmlFor="registro-nombres">
+                    {tipoCuenta === 'organizacion' ? 'Nombre(s) de la persona representante' : 'Nombre(s)'}
                     <span className="campo-obligatorio" aria-hidden="true">*</span>
                   </label>
 
                   <input
-                    id="registro-nombre"
+                    id="registro-nombres"
                     type="text"
-                    name="name"
-                    autoComplete="name"
-                    placeholder="Tu nombre completo"
-                    value={nombre}
-                    maxLength={255}
-                    onChange={(event) =>
-                      setNombre(event.target.value)
-                    }
-                    aria-invalid={Boolean(errores.name)}
-                    aria-describedby={
-                      errores.name ? 'registro-nombre-error' : undefined
-                    }
+                    name="given-name"
+                    autoComplete="given-name"
+                    placeholder="Ej. Edwin Noé"
+                    value={nombres}
+                    maxLength={100}
+                    onChange={(event) => setNombres(event.target.value)}
+                    aria-invalid={Boolean(errores.nombres || errores.name)}
+                    aria-describedby={errores.nombres ? 'registro-nombres-error' : undefined}
                   />
 
-                  {errores.name && (
-                    <p
-                      id="registro-nombre-error"
-                      className="registro-error"
-                    >
-                      {errores.name}
+                  {errores.nombres && (
+                    <p id="registro-nombres-error" className="registro-error">
+                      {errores.nombres}
                     </p>
                   )}
                 </div>
+
+                <div className="registro-name-row">
+                  <div className="registro-field">
+                    <label htmlFor="registro-paterno">
+                      Apellido paterno<span className="campo-obligatorio" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                      id="registro-paterno"
+                      type="text"
+                      name="family-name"
+                      autoComplete="family-name"
+                      placeholder="Ej. Sánchez"
+                      value={apellidoPaterno}
+                      maxLength={80}
+                      onChange={(event) => setApellidoPaterno(event.target.value)}
+                      aria-invalid={Boolean(errores.apellido_paterno || errores.name)}
+                      aria-describedby={errores.apellido_paterno ? 'registro-paterno-error' : undefined}
+                    />
+                    {errores.apellido_paterno && (
+                      <p id="registro-paterno-error" className="registro-error">
+                        {errores.apellido_paterno}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="registro-field">
+                    <label htmlFor="registro-materno">
+                      Apellido materno<span className="campo-opcional">(opcional)</span>
+                    </label>
+                    <input
+                      id="registro-materno"
+                      type="text"
+                      name="additional-name"
+                      placeholder="Ej. Chávez"
+                      value={apellidoMaterno}
+                      maxLength={80}
+                      onChange={(event) => setApellidoMaterno(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {errores.name && (
+                  <p id="registro-nombre-error" className="registro-error">
+                    {errores.name}
+                  </p>
+                )}
 
                 {/* Tipo de cuenta */}
                 <div className="registro-field">
