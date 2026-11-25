@@ -14,8 +14,20 @@ export const SEMESTRES = [
 const LETRAS = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s.'-]/g;
 const LETRAS_NUM = /[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9\s.,'#°-]/g;
 
-// Matrícula: ajusta este patrón si el ITO usa otro formato.
-export const MATRICULA_RE = /^\d{8,10}$/;
+// Matrícula TecNM / ITO: 8 dígitos exactos.
+export const MATRICULA_RE = /^\d{8}$/;
+
+export function filtrarNombrePersona(valor: string): string {
+  return valor.replace(LETRAS, '');
+}
+
+export function validarNombrePersona(valor: string | null | undefined, etiqueta = 'El nombre'): string | null {
+  const texto = (valor ?? '').trim();
+  if (!texto) return null;
+  if (/\d/.test(texto)) return `${etiqueta} no puede contener números.`;
+  if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}/.test(texto)) return `${etiqueta} debe contener al menos 2 letras.`;
+  return null;
+}
 
 export type ReglaCampo = {
   filtrar?: (valor: string) => string;
@@ -27,7 +39,8 @@ export type ReglaCampo = {
 export const REGLAS_CAMPO: Record<string, ReglaCampo> = {
   phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
   organization_phone: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => /^\d{10}$/.test(v), mensaje: 'Ingresa un teléfono de 10 dígitos, solo números.', maxLength: 10 },
-  student_number: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 10), valido: (v) => MATRICULA_RE.test(v), mensaje: 'La matrícula debe tener de 8 a 10 dígitos.', maxLength: 10 },
+  student_number: { filtrar: (v) => v.replace(/\D/g, '').slice(0, 8), valido: (v) => MATRICULA_RE.test(v), mensaje: 'La matrícula debe tener exactamente 8 dígitos.', maxLength: 8 },
+  display_name: { filtrar: filtrarNombrePersona, valido: (v) => validarNombrePersona(v, 'El nombre') === null, mensaje: 'El nombre debe contener solo letras y espacios (sin números).' },
   field_of_study: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 3, mensaje: 'Escribe tu carrera o programa (solo letras).' },
   organization_position: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un cargo válido (solo letras).' },
   organization_area: { filtrar: (v) => v.replace(LETRAS, ''), valido: (v) => v.trim().length >= 2, mensaje: 'Escribe un área válida (solo letras).' },

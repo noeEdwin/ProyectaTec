@@ -12,7 +12,7 @@ import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 import SelectorEgreso from '../components/perfiles/SelectorEgreso';
 import { validarFechaEgreso } from '../utils/fechaEgreso';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
-import { REGLAS_CAMPO, SECTORES, SEMESTRES, filtrarCampo, ubicacionOaxaca } from '../utils/camposPerfil';
+import { REGLAS_CAMPO, SECTORES, SEMESTRES, filtrarCampo, filtrarNombrePersona, ubicacionOaxaca, validarNombrePersona } from '../utils/camposPerfil';
 import '../styles/registro.css';
 
 export type RegistroPayload = {
@@ -149,9 +149,19 @@ export default function Registro({ onRegister }: RegistroProps) {
 
     if (!nombresLimpios) {
       nuevosErrores.nombres = 'Ingresa tu(s) nombre(s).';
+    } else {
+      const errNombres = validarNombrePersona(nombresLimpios, 'El nombre');
+      if (errNombres) nuevosErrores.nombres = errNombres;
     }
     if (!paternoLimpio) {
       nuevosErrores.apellido_paterno = 'Ingresa tu apellido paterno.';
+    } else {
+      const errPaterno = validarNombrePersona(paternoLimpio, 'El apellido paterno');
+      if (errPaterno) nuevosErrores.apellido_paterno = errPaterno;
+    }
+    if (maternoLimpio) {
+      const errMaterno = validarNombrePersona(maternoLimpio, 'El apellido materno');
+      if (errMaterno) nuevosErrores.name = errMaterno;
     }
     if (nombreLimpio.length > 255) {
       nuevosErrores.name = 'El nombre completo excede los 255 caracteres.';
@@ -618,7 +628,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                     placeholder="Ej. Edwin Noé"
                     value={nombres}
                     maxLength={100}
-                    onChange={(event) => setNombres(event.target.value)}
+                    onChange={(event) => setNombres(filtrarNombrePersona(event.target.value))}
                     aria-invalid={Boolean(errores.nombres || errores.name)}
                     aria-describedby={errores.nombres ? 'registro-nombres-error' : undefined}
                   />
@@ -643,7 +653,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                       placeholder="Ej. Sánchez"
                       value={apellidoPaterno}
                       maxLength={80}
-                      onChange={(event) => setApellidoPaterno(event.target.value)}
+                      onChange={(event) => setApellidoPaterno(filtrarNombrePersona(event.target.value))}
                       aria-invalid={Boolean(errores.apellido_paterno || errores.name)}
                       aria-describedby={errores.apellido_paterno ? 'registro-paterno-error' : undefined}
                     />
@@ -665,7 +675,7 @@ export default function Registro({ onRegister }: RegistroProps) {
                       placeholder="Ej. Chávez"
                       value={apellidoMaterno}
                       maxLength={80}
-                      onChange={(event) => setApellidoMaterno(event.target.value)}
+                      onChange={(event) => setApellidoMaterno(filtrarNombrePersona(event.target.value))}
                     />
                   </div>
                 </div>

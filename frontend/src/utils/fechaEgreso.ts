@@ -13,6 +13,24 @@ export const MESES_ES = [
   { value: '12', label: 'Diciembre' },
 ];
 
+export const PERIODOS_EGRESO = [
+  { value: '06', label: 'Enero – Junio' },
+  { value: '12', label: 'Agosto – Diciembre' },
+] as const;
+
+export function periodoDeMes(mes: string): string {
+  const n = Number(mes);
+  if (!Number.isFinite(n) || n < 1 || n > 12) return '';
+  return n <= 6 ? '06' : '12';
+}
+
+export function formatearPeriodoEgreso(valor: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(valor.trim());
+  if (!match) return valor;
+  const periodo = PERIODOS_EGRESO.find((p) => p.value === periodoDeMes(match[2]));
+  return periodo ? `${periodo.label} ${match[1]}` : valor;
+}
+
 export function fechaActualYm(): { year: number; month: number; ym: string } {
   const ahora = new Date();
   const year = ahora.getFullYear();

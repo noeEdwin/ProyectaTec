@@ -1,4 +1,4 @@
-import { MESES_ES, fechaActualYm, validarFechaEgreso } from '../../utils/fechaEgreso';
+import { PERIODOS_EGRESO, fechaActualYm, periodoDeMes, validarFechaEgreso } from '../../utils/fechaEgreso';
 
 type SelectorEgresoProps = {
   idPrefix: string;
@@ -18,22 +18,22 @@ export default function SelectorEgreso({
 
   const match = /^(\d{4})-(\d{2})$/.exec(value.trim());
   const anioActual = match ? match[1] : '';
-  const mesActual = match ? match[2] : '';
+  const periodoActual = match ? periodoDeMes(match[2]) : '';
 
   const esAnioEnCurso = anioActual === String(actual.year);
   const errorFormato = value.trim() ? validarFechaEgreso(value) : null;
 
-  function actualizar(nuevoMes: string, nuevoAnio: string) {
-    if (!nuevoMes && !nuevoAnio) {
+  function actualizar(nuevoPeriodo: string, nuevoAnio: string) {
+    if (!nuevoPeriodo && !nuevoAnio) {
       onChange('');
       return;
     }
     const anio = nuevoAnio || String(actual.year);
-    let mes = nuevoMes || String(actual.month).padStart(2, '0');
-    if (anio === String(actual.year) && Number(mes) < actual.month) {
-      mes = String(actual.month).padStart(2, '0');
+    let periodo = nuevoPeriodo || (actual.month <= 6 ? '06' : '12');
+    if (anio === String(actual.year) && Number(periodo) < actual.month) {
+      periodo = '12';
     }
-    onChange(`${anio}-${mes}`);
+    onChange(`${anio}-${periodo}`);
   }
 
   return (
@@ -41,19 +41,19 @@ export default function SelectorEgreso({
       <div className="selector-egreso-grid">
         <select
           id={idPrefix}
-          aria-label="Mes estimado de egreso"
-          value={mesActual}
+          aria-label="Periodo académico estimado de egreso"
+          value={periodoActual}
           onChange={(e) => actualizar(e.target.value, anioActual)}
           aria-invalid={invalid || Boolean(errorFormato)}
         >
-          <option value="">Mes</option>
-          {MESES_ES.map((m) => (
+          <option value="">Periodo académico</option>
+          {PERIODOS_EGRESO.map((p) => (
             <option
-              key={m.value}
-              value={m.value}
-              disabled={esAnioEnCurso && Number(m.value) < actual.month}
+              key={p.value}
+              value={p.value}
+              disabled={esAnioEnCurso && Number(p.value) < actual.month}
             >
-              {m.label}
+              {p.label}
             </option>
           ))}
         </select>
@@ -62,7 +62,7 @@ export default function SelectorEgreso({
           id={`${idPrefix}-year`}
           aria-label="Año estimado de egreso"
           value={anioActual}
-          onChange={(e) => actualizar(mesActual, e.target.value)}
+          onChange={(e) => actualizar(periodoActual, e.target.value)}
           aria-invalid={invalid || Boolean(errorFormato)}
         >
           <option value="">Año</option>
@@ -80,7 +80,7 @@ export default function SelectorEgreso({
         <p className="formato-ayuda invalido">{errorFormato}</p>
       ) : (
         <p className="formato-ayuda">
-          Debe ser igual o posterior a {MESES_ES[actual.month - 1].label} {actual.year}.
+          Selecciona tu periodo académico de egreso (ej. Agosto – Diciembre {actual.year}).
         </p>
       )}
     </div>

@@ -318,6 +318,11 @@ Route::middleware([
         [ProfileController::class, 'uploadAvatar']
     );
 
+    Route::put(
+        '/me/password',
+        [ProfileController::class, 'updatePassword']
+    );
+
     Route::get(
         '/me/organizations',
         [OrganizationController::class, 'indexOwn']

@@ -30,9 +30,15 @@ class AuthController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/\pL/u',
+                Rule::when($request->input('account_type') !== 'organizacion', ['regex:/^[^\d]+$/']),
+            ],
             'email' => [
-                'required', 'string', 'email', 'max:255', 'unique:users',
+                'required', 'string', 'email:rfc,filter', 'max:255', 'unique:users',
             ],
             'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
             'account_type' => ['required', 'string', Rule::in([
@@ -44,7 +50,7 @@ class AuthController extends Controller
             'request_new_institution' => ['sometimes', 'boolean'],
             'institution_website' => ['nullable', 'url:http,https', 'max:255'],
             'institution_location' => ['nullable', 'string', 'max:255'],
-            'institution_email' => ['nullable', 'email', 'max:255'],
+            'institution_email' => ['nullable', 'email:rfc,filter', 'max:255'],
             'campus' => ['nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'interest_areas' => ['sometimes', 'array', 'max:6'],
@@ -66,7 +72,7 @@ class AuthController extends Controller
             'legal_name' => ['required_if:account_type,organizacion', 'nullable', 'string', 'max:255'],
             'website' => ['required_if:account_type,organizacion', 'nullable', 'url:http,https', 'max:255'],
             'organization_sector' => ['required_if:account_type,organizacion', 'nullable', 'string', 'max:255'],
-            'organization_email' => ['required_if:account_type,organizacion', 'nullable', 'email', 'max:255'],
+            'organization_email' => ['required_if:account_type,organizacion', 'nullable', 'email:rfc,filter', 'max:255'],
             'organization_phone' => ['required_if:account_type,organizacion', 'nullable', 'string', 'max:20'],
             'municipality' => ['required_if:account_type,residente_oaxaca,organizacion', 'nullable', 'string', 'max:255'],
             'locality' => ['required_if:account_type,residente_oaxaca,organizacion', 'nullable', 'string', 'max:255'],
@@ -80,7 +86,11 @@ class AuthController extends Controller
             'organization_public_fields' => ['nullable', 'array'],
             'organization_public_fields.*' => [Rule::in(['location', 'email', 'phone', 'classification'])],
         ], [
+            'name.required' => 'Ingresa tu nombre completo.',
+            'name.regex' => 'El nombre completo debe contener letras y no puede incluir números.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
             'email.unique' => 'Este correo electrónico ya está registrado.',
+            'organization_email.email' => 'Ingresa un correo de contacto válido para la organización.',
         ]);
 
         if (

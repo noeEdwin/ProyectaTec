@@ -10,8 +10,10 @@ use App\Rules\ValidExpectedGraduation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
@@ -175,13 +177,13 @@ class ProfileController extends Controller
                 'estudiante', 'academico', 'empleado_organizacion', 'residente_oaxaca',
                 'student', 'docente', 'Investigador',
             ])],
-            'display_name' => 'required|string|max:255',
-            'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'display_name' => ['required', 'string', 'max:255', 'regex:/\pL/u', 'regex:/^[^\d]+$/'],
+            'email' => ['sometimes', 'required', 'email:rfc,filter', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'institution' => ['required_if:account_type,estudiante,academico', 'nullable', 'string', 'max:255'],
             'request_new_institution' => ['sometimes', 'boolean'],
             'institution_website' => ['nullable', 'url:http,https', 'max:255'],
             'institution_location' => ['nullable', 'string', 'max:255'],
-            'institution_email' => ['nullable', 'email', 'max:255'],
+            'institution_email' => ['nullable', 'email:rfc,filter', 'max:255'],
             'affiliation_reason' => ['nullable', 'string', 'max:500'],
             'campus' => ['nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
@@ -210,6 +212,24 @@ class ProfileController extends Controller
                 'locality', 'organization_area', 'organization_position', 'academic_role',
                 'email', 'phone', 'interest_areas',
             ])],
+        ], [
+            'display_name.required' => 'Ingresa tu nombre completo.',
+            'display_name.regex' => 'El nombre debe contener letras y no puede incluir números.',
+            'email.required' => 'Ingresa un correo electrónico.',
+            'email.email' => 'Ingresa un correo electrónico válido.',
+            'email.unique' => 'Este correo electrónico ya está registrado.',
+            'institution.required_if' => 'Indica tu institución educativa.',
+            'institution_email.email' => 'Ingresa un correo institucional válido.',
+            'field_of_study.required_if' => 'Indica tu carrera o programa de estudio.',
+            'semester.required_if' => 'Selecciona tu semestre actual.',
+            'student_number.required_if' => 'Ingresa tu matrícula.',
+            'expected_graduation.required_if' => 'Selecciona tu periodo estimado de egreso.',
+            'academic_role.required_if' => 'Selecciona tu actividad académica.',
+            'organization_name.required_if' => 'Indica tu organización.',
+            'organization_area.required_if' => 'Indica tu área o departamento.',
+            'organization_position.required_if' => 'Indica tu cargo o puesto.',
+            'municipality.required_if' => 'Selecciona tu municipio.',
+            'locality.required_if' => 'Indica tu colonia, barrio o comunidad.',
         ]);
 
         if (isset($validated['email']) && strcasecmp($validated['email'], $user->email) !== 0
@@ -495,6 +515,31 @@ class ProfileController extends Controller
             $profile->pending_affiliation = null;
             $profile->save();
         });
+    }
+
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'confirmed', PasswordRule::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'current_password.required' => 'Ingresa tu contraseña actual.',
+            'current_password.current_password' => 'La contraseña actual es incorrecta.',
+            'password.required' => 'Ingresa una nueva contraseña.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.mixed' => 'La contraseña debe incluir al menos una letra mayúscula y una minúscula.',
+            'password.numbers' => 'La contraseña debe incluir al menos un número.',
+            'password.symbols' => 'La contraseña debe incluir al menos un símbolo especial.',
+        ]);
+
+        $request->user()->forceFill([
+            'password' => Hash::make($validated['password']),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Contraseña actualizada correctamente.',
+        ]);
     }
 
     private function isPlatformAdmin(User $user): bool

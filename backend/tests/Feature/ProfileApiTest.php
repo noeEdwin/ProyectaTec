@@ -598,4 +598,41 @@ class ProfileApiTest extends TestCase
             'role' => 'member', 'status' => 'active',
         ]);
     }
+
+    public function test_profile_rejects_numeric_name_invalid_email_and_allows_password_change(): void
+    {
+        $user = User::factory()->create([
+            'account_type' => 'estudiante',
+            'password' => bcrypt('Actual123!'),
+        ]);
+        Profile::create([
+            'user_id' => $user->id,
+            'display_name' => 'Estudiante Demo',
+        ]);
+
+        $this->actingAs($user, 'sanctum')->patchJson('/api/me/profile', [
+            'account_type' => 'estudiante',
+            'display_name' => '0000',
+            'email' => '1@1',
+            'institution' => 'ITO',
+            'field_of_study' => 'Sistemas',
+            'semester' => '8',
+            'student_number' => '23160885',
+            'expected_graduation' => '2027-12',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['display_name', 'email']);
+
+        $this->actingAs($user, 'sanctum')->putJson('/api/me/password', [
+            'current_password' => 'Incorrecta1!',
+            'password' => 'NuevaClave123!',
+            'password_confirmation' => 'NuevaClave123!',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['current_password']);
+
+        $this->actingAs($user, 'sanctum')->putJson('/api/me/password', [
+            'current_password' => 'Actual123!',
+            'password' => 'NuevaClave123!',
+            'password_confirmation' => 'NuevaClave123!',
+        ])->assertOk();
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('NuevaClave123!', $user->fresh()->password));
+    }
 }

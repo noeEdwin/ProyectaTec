@@ -246,6 +246,15 @@ export const updateMyProfile = async (data: Partial<UserProfile>): Promise<UserP
   return response.data.data || response.data.profile || response.data;
 };
 
+export const changeMyPassword = async (payload: {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<string> => {
+  const response = await api.put<{ message?: string }>('/me/password', payload);
+  return response.data.message || 'Contraseña actualizada correctamente.';
+};
+
 // Subir foto de perfil (POST /api/me/profile/avatar)
 export const uploadMyProfileAvatar = async (file: File): Promise<{ image_url: string | null }> => {
   const formData = new FormData();

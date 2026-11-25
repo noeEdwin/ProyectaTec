@@ -3,6 +3,7 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
+  changeMyPassword,
   getMyOrganizationRoleRequests,
   getMyOrganizations,
   getMyProfile,
@@ -16,7 +17,9 @@ import {
   type UserProfile,
 } from '../api/profileService';
 import { useAuth } from '../context/auth-context';
-import { traducirErrorCorreo } from '../utils/Correo';
+import { correoValido, traducirErrorCorreo } from '../utils/Correo';
+import { validarContrasenaSegura } from '../utils/passwordValidation';
+import PasswordChecklist from '../components/PasswordChecklist';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
 import SelectorEgreso from '../components/perfiles/SelectorEgreso';
@@ -24,7 +27,7 @@ import { validarFechaEgreso } from '../utils/fechaEgreso';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
 import '../styles/perfil.css';
 import {
-  REGLAS_CAMPO, SEMESTRES, filtrarCampo, opcionesConActual, validarCampo, ubicacionOaxaca, separarUbicacionOaxaca,
+  REGLAS_CAMPO, SEMESTRES, filtrarCampo, filtrarNombrePersona, opcionesConActual, validarCampo, validarNombrePersona, ubicacionOaxaca, separarUbicacionOaxaca,
 } from '../utils/camposPerfil';
 
 type ApiErrorResponse = {
@@ -139,6 +142,13 @@ export default function Perfil() {
   const [roleNote, setRoleNote] = useState<string>('');
   const [roleRequestBusy, setRoleRequestBusy] = useState<boolean>(false);
   const [roleRequestFeedback, setRoleRequestFeedback] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const [currentPassword, setCurrentPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [showCurrentPwd, setShowCurrentPwd] = useState<boolean>(false);
+  const [showNewPwd, setShowNewPwd] = useState<boolean>(false);
+  const [passwordBusy, setPasswordBusy] = useState<boolean>(false);
+  const [passwordFeedback, setPasswordFeedback] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     void getOrganizationCatalog().then(setCatalog).catch(() => setCatalog([]));
@@ -272,6 +282,14 @@ export default function Perfil() {
     setSuccessMessage(null);
 
     const erroresLocales: Record<string, string[]> = {};
+    const errNombre = validarNombrePersona(profile.display_name, 'El nombre');
+    if (errNombre) {
+      erroresLocales.display_name = [errNombre];
+    }
+    const correoLimpio = (profile.email ?? '').trim();
+    if (!correoLimpio || !correoValido(correoLimpio)) {
+      erroresLocales.email = ['Ingresa un correo electrónico válido (ej. nombre@dominio.com).'];
+    }
     for (const clave of ['phone', ...(CAMPOS_A_VALIDAR[profile.account_type ?? ''] ?? [])]) {
       const mensaje = validarCampo(clave, String(profile[clave as keyof UserProfile] ?? ''));
       if (mensaje) erroresLocales[clave] = [mensaje];
@@ -622,8 +640,8 @@ export default function Perfil() {
                 id="profile-display-name"
                 type="text"
                 value={profile.display_name}
-                onChange={(e) => setProfile({ ...profile, display_name: e.target.value })}
-                placeholder="Centro de Innovación Oaxaca"
+                onChange={(e) => setProfile({ ...profile, display_name: filtrarNombrePersona(e.target.value) })}
+                placeholder="Edwin Noé Sánchez"
                 required
                 style={{
                   width: '100%', padding: '0.75rem 1rem', borderRadius: '10px',
@@ -1003,6 +1021,155 @@ export default function Perfil() {
           >
             Ver perfil público
           </button>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '1.75rem 0' }} />
+
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>
+            Cambiar contraseña
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.5, marginBottom: '1rem' }}>
+            Actualiza tu contraseña de acceso sin salir de tu perfil.
+          </p>
+
+          {passwordFeedback && (
+            <div
+              role={passwordFeedback.type === 'error' ? 'alert' : 'status'}
+              style={{
+                padding: '0.75rem 1rem',
+                borderRadius: '10px',
+                marginBottom: '1rem',
+                fontSize: '13px',
+                fontWeight: 600,
+                background: passwordFeedback.type === 'ok' ? '#dcfce7' : '#fee2e2',
+                color: passwordFeedback.type === 'ok' ? '#166534' : '#b91c1c',
+                border: `1px solid ${passwordFeedback.type === 'ok' ? '#bbf7d0' : '#fecaca'}`,
+              }}
+            >
+              {passwordFeedback.text}
+            </div>
+          )}
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPasswordFeedback(null);
+              if (!currentPassword) {
+                setPasswordFeedback({ type: 'error', text: 'Ingresa tu contraseña actual.' });
+                return;
+              }
+              const errPwd = validarContrasenaSegura(newPassword);
+              if (errPwd) {
+                setPasswordFeedback({ type: 'error', text: errPwd });
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                setPasswordFeedback({ type: 'error', text: 'Las contraseñas nuevas no coinciden.' });
+                return;
+              }
+              setPasswordBusy(true);
+              try {
+                const msg = await changeMyPassword({
+                  current_password: currentPassword,
+                  password: newPassword,
+                  password_confirmation: confirmPassword,
+                });
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPasswordFeedback({ type: 'ok', text: msg });
+              } catch (err: unknown) {
+                const apiErr = axios.isAxiosError<ApiErrorResponse>(err) ? err.response?.data : undefined;
+                const firstErr = apiErr?.errors ? Object.values(apiErr.errors).flat()[0] : undefined;
+                setPasswordFeedback({
+                  type: 'error',
+                  text: firstErr || apiErr?.message || 'No se pudo actualizar la contraseña.',
+                });
+              } finally {
+                setPasswordBusy(false);
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}
+          >
+            <div>
+              <label htmlFor="profile-current-password" style={estiloLabel}>
+                Contraseña actual<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  id="profile-current-password"
+                  type={showCurrentPwd ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  style={estiloInput}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPwd((v) => !v)}
+                  style={{ padding: '0.65rem 0.9rem', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  {showCurrentPwd ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="profile-new-password" style={estiloLabel}>
+                Nueva contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  id="profile-new-password"
+                  type={showNewPwd ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  style={estiloInput}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPwd((v) => !v)}
+                  style={{ padding: '0.65rem 0.9rem', borderRadius: '10px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  {showNewPwd ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+              <PasswordChecklist password={newPassword} />
+            </div>
+
+            <div>
+              <label htmlFor="profile-confirm-password" style={estiloLabel}>
+                Confirmar nueva contraseña<span className="campo-obligatorio" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="profile-confirm-password"
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={estiloInput}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={passwordBusy}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '999px',
+                background: '#0f4c5c',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '14px',
+                border: 'none',
+                cursor: passwordBusy ? 'not-allowed' : 'pointer',
+                opacity: passwordBusy ? 0.7 : 1,
+              }}
+            >
+              {passwordBusy ? 'Actualizando...' : 'Actualizar contraseña'}
+            </button>
+          </form>
         </div>
 
       </div>
