@@ -132,14 +132,31 @@ export default function MisPublicaciones() {
               {publication.can_edit && (
                 <div className="pub-mis-acciones">
                   {publication.type === 'proyecto' && (
-                    <Link
-                      className="pub-boton pub-boton-secundario"
-                      to={`/mis-publicaciones/${publication.id}/solicitudes`}
-                      aria-label={`Ver solicitudes de ${publication.title}`}
-                    >
-                      Revisar solicitudes <span aria-hidden="true">→</span>
-                    </Link>
+                    <>
+                      <Link
+                        className="pub-boton pub-boton-primario"
+                        to={`/iniciativas/proyecto/${publication.id}/seguimiento`}
+                        aria-label={`Seguimiento de avances de ${publication.title}`}
+                      >
+                        Seguimiento <span aria-hidden="true">→</span>
+                      </Link>
+                      <Link
+                        className="pub-boton pub-boton-secundario"
+                        to={`/mis-publicaciones/${publication.id}/solicitudes`}
+                        aria-label={`Ver solicitudes de ${publication.title}`}
+                      >
+                        Revisar solicitudes <span aria-hidden="true">→</span>
+                      </Link>
+                    </>
                   )}
+
+                  <Link
+                    className="pub-boton pub-boton-secundario"
+                    to={`/iniciativas/${publication.type}/${publication.id}`}
+                    aria-label={`Ver detalle de ${publication.title}`}
+                  >
+                    Ver detalle <span aria-hidden="true">→</span>
+                  </Link>
 
                   <Link
                     className="pub-boton pub-boton-secundario"

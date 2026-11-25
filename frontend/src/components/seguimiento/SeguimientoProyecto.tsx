@@ -23,6 +23,7 @@ type Props = {
   puedeRegistrar?: boolean;
   esDueno?: boolean;
   onRegistrar?: (datos: NuevoAvanceProyecto) => Promise<void>;
+  onAsignarPorcentaje?: (updateId: number, progress: number) => Promise<void>;
   onCambiarEstado?: (estado: 'completed' | 'closed') => Promise<void>;
   onReintentar?: () => void;
 };
@@ -52,6 +53,7 @@ export default function SeguimientoProyecto({
   puedeRegistrar = false,
   esDueno = false,
   onRegistrar,
+  onAsignarPorcentaje,
   onCambiarEstado,
   onReintentar,
 }: Props) {
@@ -63,6 +65,10 @@ export default function SeguimientoProyecto({
   const [errorEstado, setErrorEstado] = useState<string | null>(null);
   const [errorFormulario, setErrorFormulario] =
     useState<string | null>(null);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [porcentajeItem, setPorcentajeItem] = useState('');
+  const [guardandoItem, setGuardandoItem] = useState(false);
+  const [errorItem, setErrorItem] = useState<string | null>(null);
 
   const pendienteIntegracion =
     avances === undefined && !cargando && !error;
@@ -163,6 +169,34 @@ export default function SeguimientoProyecto({
       );
     } finally {
       setCambiandoEstado(false);
+    }
+  }
+
+  async function guardarPorcentajeItem(avanceId: number) {
+    if (!esDueno || !onAsignarPorcentaje || guardandoItem) return;
+    const limpio = porcentajeItem.trim();
+    if (!/^\d+$/.test(limpio) || Number(limpio) > 100) {
+      setErrorItem('Ingresa un entero entre 0 y 100.');
+      return;
+    }
+    const valor = Number(limpio);
+    if (progresoActual !== null && valor < progresoActual) {
+      setErrorItem(`No puede retroceder por debajo del avance actual (${progresoActual}%).`);
+      return;
+    }
+
+    setErrorItem(null);
+    setGuardandoItem(true);
+    try {
+      await onAsignarPorcentaje(avanceId, valor);
+      setEditandoId(null);
+      setPorcentajeItem('');
+    } catch (err: unknown) {
+      setErrorItem(
+        extraerMensajeErrorVinculacion(err, 'No se pudo asignar el porcentaje.'),
+      );
+    } finally {
+      setGuardandoItem(false);
     }
   }
 
@@ -350,6 +384,72 @@ export default function SeguimientoProyecto({
                       <span className="sp-autor">
                         Registrado por {avance.author.name}
                       </span>
+                    )}
+
+                    {esDueno && proyectoAbierto && onAsignarPorcentaje && (
+                      <div style={{ marginTop: '10px' }}>
+                        {editandoId === avance.id ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                            <input
+                              type="number"
+                              min={progresoActual ?? 0}
+                              max={100}
+                              step={1}
+                              value={porcentajeItem}
+                              onChange={(e) => setPorcentajeItem(e.target.value)}
+                              placeholder={progresoActual !== null ? `${progresoActual}–100` : '0–100'}
+                              aria-label={`Asignar porcentaje a ${avance.title}`}
+                              style={{ width: '96px', padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                              disabled={guardandoItem}
+                            />
+                            <button
+                              type="button"
+                              className="sp-boton sp-boton-primario"
+                              style={{ padding: '6px 12px', fontSize: '12px' }}
+                              disabled={guardandoItem}
+                              onClick={() => void guardarPorcentajeItem(avance.id)}
+                            >
+                              {guardandoItem ? 'Guardando…' : 'Guardar %'}
+                            </button>
+                            <button
+                              type="button"
+                              className="sp-boton"
+                              style={{ padding: '6px 12px', fontSize: '12px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
+                              disabled={guardandoItem}
+                              onClick={() => {
+                                setEditandoId(null);
+                                setErrorItem(null);
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                            {errorItem && (
+                              <span className="formato-ayuda invalido" style={{ width: '100%' }}>
+                                {errorItem}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="sp-boton"
+                            style={{ padding: '5px 12px', fontSize: '12px', background: '#edf5f6', color: '#0f4c5c', border: '1px solid #cbd5e1' }}
+                            onClick={() => {
+                              setEditandoId(avance.id);
+                              setPorcentajeItem(
+                                avance.progress !== null
+                                  ? String(avance.progress)
+                                  : progresoActual !== null
+                                    ? String(progresoActual)
+                                    : '',
+                              );
+                              setErrorItem(null);
+                            }}
+                          >
+                            {avance.progress !== null ? 'Actualizar %' : 'Asignar %'}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}

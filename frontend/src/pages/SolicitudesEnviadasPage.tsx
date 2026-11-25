@@ -262,11 +262,11 @@ export default function SolicitudesEnviadasPage({
                         {estado.texto}
                       </span>
 
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      <div className="sr-fila-acciones">
                         {solicitud.status === 'accepted' && (
                           <Link
                             className="sr-revisar"
-                            style={{ background: '#0b4a54', color: '#fff', borderColor: '#0b4a54' }}
+                            style={{ background: '#0b4a54', color: '#fff', borderColor: '#0b4a54', textDecoration: 'none' }}
                             to={`/iniciativas/proyecto/${solicitud.project_id}/seguimiento`}
                           >
                             Seguimiento de avances →
@@ -274,6 +274,7 @@ export default function SolicitudesEnviadasPage({
                         )}
                         <Link
                           className="sr-revisar"
+                          style={{ textDecoration: 'none' }}
                           to={`/iniciativas/proyecto/${solicitud.project_id}`}
                         >
                           Ver proyecto →

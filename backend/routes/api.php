@@ -63,13 +63,6 @@ Route::get('/projects/{project}/needs/{need}', [ProjectNeedController::class, 's
     ->whereNumber('project')
     ->whereNumber('need');
 
-Route::get('/projects/{project}/updates', [ProjectUpdateController::class, 'index'])
-    ->whereNumber('project');
-
-Route::get('/projects/{project}/updates/{update}', [ProjectUpdateController::class, 'show'])
-    ->whereNumber('project')
-    ->whereNumber('update');
-
 // Consultar comentarios de un avance
 Route::get(
     '/projects/{project}/updates/{update}/comments',
@@ -273,6 +266,17 @@ Route::middleware([
         '/projects/{project}/needs',
         [ProjectNeedController::class, 'store']
     )->whereNumber('project');
+
+    Route::get(
+        '/projects/{project}/updates',
+        [ProjectUpdateController::class, 'index']
+    )->whereNumber('project');
+
+    Route::get(
+        '/projects/{project}/updates/{update}',
+        [ProjectUpdateController::class, 'show']
+    )->whereNumber('project')
+        ->whereNumber('update');
 
     Route::post(
         '/projects/{project}/updates',

@@ -12,6 +12,7 @@ use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -42,6 +43,7 @@ class ProjectUpdateController extends Controller implements HasMiddleware
     public function index(Request $request): JsonResponse
     {
         $project = $request->route('project');
+        Gate::authorize('viewAny', [ProjectUpdate::class, $project]);
         $updates = $project->updates()
             ->with('creator:id,name')
             ->orderByDesc('created_at')
@@ -73,6 +75,7 @@ class ProjectUpdateController extends Controller implements HasMiddleware
     public function show(Request $request): JsonResponse
     {
         $update = $request->route('update')->load('creator:id,name');
+        Gate::authorize('view', $update);
 
         return response()->json(['project_update' => new ProjectUpdateResource($update)]);
     }

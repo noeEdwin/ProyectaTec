@@ -308,14 +308,14 @@ class ProjectUpdateApiTest extends TestCase
             $update->forceFill(['created_at' => '2026-01-02 10:00:00', 'updated_at' => '2026-01-02 10:00:00'])->save();
             $ids[] = $update->id;
         }
-        $response = $this->getJson("/api/projects/{$project->id}/updates")
+        $response = $this->actingAs($owner, 'sanctum')->getJson("/api/projects/{$project->id}/updates")
             ->assertOk()->assertJsonCount(15, 'project_updates')
             ->assertJsonPath('meta.current_page', 1)->assertJsonPath('meta.per_page', 15)
             ->assertJsonPath('meta.last_page', 2)->assertJsonPath('meta.total', 17)
             ->assertJsonPath('latest_progress.update_id', $old->id)->assertJsonPath('latest_progress.progress', 65);
         $this->assertSame(array_slice(array_reverse($ids), 0, 15), array_column($response->json('project_updates'), 'id'));
         $this->assertSame(['id', 'name'], array_keys($response->json('project_updates.0.author')));
-        $this->getJson("/api/projects/{$project->id}/updates?page=2")
+        $this->actingAs($owner, 'sanctum')->getJson("/api/projects/{$project->id}/updates?page=2")
             ->assertOk()->assertJsonCount(2, 'project_updates')
             ->assertJsonPath('project_updates.0.id', $ids[0])->assertJsonPath('project_updates.1.id', $old->id)
             ->assertJsonPath('latest_progress.update_id', $old->id);
@@ -325,9 +325,9 @@ class ProjectUpdateApiTest extends TestCase
     {
         $owner = User::factory()->create();
         $project = $this->project($owner);
-        $this->getJson("/api/projects/{$project->id}/updates")->assertOk()->assertJsonPath('latest_progress', null);
+        $this->actingAs($owner, 'sanctum')->getJson("/api/projects/{$project->id}/updates")->assertOk()->assertJsonPath('latest_progress', null);
         $this->updateRecord($project, $owner, ['progress' => null]);
-        $this->getJson("/api/projects/{$project->id}/updates")->assertOk()->assertJsonPath('latest_progress', null);
+        $this->actingAs($owner, 'sanctum')->getJson("/api/projects/{$project->id}/updates")->assertOk()->assertJsonPath('latest_progress', null);
     }
 
     public function test_public_detail_has_only_expected_author_fields_and_real_data(): void
@@ -335,7 +335,7 @@ class ProjectUpdateApiTest extends TestCase
         $owner = User::factory()->create();
         $project = $this->project($owner);
         $update = $this->updateRecord($project, $owner);
-        $response = $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")
+        $response = $this->actingAs($owner, 'sanctum')->getJson("/api/projects/{$project->id}/updates/{$update->id}")
             ->assertOk()->assertJsonPath('project_update.id', $update->id)
             ->assertJsonPath('project_update.project_id', $project->id)
             ->assertJsonPath('project_update.title', 'Avance inicial')
@@ -352,10 +352,11 @@ class ProjectUpdateApiTest extends TestCase
         $project = $this->project($owner);
         $otherProject = $this->project($owner);
         $foreign = $this->updateRecord($otherProject, $owner);
+        $this->actingAs($owner, 'sanctum');
         $this->getJson('/api/projects/999999/updates')->assertNotFound();
         $this->getJson("/api/projects/{$project->id}/updates/999999")->assertNotFound();
         $this->getJson("/api/projects/{$project->id}/updates/{$foreign->id}")->assertNotFound();
-        $this->actingAs($owner, 'sanctum')->postJson('/api/projects/999999/updates', $this->payload())->assertNotFound();
+        $this->postJson('/api/projects/999999/updates', $this->payload())->assertNotFound();
         $this->patchJson("/api/projects/{$project->id}/updates/999999", ['title' => 'Cambio'])->assertNotFound();
         $this->patchJson("/api/projects/{$project->id}/updates/{$foreign->id}", ['title' => 'Cambio'])->assertNotFound();
         $this->assertDatabaseHas('project_updates', ['id' => $foreign->id, 'project_id' => $otherProject->id, 'title' => 'Avance inicial']);
@@ -373,9 +374,10 @@ class ProjectUpdateApiTest extends TestCase
         }
         foreach ($projects as $project) {
             $update = $this->updateRecord($project, $owner);
+            $this->actingAs($owner, 'sanctum');
             $this->getJson("/api/projects/{$project->id}/updates")->assertNotFound();
             $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertNotFound();
-            $this->actingAs($owner, 'sanctum')->postJson("/api/projects/{$project->id}/updates", $this->payload())->assertNotFound();
+            $this->postJson("/api/projects/{$project->id}/updates", $this->payload())->assertNotFound();
             $this->patchJson("/api/projects/{$project->id}/updates/{$update->id}", ['title' => 'Cambio'])->assertNotFound();
         }
     }
@@ -387,9 +389,10 @@ class ProjectUpdateApiTest extends TestCase
             $organization = $this->organization($approval);
             $project = $this->project($owner, ['organization_id' => $organization->id]);
             $update = $this->updateRecord($project, $owner);
+            $this->actingAs($owner, 'sanctum');
             $this->getJson("/api/projects/{$project->id}/updates")->assertNotFound();
             $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertNotFound();
-            $this->actingAs($owner, 'sanctum')->postJson("/api/projects/{$project->id}/updates", $this->payload())->assertNotFound();
+            $this->postJson("/api/projects/{$project->id}/updates", $this->payload())->assertNotFound();
             $this->patchJson("/api/projects/{$project->id}/updates/{$update->id}", ['title' => 'Cambio'])->assertNotFound();
         }
     }
@@ -399,9 +402,10 @@ class ProjectUpdateApiTest extends TestCase
         $owner = User::factory()->create();
         $project = $this->project($owner, ['status' => 'completed']);
         $update = $this->updateRecord($project, $owner);
+        $this->actingAs($owner, 'sanctum');
         $this->getJson("/api/projects/{$project->id}/updates")->assertOk()->assertJsonCount(1, 'project_updates');
         $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertOk();
-        $this->actingAs($owner, 'sanctum')->postJson("/api/projects/{$project->id}/updates", $this->payload())
+        $this->postJson("/api/projects/{$project->id}/updates", $this->payload())
             ->assertUnprocessable()->assertJsonValidationErrors('project');
         $this->patchJson("/api/projects/{$project->id}/updates/{$update->id}", ['title' => 'Cambio'])
             ->assertUnprocessable()->assertJsonValidationErrors('project');
@@ -427,5 +431,40 @@ class ProjectUpdateApiTest extends TestCase
         $this->getJson("/api/projects/{$project->id}")->assertOk()->assertJsonPath('project.id', $project->id)
             ->assertJsonPath('project.title', 'Proyecto de prueba');
         $this->getJson('/api/projects')->assertOk()->assertJsonPath('projects.0.id', $project->id);
+    }
+
+    public function test_guests_and_non_accepted_users_cannot_view_project_updates(): void
+    {
+        $owner = User::factory()->create();
+        $outsider = User::factory()->create();
+        $accepted = User::factory()->create();
+        $project = $this->project($owner);
+        $update = $this->updateRecord($project, $owner);
+
+        $this->getJson("/api/projects/{$project->id}/updates")->assertUnauthorized();
+        $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertUnauthorized();
+
+        $this->actingAs($outsider, 'sanctum');
+        $this->getJson("/api/projects/{$project->id}/updates")->assertForbidden();
+        $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertForbidden();
+
+        Application::create([
+            'project_id' => $project->id,
+            'user_id' => $accepted->id,
+            'message' => 'Aceptado en proyecto',
+            'status' => 'accepted',
+        ]);
+
+        \App\Models\ProjectMember::create([
+            'project_id' => $project->id,
+            'user_id' => $accepted->id,
+            'role' => 'member',
+            'status' => 'active',
+            'joined_at' => now(),
+        ]);
+
+        $this->actingAs($accepted, 'sanctum');
+        $this->getJson("/api/projects/{$project->id}/updates")->assertOk();
+        $this->getJson("/api/projects/{$project->id}/updates/{$update->id}")->assertOk();
     }
 }

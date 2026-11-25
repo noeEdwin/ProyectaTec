@@ -8,6 +8,16 @@ use App\Models\User;
 
 class ProjectUpdatePolicy
 {
+    public function viewAny(User $user, Project $project): bool
+    {
+        return $this->isPlatformAdmin($user) || $this->canWrite($user, $project);
+    }
+
+    public function view(User $user, ProjectUpdate $update): bool
+    {
+        return $update->project !== null && ($this->isPlatformAdmin($user) || $this->canWrite($user, $update->project));
+    }
+
     public function create(User $user, Project $project): bool
     {
         return $this->canWrite($user, $project);
@@ -16,6 +26,15 @@ class ProjectUpdatePolicy
     public function update(User $user, ProjectUpdate $update): bool
     {
         return $update->project !== null && $this->canWrite($user, $update->project);
+    }
+
+    private function isPlatformAdmin(User $user): bool
+    {
+        return $user->is_active && in_array(
+            strtolower($user->email),
+            array_map('strtolower', config('services.proyectatec.admin_emails', [])),
+            true
+        );
     }
 
     private function canWrite(User $user, Project $project): bool

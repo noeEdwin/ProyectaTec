@@ -209,3 +209,16 @@ export async function registrarAvanceProyecto(
 
   return data.project_update;
 }
+
+export async function actualizarPorcentajeAvance(
+  projectId: number,
+  updateId: number,
+  progress: number,
+): Promise<AvanceProyecto> {
+  const { data } = await api.patch<{ project_update: AvanceProyecto }>(
+    `/projects/${projectId}/updates/${updateId}`,
+    { progress },
+  );
+
+  return data.project_update;
+}

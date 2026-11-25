@@ -9,6 +9,7 @@ import {
   obtenerDetallePublicacion,
 } from '../api/publicacionesService';
 import {
+  actualizarPorcentajeAvance,
   extraerMensajeErrorVinculacion,
   listarAvancesProyecto,
   listarMisSolicitudesEnviadas,
@@ -95,6 +96,7 @@ export default function SeguimientoProyectoPage() {
           proyecto.status ?? 'open',
         );
 
+        let tieneAccesoLectura = false;
         let tienePermiso = false;
         let esResponsableProyecto = false;
         if (user) {
@@ -107,15 +109,21 @@ export default function SeguimientoProyectoPage() {
             misPubs.some(
               (p) => p.type === 'proyecto' && p.id === idProyecto,
             );
-          tienePermiso =
-            proyectoAbierto &&
-            (esResponsableProyecto ||
-              propias.some((s) => s.project_id === idProyecto));
+          const esParticipanteAceptado = propias.some((s) => s.project_id === idProyecto);
+          tieneAccesoLectura = esResponsableProyecto || esParticipanteAceptado;
+          tienePermiso = proyectoAbierto && tieneAccesoLectura;
         }
 
         if (!activo) return;
+        if (!tieneAccesoLectura) {
+          setError('Solo el responsable y los participantes aceptados del proyecto pueden consultar los avances.');
+          setEsDueno(false);
+          setPuedeRegistrar(false);
+          return;
+        }
         setEsDueno(esResponsableProyecto);
         setPuedeRegistrar(tienePermiso);
+        void cargarAvances();
       } catch (err) {
         if (!activo) return;
 
@@ -138,7 +146,6 @@ export default function SeguimientoProyectoPage() {
 
     const timer = window.setTimeout(() => {
       void cargarTodo();
-      void cargarAvances();
     }, 0);
 
     return () => {
@@ -163,6 +170,20 @@ export default function SeguimientoProyectoPage() {
     await api.patch(`/projects/${idProyecto}`, { status: nuevoEstado });
     setEstadoProyecto(nuevoEstado);
     setPuedeRegistrar(false);
+  }
+
+  async function manejarAsignarPorcentaje(updateId: number, progress: number) {
+    const actualizado = await actualizarPorcentajeAvance(idProyecto, updateId, progress);
+    setAvances((lista) =>
+      lista.map((item) => (item.id === actualizado.id ? actualizado : item)),
+    );
+    if (actualizado.progress !== null) {
+      setUltimoProgreso({
+        update_id: actualizado.id,
+        progress: actualizado.progress,
+        created_at: actualizado.created_at,
+      });
+    }
   }
 
   if (!idValido || cargando || error || !tituloProyecto) {
@@ -208,6 +229,7 @@ export default function SeguimientoProyectoPage() {
       puedeRegistrar={puedeRegistrar}
       esDueno={esDueno}
       onRegistrar={manejarRegistroAvance}
+      onAsignarPorcentaje={manejarAsignarPorcentaje}
       onCambiarEstado={manejarCambioEstado}
       onReintentar={() => void cargarAvances()}
     />

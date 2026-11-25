@@ -462,8 +462,8 @@ export default function PublicacionesVinculaciones({
             <section className="pav-tarjeta pav-otras">
               <div className="pav-seccion-titulo">
                 <h2>Otras publicaciones</h2>
-                <Link className="pav-enlace" to="/iniciativas">
-                  Ver catálogo completo →
+                <Link className="pav-enlace" to="/mis-publicaciones">
+                  Ver mis publicaciones →
                 </Link>
               </div>
               <div className="pav-otras-grid">

@@ -400,7 +400,7 @@ export default function DetallePublicacion() {
               <p>Los alcances, requisitos y condiciones se confirman con la entidad responsable de la publicación.</p>
             </div>
 
-            {esProyecto && (
+            {esProyecto && user && (esCreador || esResponsableProyecto || Boolean(user.can_manage_platform) || solicitudExistente?.status === 'accepted') && (
               <div className="dp-bloque">
                 <h3>Seguimiento del proyecto</h3>
                 <p>
