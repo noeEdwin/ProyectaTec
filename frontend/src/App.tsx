@@ -50,6 +50,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<Inicio />} />
               <Route path="/perfil-publico" element={<PerfilPublico />} />
+              <Route path="/perfiles/:id" element={<PerfilPublico />} />
               <Route path="/organizaciones" element={<Organizaciones />} />
               <Route path="/organizaciones/:id" element={<OrganizacionPublica />} />
 

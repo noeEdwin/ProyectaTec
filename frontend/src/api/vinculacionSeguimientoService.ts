@@ -55,51 +55,41 @@ export function extraerMensajeErrorVinculacion(error: unknown, respaldo: string)
   return respaldo;
 }
 
-function construirMensajeSolicitud(datos: DatosSolicitudVinculacion): string {
-  const bloques: string[] = [datos.message.trim()];
-
-  const extras: string[] = [];
-  if (datos.tipo_apoyo.trim()) {
-    extras.push(`Tipo de apoyo: ${datos.tipo_apoyo.trim()}`);
-  }
-  if (datos.disponibilidad.trim()) {
-    extras.push(`Disponibilidad: ${datos.disponibilidad.trim()}`);
-  }
-  if (datos.expectativas.trim()) {
-    extras.push(`Expectativas: ${datos.expectativas.trim()}`);
-  }
-  if (datos.portafolio_url.trim()) {
-    extras.push(`Portafolio: ${datos.portafolio_url.trim()}`);
-  }
-  if (datos.github_url.trim()) {
-    extras.push(`GitHub: ${datos.github_url.trim()}`);
-  }
-  if (datos.linkedin_url.trim()) {
-    extras.push(`LinkedIn: ${datos.linkedin_url.trim()}`);
-  }
-
-  if (extras.length > 0) {
-    bloques.push(`--- Detalles adicionales ---\n${extras.join('\n')}`);
-  }
-
-  return bloques.join('\n\n').slice(0, 2000);
-}
-
 export async function enviarSolicitudVinculacion(
   projectId: number,
   datos: DatosSolicitudVinculacion,
 ): Promise<SolicitudEnviada> {
-  const payload: { project_need_id?: number | null; message: string } = {
-    message: construirMensajeSolicitud(datos),
-  };
+  const formData = new FormData();
+  formData.append('message', datos.message.trim());
 
   if (datos.project_need_id !== null) {
-    payload.project_need_id = datos.project_need_id;
+    formData.append('project_need_id', String(datos.project_need_id));
+  }
+  if (datos.tipo_apoyo.trim()) {
+    formData.append('tipo_apoyo', datos.tipo_apoyo.trim());
+  }
+  if (datos.disponibilidad.trim()) {
+    formData.append('disponibilidad', datos.disponibilidad.trim());
+  }
+  if (datos.expectativas.trim()) {
+    formData.append('expectativas', datos.expectativas.trim());
+  }
+  if (datos.portafolio_url.trim()) {
+    formData.append('portafolio_url', datos.portafolio_url.trim());
+  }
+  if (datos.github_url.trim()) {
+    formData.append('github_url', datos.github_url.trim());
+  }
+  if (datos.linkedin_url.trim()) {
+    formData.append('linkedin_url', datos.linkedin_url.trim());
+  }
+  if (datos.cv_pdf) {
+    formData.append('cv_pdf', datos.cv_pdf);
   }
 
   const { data } = await api.post<{ application: SolicitudEnviada }>(
     `/projects/${projectId}/applications`,
-    payload,
+    formData,
   );
 
   return data.application;

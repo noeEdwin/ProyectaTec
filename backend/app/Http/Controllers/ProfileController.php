@@ -33,6 +33,7 @@ class ProfileController extends Controller
             'profile' => [
                 'id' => $profile->id,
                 'is_organization' => false,
+                'account_type' => $profile->user?->account_type,
                 'display_name' => $profile->display_name,
                 'description' => $profile->description,
                 'location' => $legacyProfile || in_array('location', $publicFields, true) ? $profile->location : null,

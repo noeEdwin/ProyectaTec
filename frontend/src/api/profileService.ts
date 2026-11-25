@@ -217,8 +217,25 @@ export const getMyProfile = async (): Promise<UserProfile> => {
   return response.data.data || response.data.profile || response.data;
 };
 
+export interface PublicUserProfile {
+  id: number;
+  is_organization?: boolean;
+  account_type?: string | null;
+  display_name: string;
+  description?: string | null;
+  location?: string | null;
+  image?: string | null;
+  image_url?: string | null;
+  classification?: string | null;
+  interest_areas?: string[];
+  contact?: {
+    email?: string | null;
+    phone?: string | null;
+  };
+}
+
 // Obtener perfil público por ID (GET /api/profiles/:id)
-export const getPublicProfile = async (id: number | string): Promise<UserProfile> => {
+export const getPublicProfile = async (id: number | string): Promise<PublicUserProfile> => {
   const response = await api.get(`/profiles/${id}`);
   return response.data.data || response.data.profile || response.data;
 };

@@ -11,9 +11,11 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -416,5 +418,118 @@ class AdversarialWorkflowsAndPasswordResetTest extends TestCase
             'expected_graduation' => $futureYm,
         ])->assertOk()
             ->assertJsonPath('profile.expected_graduation', $futureYm);
+    }
+
+    public function test_project_dates_reject_more_than_five_years_in_past_or_ten_in_future(): void
+    {
+        $category = Category::create(['name' => 'Tecnología', 'slug' => 'tecnologia-fechas']);
+        $owner = $this->createUserWithProfile(['account_type' => 'academico']);
+        Sanctum::actingAs($owner);
+
+        $tooOld = now()->subYears(6)->toDateString();
+        $tooFar = now()->addYears(11)->toDateString();
+        $validStart = now()->subYear()->toDateString();
+        $validEnd = now()->addMonths(6)->toDateString();
+
+        $this->postJson('/api/projects', [
+            'title' => 'Proyecto muy antiguo',
+            'description' => 'Descripción válida para probar fechas.',
+            'category_id' => $category->id,
+            'status' => 'open',
+            'starts_at' => $tooOld,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['starts_at']);
+
+        $this->postJson('/api/projects', [
+            'title' => 'Proyecto demasiado lejano',
+            'description' => 'Descripción válida para probar fechas.',
+            'category_id' => $category->id,
+            'status' => 'open',
+            'starts_at' => $validStart,
+            'ends_at' => $tooFar,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['ends_at']);
+
+        $created = $this->postJson('/api/projects', [
+            'title' => 'Proyecto fechas válidas',
+            'description' => 'Descripción válida dentro de rango permitido.',
+            'category_id' => $category->id,
+            'status' => 'open',
+            'starts_at' => $validStart,
+            'ends_at' => $validEnd,
+        ])->assertStatus(201);
+
+        $projectId = $created->json('project.id');
+
+        $this->patchJson("/api/projects/{$projectId}", [
+            'starts_at' => $tooOld,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['starts_at']);
+    }
+
+    public function test_application_uploads_cv_pdf_and_exposes_cv_url_and_applicant_public_profile(): void
+    {
+        Storage::fake('public');
+        $category = Category::create(['name' => 'Software', 'slug' => 'software-cv']);
+        $owner = $this->createUserWithProfile(['account_type' => 'academico']);
+        $applicant = $this->createUserWithProfile(['account_type' => 'estudiante'], [
+            'display_name' => 'Edwin Solicitante',
+            'description' => 'Desarrollador de sistemas',
+            'public_fields' => ['location', 'institution'],
+            'institution' => 'Instituto Tecnológico de Oaxaca',
+            'location' => 'Oaxaca',
+        ]);
+
+        $project = Project::create([
+            'created_by' => $owner->id,
+            'category_id' => $category->id,
+            'title' => 'Proyecto con CV',
+            'description' => 'Proyecto para validar carga y lectura de CV.',
+            'status' => 'open',
+        ]);
+
+        Sanctum::actingAs($applicant);
+
+        // Non-PDF file is rejected
+        $fakeTxt = UploadedFile::fake()->create('cv.txt', 10, 'text/plain');
+        $this->post("/api/projects/{$project->id}/applications", [
+            'message' => 'Quiero colaborar en el proyecto.',
+            'cv_pdf' => $fakeTxt,
+        ], ['Accept' => 'application/json'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['cv_pdf']);
+
+        // Valid PDF upload + extra details succeed
+        $fakePdf = UploadedFile::fake()->create('mi-cv-2026.pdf', 120, 'application/pdf');
+        $applyResp = $this->post("/api/projects/{$project->id}/applications", [
+            'message' => 'Adjunto mi currículum y enlaces.',
+            'tipo_apoyo' => 'Desarrollo técnico',
+            'disponibilidad' => 'Tardes',
+            'expectativas' => 'Aprender y aportar código.',
+            'github_url' => 'https://github.com/ejemplo',
+            'cv_pdf' => $fakePdf,
+        ], ['Accept' => 'application/json'])->assertStatus(201);
+
+        $cvUrl = $applyResp->json('application.cv_url');
+        $this->assertNotEmpty($cvUrl);
+        $this->assertSame('mi-cv-2026.pdf', $applyResp->json('application.cv_original_name'));
+
+        // Owner sees cv_url, structured details, and valid profile_id
+        Sanctum::actingAs($owner);
+        $listResp = $this->getJson("/api/projects/{$project->id}/applications")
+            ->assertOk()
+            ->assertJsonPath('applications.0.cv_url', $cvUrl)
+            ->assertJsonPath('applications.0.cv_original_name', 'mi-cv-2026.pdf')
+            ->assertJsonPath('applications.0.github_url', 'https://github.com/ejemplo')
+            ->assertJsonPath('applications.0.tipo_apoyo', 'Desarrollo técnico');
+
+        $profileId = $listResp->json('applications.0.applicant.profile_id');
+        $this->assertNotNull($profileId);
+
+        // Public profile endpoint returns account_type and public data
+        $this->getJson("/api/profiles/{$profileId}")
+            ->assertOk()
+            ->assertJsonPath('profile.display_name', 'Edwin Solicitante')
+            ->assertJsonPath('profile.account_type', 'estudiante');
     }
 }

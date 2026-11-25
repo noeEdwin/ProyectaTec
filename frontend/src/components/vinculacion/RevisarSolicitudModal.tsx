@@ -52,7 +52,8 @@ function enlaceSeguro(valor?: string | null): string | null {
   if (!valor) return null;
 
   try {
-    const url = new URL(valor);
+    const base = typeof window !== 'undefined' ? window.location.origin : 'https://proyectatec.lat';
+    const url = new URL(valor, base);
 
     return ['http:', 'https:'].includes(url.protocol)
       ? url.href
@@ -111,7 +112,9 @@ export default function RevisarSolicitudModal({
       url: enlaceSeguro(solicitud.linkedin_url),
     },
     {
-      texto: 'Currículum PDF',
+      texto: solicitud.cv_original_name
+        ? `Currículum PDF (${solicitud.cv_original_name})`
+        : 'Currículum PDF',
       url: enlaceSeguro(solicitud.cv_url),
     },
   ].filter(

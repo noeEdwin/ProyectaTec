@@ -6,6 +6,15 @@ import type {
   PublicacionPayload,
 } from '../types/publicacion';
 
+export function limitesFechasProyecto(): { minFecha: string; maxFecha: string } {
+  const hoy = new Date();
+  const min = new Date(hoy.getFullYear() - 5, hoy.getMonth(), hoy.getDate());
+  const max = new Date(hoy.getFullYear() + 10, hoy.getMonth(), hoy.getDate());
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return { minFecha: fmt(min), maxFecha: fmt(max) };
+}
+
 export function validarPublicacion(v: PublicacionFormValues): PublicacionErrors {
   const e: PublicacionErrors = {};
   const titulo = v.title.trim();
@@ -41,8 +50,23 @@ export function validarPublicacion(v: PublicacionFormValues): PublicacionErrors 
       e.modality = 'Selecciona una modalidad válida.';
     }
 
-    if (v.starts_at && v.ends_at && v.ends_at < v.starts_at) {
-      e.ends_at = 'La fecha de fin no puede ser anterior a la de inicio.';
+    const { minFecha, maxFecha } = limitesFechasProyecto();
+    if (v.starts_at) {
+      if (v.starts_at < minFecha) {
+        e.starts_at = 'La fecha de inicio no puede ser anterior a hace 5 años.';
+      } else if (v.starts_at > maxFecha) {
+        e.starts_at = 'La fecha de inicio no puede superar 10 años a futuro.';
+      }
+    }
+
+    if (v.ends_at) {
+      if (v.ends_at < minFecha) {
+        e.ends_at = 'La fecha de fin no puede ser anterior a hace 5 años.';
+      } else if (v.ends_at > maxFecha) {
+        e.ends_at = 'La fecha de fin no puede superar 10 años a futuro.';
+      } else if (v.starts_at && v.ends_at < v.starts_at) {
+        e.ends_at = 'La fecha de fin no puede ser anterior a la de inicio.';
+      }
     }
   }
 

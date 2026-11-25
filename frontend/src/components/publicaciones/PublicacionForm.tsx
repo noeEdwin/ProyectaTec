@@ -19,6 +19,7 @@ import type {
 } from '../../types/publicacion';
 import {
   construirPayload,
+  limitesFechasProyecto,
   validarPublicacion,
 } from '../../utils/validacionPublicacion';
 import '../../styles/publicaciones.css';
@@ -142,6 +143,7 @@ export default function PublicacionForm({
 
   const editando = modo === 'editar';
   const esProyecto = valores.tipo === 'proyecto';
+  const { minFecha: minFechaProyecto, maxFecha: maxFechaProyecto } = limitesFechasProyecto();
 
   // Garantizar que categorias sea siempre un array válido
   const listaCategorias = Array.isArray(categorias) ? categorias : [];
@@ -500,6 +502,8 @@ export default function PublicacionForm({
                             id="pub-starts_at"
                             type="date"
                             value={valores.starts_at}
+                            min={minFechaProyecto}
+                            max={maxFechaProyecto}
                             className={valores.starts_at ? '' : 'pub-vacio'}
                             onChange={(e) => cambiar('starts_at', e.target.value)}
                             aria-invalid={Boolean(errores.starts_at)}
@@ -516,7 +520,8 @@ export default function PublicacionForm({
                             id="pub-ends_at"
                             type="date"
                             value={valores.ends_at}
-                            min={valores.starts_at || undefined}
+                            min={valores.starts_at || minFechaProyecto}
+                            max={maxFechaProyecto}
                             className={valores.ends_at ? '' : 'pub-vacio'}
                             onChange={(e) => cambiar('ends_at', e.target.value)}
                             aria-invalid={Boolean(errores.ends_at)}

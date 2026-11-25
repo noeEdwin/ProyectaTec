@@ -17,6 +17,9 @@ class UpdateProjectRequest extends FormRequest
 
     public function rules(): array
     {
+        $minDate = now()->subYears(5)->toDateString();
+        $maxDate = now()->addYears(10)->toDateString();
+
         return [
             'id' => ['missing'],
             'created_by' => ['missing'],
@@ -27,8 +30,8 @@ class UpdateProjectRequest extends FormRequest
             'status' => ['sometimes', 'required', Rule::in(['draft', 'open', 'in_progress', 'completed', 'closed', 'withdrawn'])],
             'modality' => ['sometimes', 'nullable', 'string', 'max:255'],
             'location' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'starts_at' => ['sometimes', 'nullable', 'date'],
-            'ends_at' => ['sometimes', 'nullable', 'date'],
+            'starts_at' => ['sometimes', 'nullable', 'date', "after_or_equal:{$minDate}", "before_or_equal:{$maxDate}"],
+            'ends_at' => ['sometimes', 'nullable', 'date', "after_or_equal:{$minDate}", "before_or_equal:{$maxDate}"],
             'needs' => ['sometimes', 'array', 'max:10'],
             'needs.*.id' => [
                 'sometimes',
@@ -41,6 +44,16 @@ class UpdateProjectRequest extends FormRequest
             'needs.*.description' => ['nullable', 'string', 'max:1000'],
             'needs.*.required_profile' => ['nullable', 'string', 'max:255'],
             'needs.*.openings' => ['required', 'integer', 'min:1', 'max:100'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'starts_at.after_or_equal' => 'La fecha de inicio no puede ser anterior a hace 5 años.',
+            'starts_at.before_or_equal' => 'La fecha de inicio no puede superar 10 años a futuro.',
+            'ends_at.after_or_equal' => 'La fecha de fin no puede ser anterior a hace 5 años.',
+            'ends_at.before_or_equal' => 'La fecha de fin no puede superar 10 años a futuro.',
         ];
     }
 }

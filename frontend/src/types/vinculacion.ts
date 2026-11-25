@@ -58,7 +58,7 @@ export type SolicitudRecibida = {
     profile_id?: number | null;
   } | null;
 
-  // Información adicional pendiente de la ampliación de Laravel.
+  // Información adicional de la solicitud (almacenada en Laravel).
   tipo_apoyo?: string | null;
   disponibilidad?: string | null;
   expectativas?: string | null;
@@ -66,6 +66,7 @@ export type SolicitudRecibida = {
   github_url?: string | null;
   linkedin_url?: string | null;
   cv_url?: string | null;
+  cv_original_name?: string | null;
 };
 
 export type SolicitudEnviada = Pick<

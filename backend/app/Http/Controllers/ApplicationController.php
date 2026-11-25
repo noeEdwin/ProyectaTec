@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -87,24 +88,68 @@ class ApplicationController extends Controller
         }
 
         $message = isset($data['message']) ? trim((string) $data['message']) : '';
+        $supportType = isset($data['tipo_apoyo']) ? trim((string) $data['tipo_apoyo']) : '';
+        $availability = isset($data['disponibilidad'])
+            ? trim((string) $data['disponibilidad'])
+            : (isset($data['availability']) ? trim((string) $data['availability']) : '');
+        $expectations = isset($data['expectativas']) ? trim((string) $data['expectativas']) : '';
+        $portfolioUrl = isset($data['portafolio_url']) ? trim((string) $data['portafolio_url']) : '';
+        $githubUrl = isset($data['github_url']) ? trim((string) $data['github_url']) : '';
+        $linkedinUrl = isset($data['linkedin_url']) ? trim((string) $data['linkedin_url']) : '';
 
-        $application = DB::transaction(function () use ($visibleProject, $user, $needId, $message) {
-            $application = Application::create([
-                'project_id' => $visibleProject->id,
-                'project_need_id' => $needId,
-                'user_id' => $user->id,
-                'message' => $message !== '' ? $message : null,
-                'status' => Application::STATUS_PENDING,
-            ]);
+        $cvPath = null;
+        $cvOriginalName = null;
+        if ($request->hasFile('cv_pdf')) {
+            $cvFile = $request->file('cv_pdf');
+            $cvPath = $cvFile->store("application-cvs/{$visibleProject->id}", 'public');
+            $cvOriginalName = $cvFile->getClientOriginalName();
+        }
 
-            $application->load(['project:id,title,created_by,organization_id', 'user:id,name']);
+        try {
+            $application = DB::transaction(function () use (
+                $visibleProject,
+                $user,
+                $needId,
+                $message,
+                $supportType,
+                $availability,
+                $expectations,
+                $portfolioUrl,
+                $githubUrl,
+                $linkedinUrl,
+                $cvPath,
+                $cvOriginalName
+            ) {
+                $application = Application::create([
+                    'project_id' => $visibleProject->id,
+                    'project_need_id' => $needId,
+                    'user_id' => $user->id,
+                    'message' => $message !== '' ? $message : null,
+                    'support_type' => $supportType !== '' ? $supportType : null,
+                    'availability' => $availability !== '' ? $availability : null,
+                    'expectations' => $expectations !== '' ? $expectations : null,
+                    'portfolio_url' => $portfolioUrl !== '' ? $portfolioUrl : null,
+                    'github_url' => $githubUrl !== '' ? $githubUrl : null,
+                    'linkedin_url' => $linkedinUrl !== '' ? $linkedinUrl : null,
+                    'cv_path' => $cvPath,
+                    'cv_original_name' => $cvOriginalName,
+                    'status' => Application::STATUS_PENDING,
+                ]);
 
-            foreach ($this->projectReviewRecipients($visibleProject) as $recipient) {
-                $recipient->notify(new ApplicationSubmittedNotification($application));
+                $application->load(['project:id,title,created_by,organization_id', 'user:id,name']);
+
+                foreach ($this->projectReviewRecipients($visibleProject) as $recipient) {
+                    $recipient->notify(new ApplicationSubmittedNotification($application));
+                }
+
+                return $application;
+            });
+        } catch (\Throwable $e) {
+            if ($cvPath !== null) {
+                Storage::disk('public')->delete($cvPath);
             }
-
-            return $application;
-        });
+            throw $e;
+        }
 
         return response()->json([
             'application' => new ApplicationResource($application->load(self::APPLICATION_RELATIONS)),
