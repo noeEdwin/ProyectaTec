@@ -9,6 +9,8 @@ import { getOrganizationCatalog, type OrganizationCatalogItem } from '../api/pro
 import { correoValido, traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
+import SelectorEgreso from '../components/perfiles/SelectorEgreso';
+import { validarFechaEgreso } from '../utils/fechaEgreso';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
 import { REGLAS_CAMPO, SECTORES, SEMESTRES, filtrarCampo, ubicacionOaxaca } from '../utils/camposPerfil';
 import '../styles/registro.css';
@@ -116,6 +118,12 @@ export default function Registro({ onRegister }: RegistroProps) {
       const valor = perfil[key]?.trim() ?? '';
       if (valor && regla.valido && !regla.valido(valor) && !errors[key as keyof RegistroPayload]) {
         errors[key as keyof RegistroPayload] = regla.mensaje;
+      }
+    }
+    if (tipoCuenta === 'estudiante' && perfil.expected_graduation?.trim()) {
+      const errEgreso = validarFechaEgreso(perfil.expected_graduation);
+      if (errEgreso) {
+        errors.expected_graduation = errEgreso;
       }
     }
     if (tipoCuenta === 'organizacion' && perfil.organization_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(perfil.organization_email)) {
@@ -464,7 +472,20 @@ export default function Registro({ onRegister }: RegistroProps) {
             {errores.semester && <p className="registro-error">{errores.semester}</p>}
           </div>
           {renderProfileInput('student_number', 'Matrícula')}
-          {renderProfileInput('expected_graduation', 'Fecha estimada de egreso', '', 'month')}
+          <div className="registro-field">
+            <label htmlFor="registro-expected_graduation">
+              Fecha estimada de egreso<span className="campo-obligatorio" aria-hidden="true">*</span>
+            </label>
+            <SelectorEgreso
+              idPrefix="registro-expected_graduation"
+              value={perfil.expected_graduation ?? ''}
+              onChange={(val) => setProfileField('expected_graduation', val)}
+              invalid={Boolean(errores.expected_graduation)}
+            />
+            {errores.expected_graduation && (
+              <p className="registro-error">{errores.expected_graduation}</p>
+            )}
+          </div>
         </>;
       case 'academico':
         return <>

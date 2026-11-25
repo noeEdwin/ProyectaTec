@@ -360,4 +360,61 @@ class AdversarialWorkflowsAndPasswordResetTest extends TestCase
         $this->getJson("/api/organizations/{$pending->id}")
             ->assertStatus(404);
     }
+
+    public function test_student_expected_graduation_rejects_past_or_invalid_dates_and_accepts_future_dates(): void
+    {
+        $pastYm = now()->subMonth()->format('Y-m');
+        $futureYm = now()->addYears(2)->format('Y-06');
+
+        $registerPayload = [
+            'name' => 'Estudiante Prueba Egreso',
+            'email' => 'egreso-test@itoaxaca.edu.mx',
+            'password' => 'PruebaSegura1!',
+            'password_confirmation' => 'PruebaSegura1!',
+            'account_type' => 'estudiante',
+            'institution' => 'Instituto Tecnológico de Oaxaca',
+            'field_of_study' => 'Ingeniería en Sistemas',
+            'semester' => '6',
+            'student_number' => '23169999',
+            'expected_graduation' => $pastYm,
+        ];
+
+        $this->postJson('/api/register', $registerPayload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['expected_graduation']);
+
+        $registerPayload['expected_graduation'] = '2025-13';
+        $this->postJson('/api/register', $registerPayload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['expected_graduation']);
+
+        $registerPayload['expected_graduation'] = $futureYm;
+        $this->postJson('/api/register', $registerPayload)
+            ->assertStatus(201);
+
+        $student = User::where('email', 'egreso-test@itoaxaca.edu.mx')->firstOrFail();
+        Sanctum::actingAs($student);
+
+        $this->patchJson('/api/me/profile', [
+            'account_type' => 'estudiante',
+            'display_name' => 'Estudiante Prueba Egreso',
+            'institution' => 'Instituto Tecnológico de Oaxaca',
+            'field_of_study' => 'Ingeniería en Sistemas',
+            'semester' => '6',
+            'student_number' => '23169999',
+            'expected_graduation' => $pastYm,
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['expected_graduation']);
+
+        $this->patchJson('/api/me/profile', [
+            'account_type' => 'estudiante',
+            'display_name' => 'Estudiante Prueba Egreso',
+            'institution' => 'Instituto Tecnológico de Oaxaca',
+            'field_of_study' => 'Ingeniería en Sistemas',
+            'semester' => '7',
+            'student_number' => '23169999',
+            'expected_graduation' => $futureYm,
+        ])->assertOk()
+            ->assertJsonPath('profile.expected_graduation', $futureYm);
+    }
 }

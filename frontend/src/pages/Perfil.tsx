@@ -19,6 +19,8 @@ import { useAuth } from '../context/auth-context';
 import { traducirErrorCorreo } from '../utils/Correo';
 import AreasInteresSelector from '../components/perfiles/AreasInteresSelector';
 import SelectorUbicacion from '../components/perfiles/SelectorUbicacion';
+import SelectorEgreso from '../components/perfiles/SelectorEgreso';
+import { validarFechaEgreso } from '../utils/fechaEgreso';
 import { MUNICIPIOS_OAXACA } from '../data/municipiosOaxaca';
 import '../styles/perfil.css';
 import {
@@ -273,6 +275,10 @@ export default function Perfil() {
     for (const clave of ['phone', ...(CAMPOS_A_VALIDAR[profile.account_type ?? ''] ?? [])]) {
       const mensaje = validarCampo(clave, String(profile[clave as keyof UserProfile] ?? ''));
       if (mensaje) erroresLocales[clave] = [mensaje];
+    }
+    if (profile.account_type === 'estudiante') {
+      const errEgreso = validarFechaEgreso(profile.expected_graduation ?? '');
+      if (errEgreso) erroresLocales.expected_graduation = [errEgreso];
     }
     const accountTypeChanged = (profile.account_type ?? '') !== initialAccountType;
     if (accountTypeChanged && profile.account_type === 'academico' && !affiliationReason.trim()) {
@@ -701,7 +707,12 @@ export default function Perfil() {
                 <input id="profile-student-number" inputMode="numeric" value={profile.student_number || ''} onChange={(e) => setField('student_number', e.target.value)} required maxLength={REGLAS_CAMPO.student_number.maxLength} style={estiloInput} />
               </Campo>
               <Campo id="profile-expected-graduation" label="Fecha estimada de egreso" required error={errorDe('expected_graduation')}>
-                <input id="profile-expected-graduation" type="month" value={profile.expected_graduation || ''} onChange={(e) => setField('expected_graduation', e.target.value)} required style={estiloInput} />
+                <SelectorEgreso
+                  idPrefix="profile-expected-graduation"
+                  value={profile.expected_graduation || ''}
+                  onChange={(val) => setField('expected_graduation', val)}
+                  invalid={Boolean(errorDe('expected_graduation'))}
+                />
               </Campo>
             </>}
 

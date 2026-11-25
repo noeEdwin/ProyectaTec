@@ -136,3 +136,29 @@ textarea[aria-invalid="true"] {
   align-items: center;
   gap: 7px;
 }
+
+.selector-egreso-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.selector-egreso-grid select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background-color: #fff;
+  color: #111827;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .selector-egreso-grid {
+    grid-template-columns: 1fr;
+  }
+}

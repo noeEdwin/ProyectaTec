@@ -6,6 +6,7 @@ use App\Http\Resources\ProfileResource;
 use App\Models\Organization;
 use App\Models\Profile;
 use App\Models\User;
+use App\Rules\ValidExpectedGraduation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -181,13 +182,13 @@ class ProfileController extends Controller
             'institution_location' => ['nullable', 'string', 'max:255'],
             'institution_email' => ['nullable', 'email', 'max:255'],
             'affiliation_reason' => ['nullable', 'string', 'max:500'],
-            'campus' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
+            'campus' => ['nullable', 'string', 'max:255'],
             'field_of_study' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:255'],
             'interest_areas' => ['sometimes', 'array', 'max:6'],
             'interest_areas.*' => ['string', 'max:80', 'distinct'],
             'semester' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'student_number' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
-            'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
+            'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80', new ValidExpectedGraduation()],
             'academic_role' => ['required_if:account_type,academico', 'nullable', Rule::in(['docente', 'investigador', 'ambos'])],
             'organization_name' => ['required_if:account_type,empleado_organizacion', 'nullable', 'string', 'max:255'],
             'organization_id' => [

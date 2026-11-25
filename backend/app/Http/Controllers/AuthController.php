@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Profile;
 use App\Models\User;
 use App\Notifications\WelcomeRegisteredNotification;
+use App\Rules\ValidExpectedGraduation;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,7 @@ class AuthController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'semester' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
             'student_number' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
-            'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80'],
+            'expected_graduation' => ['required_if:account_type,estudiante', 'nullable', 'string', 'max:80', new ValidExpectedGraduation()],
             'academic_role' => ['required_if:account_type,academico', 'nullable', Rule::in(['docente', 'investigador', 'ambos'])],
             'organization_name' => ['required_if:account_type,empleado_organizacion,organizacion', 'nullable', 'string', 'max:255'],
             'organization_id' => [
